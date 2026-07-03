@@ -1,42 +1,217 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+body {
+  margin: 0;
+  background: #f8fafc;
+  font-family: Inter, system-ui;
+}
+
+/* ============ Layout ============ */
+
+.app-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* ============ Sidebar ============ */
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.app-sidebar {
+  width: 240px;
+  background: linear-gradient(180deg, #1e3a8a, #2563eb);
+  padding: 24px;
+  color: white;
+}
+
+.brand {
   text-align: center;
+  font-weight: 600;
+  margin-bottom: 40px;
+  font-size: 18px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: white;
+  text-decoration: none;
+  margin-bottom: 10px;
+  transition: 0.3s;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateX(6px);
 }
+
+.menu-item.active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============ Topbar ============ */
+
+.app-topbar {
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(10px);
+}
+
+/* Avatar */
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* ============ Page Content ============ */
+
+.page-content {
+  padding: 25px;
+}
+
+/* ============ Dashboard Cards ============ */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background: white;
+  padding: 22px;
+  border-radius: 18px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+  transition: 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-6px);
+}
+
+/* Bootstrap Card Override */
 
 .card {
-  padding: 2em;
+  border-radius: 18px !important;
 }
 
-.read-the-docs {
-  color: #888;
+/* Table */
+
+.table th {
+  font-weight: 500;
+}
+
+/* Badge */
+
+.badge {
+  font-weight: 500;
+}
+.menu-item i {
+  min-width: 22px;
+}
+
+.menu-item span {
+  font-weight: 500;
+}
+.setup-toggle {
+  cursor:pointer;
+}
+
+.submenu {
+  margin-left:30px;
+  margin-top:5px;
+}
+
+.submenu-item {
+  display:block;
+  padding:8px 10px;
+  margin-bottom:6px;
+  border-radius:8px;
+  color:white;
+  text-decoration:none;
+  font-size:14px;
+  opacity:.85;
+  transition:.2s;
+}
+
+.submenu-item:hover {
+  background:rgba(255,255,255,.2);
+  transform:translateX(4px);
+}
+
+.submenu-item.active {
+  background:rgba(255,255,255,.25);
+  opacity:1;
+}
+
+.navbar,
+.nav-item,
+.dropdown {
+  overflow: visible !important;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1050;   /* Bootstrap dropdown uses ~1000 */
+  background: white;
+}
+
+.profile-icon {
+  font-size: 32px;
+  color: #4f46e5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+}
+
+.dropdown-menu {
+  z-index: 9999 !important;
+}
+.stat-hover:hover {
+  transform: translateY(-6px);
+  transition: .3s;
+}
+
+.icon-circle {
+  width: 50px;
+  height: 50px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.holiday-dot {
+  width:10px;
+  height:10px;
+  border-radius:50%;
 }
