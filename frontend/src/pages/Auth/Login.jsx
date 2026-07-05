@@ -260,7 +260,7 @@ export default function Login() {
             </h2>
             <p className="vt-sub">
               Everything your team needs — attendance tracking, timesheets,
-              task management, and AI-powered summaries in one place.
+              task management, and AI-powered summaries in one placesss.
             </p>
 
             <div className="vt-tiles">

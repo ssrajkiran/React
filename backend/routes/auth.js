@@ -330,7 +330,7 @@ router.post("/", verifyToken, (req, res) => {
 router.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  db.query("SELECT * FROM users WHERE email=?", [email], (err, result) => {
+  db.query("SELECT FROM users WHERE email=?", [email], (err, result) => {
     if (err) return res.sendStatus(500);
     if (!result.length) return res.sendStatus(401);
 
