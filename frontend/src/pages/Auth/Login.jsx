@@ -255,7 +255,7 @@ export default function Login() {
             </div>
 
             <h2 className="vt-heading">
-              Manage attendance<br />
+              Manage attendancesss<br />
               <em>&amp; timesheets easily.</em>
             </h2>
             <p className="vt-sub">
