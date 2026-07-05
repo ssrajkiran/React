@@ -13,9 +13,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set project directory
-        run: cd /var/www/html/React
-
       - name: Pull latest code
         run: |
           cd /var/www/html/React
@@ -36,7 +33,6 @@ jobs:
 
       - name: Restart PM2
         run: |
-          pm2 restart server || pm2 start server.js --name backend
-          pm2 save
-
-
+          cd /var/www/html/React/backend
+          sudo pm2 restart server --update-env || sudo pm2 start server.js --name server
+          sudo pm2 save
