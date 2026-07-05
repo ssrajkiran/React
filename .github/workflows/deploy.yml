@@ -34,5 +34,5 @@ jobs:
       - name: Restart PM2
         run: |
           cd /var/www/html/React/backend
-          sudo pm2 restart server --update-env || sudo pm2 start server.js --name server
+          sudo pm2 restart server
           sudo pm2 save
