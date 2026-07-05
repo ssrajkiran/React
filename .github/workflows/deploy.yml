@@ -31,8 +31,8 @@ jobs:
           cd /var/www/html/React/backend
           npm install
 
-      - name: Restart PM2
+      - name: Reload PM2
         run: |
           cd /var/www/html/React/backend
-          sudo pm2 restart server
-          sudo pm2 save
+          pm2 reload server
+          pm2 save
