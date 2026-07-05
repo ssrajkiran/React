@@ -1,7 +1,11 @@
 export default function Footer() {
   return (
-    <div className="text-center py-2 border-top bg-white">
-      © 2026 Attendance System
-    </div>
+    <footer className="app-footer">
+      <div className="footer-inner">
+        <span>&copy; {new Date().getFullYear()} Voltech. All rights reserved.</span>
+        <span className="footer-divider">·</span>
+        <span>Developed by Software Development</span>
+      </div>
+    </footer>
   );
 }

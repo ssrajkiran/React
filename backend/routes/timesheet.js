@@ -187,7 +187,6 @@ router.get("/tasks/project/:projectId", verifyToken, (req, res) => {
     res.json(results);
   });
 });
-
 router.post("/", verifyToken, (req, res) => {
   const { task, date, man_hrs, created_by } = req.body;
 
@@ -197,31 +196,47 @@ router.post("/", verifyToken, (req, res) => {
 
   const hoursToAdd = Number(man_hrs);
 
+  if (isNaN(hoursToAdd) || hoursToAdd <= 0 || hoursToAdd > 8) {
+    return res.status(400).json({ message: "Invalid hours. Must be between 1 and 8." });
+  }
+
+  // Frontend <input type="date"> always sends "YYYY-MM-DD"
+  // Split manually to avoid any timezone shift from new Date()
+  const parts = date.split("-");
+  if (parts.length !== 3) {
+    return res.status(400).json({ message: "Invalid date format. Expected YYYY-MM-DD." });
+  }
+  const [year, month, day] = parts;
+  const normalizedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`; // stored in DB as YYYY-MM-DD
+  const displayDate    = `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;  // shown in UI as DD-MM-YYYY
+
   // Step 1: Check total hours already logged for that user on that date
+  // DATE() strips any time component so comparison works even if DB stores datetime
   const checkSql = `
-    SELECT SUM(man_hrs) AS total_hours
+    SELECT COALESCE(SUM(man_hrs), 0) AS total_hours
     FROM timesheet
-    WHERE date = ? AND created_by = ?
+    WHERE DATE(date) = ? AND created_by = ?
   `;
 
-  db.query(checkSql, [date, created_by], (err, results) => {
+  db.query(checkSql, [normalizedDate, created_by], (err, results) => {
     if (err) {
       console.error("Check timesheet hours error:", err);
       return res.status(500).json({ message: "Database error" });
     }
 
-    const totalHours = results[0].total_hours || 0;
+    const totalHours = Number(results[0].total_hours) || 0;
+    const remaining  = 8 - totalHours;
 
     if (totalHours + hoursToAdd > 8) {
       return res.status(400).json({
-        message: `Cannot add ${hoursToAdd} hrs. User already has ${totalHours} hrs logged for ${date}. Max 8 hrs/day.`,
+        message: `Only ${remaining} hr${remaining !== 1 ? "s" : ""} remaining for ${displayDate}. Cannot add ${hoursToAdd} hr${hoursToAdd !== 1 ? "s" : ""}.`,
       });
     }
 
-    // Step 2: Insert timesheet if within limit
+    // Step 2: Insert — always store date as YYYY-MM-DD
     const insertSql = "INSERT INTO timesheet (task, date, man_hrs, created_by) VALUES (?, ?, ?, ?)";
 
-    db.query(insertSql, [task, date, man_hrs, created_by], (err, result) => {
+    db.query(insertSql, [task, normalizedDate, man_hrs, created_by], (err, result) => {
       if (err) {
         console.error("Insert timesheet error:", err);
         return res.status(500).json({ message: "Database error" });
@@ -229,6 +244,35 @@ router.post("/", verifyToken, (req, res) => {
 
       res.json({ message: "Timesheet added successfully", timesheet_id: result.insertId });
     });
+  });
+});
+
+
+// Projects assigned to a specific user (for admin modal)
+router.get("/admin/projects/:userId", verifyToken, (req, res) => {
+  const sql = `
+    SELECT DISTINCT p.id, p.project_name
+    FROM task t
+    JOIN projects p ON p.id = t.project_id
+    WHERE FIND_IN_SET(?, t.assigned_to)
+    ORDER BY p.project_name ASC
+  `;
+  db.query(sql, [req.params.userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch projects" });
+    res.json(rows);
+  });
+});
+
+// Tasks for a project assigned to a specific user (for admin modal)
+router.get("/admin/tasks/:projectId/:userId", verifyToken, (req, res) => {
+  const sql = `
+    SELECT id, task FROM task
+    WHERE project_id = ? AND FIND_IN_SET(?, assigned_to)
+    ORDER BY task ASC
+  `;
+  db.query(sql, [req.params.projectId, req.params.userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch tasks" });
+    res.json(rows);
   });
 });
 

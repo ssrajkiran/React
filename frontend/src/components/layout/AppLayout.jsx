@@ -1,40 +1,60 @@
+import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
 export default function AppLayout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ✅ FIX 1: toggle instead of always open
+  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
+  const closeSidebar  = () => setSidebarOpen(false);
+
+  // Close sidebar when resizing beyond mobile breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) setSidebarOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen]);
+
   return (
-    <div className="app-wrapper d-flex">
+    <div className="app-wrapper">
+      {/* Overlay — dims content on mobile when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay visible"
+          aria-hidden="true"
+          onClick={closeSidebar}
+        />
+      )}
 
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
-      {/* Main Panel */}
-      <div className="main-panel d-flex flex-column flex-grow-1 min-vh-100">
+      {/* Main panel */}
+      <div className="main-panel">
+        {/* ✅ FIX 2: pass both toggle handler AND sidebarOpen state */}
+        <Topbar onMenuClick={toggleSidebar} sidebarOpen={sidebarOpen} />
 
-        {/* Topbar */}
-        <Topbar />
-
-        {/* Page Content */}
-        <div className="page-content flex-grow-1 p-6" style={{ backgroundColor: "#f5f6fa" }}>
-          {children}
-        </div>
+        {/* Page content */}
+        <main className="page-content">{children}</main>
 
         {/* Footer */}
-        <footer
-          className="d-flex justify-content-between align-items-right px-4 py-2 mt-auto"
-
-        >
-          <div>
-            &copy; {new Date().getFullYear()} Voltech. All rights reserved.
-          </div>
-          <div style={{ fontWeight: "500", opacity: 0.9 }}>
-            Developed by Software Development
+        <footer className="app-footer">
+          <div className="footer-inner">
+            <span>&copy; {new Date().getFullYear()} Voltech. All rights reserved.</span>
+            <span className="footer-divider">·</span>
+            <span>Developed by Software Development</span>
           </div>
         </footer>
-
       </div>
-
     </div>
   );
 }
-

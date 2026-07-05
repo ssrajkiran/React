@@ -17,6 +17,7 @@ import TaskList from "./pages/Task/tasklist.jsx";
 import TaskReport from "./pages/Task/taskreport.jsx";
 import AISummary from "./pages/AI/AISummary";
 import AIHistory from "./pages/AI/AIhistory.jsx";
+import Todo from "./pages/Todo/Todo.jsx";
 import EmployeeTimesheet from "./pages/Timesheet/EmployeeTimesheetList.jsx";
 import AdminTimesheet from "./pages/Timesheet/AdminTimesheetList.jsx";
 
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/admin/ai-summary" element={<AISummary />} />
         <Route path="/admin/ai-summary/history" element={<AIHistory />} />
         <Route path="/tasks/report" element={<TaskReport />} />
+         <Route path="/todo" element={<Todo />} />
       </Routes>
     </>
   );

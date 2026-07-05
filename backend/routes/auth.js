@@ -3,6 +3,101 @@ const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+require("dotenv").config();
+
+const nodemailer = require("nodemailer");
+
+// ================= Shared: Create Transporter =================
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: Number(process.env.EMAIL_PORT),
+    secure: process.env.EMAIL_SECURE === "true",
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    tls: { rejectUnauthorized: false },
+  });
+}
+
+// ================= Shared: HTML Email Builder =================
+function buildEmailHtml({ recipientName, title, statusLabel, statusColor, statusBg, rows, footerNote }) {
+  const rowsHtml = rows.map(({ label, value }) => `
+    <tr>
+      <td style="color:#6b7280;padding:6px 0;width:40%;font-size:14px;font-family:Arial,sans-serif;">${label}</td>
+      <td style="font-weight:500;padding:6px 0;font-size:14px;font-family:Arial,sans-serif;color:#111827;">${value}</td>
+    </tr>
+  `).join("");
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#185FA5;padding:28px 32px 24px;">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:middle;">
+                  <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#ffffff;font-family:Arial,sans-serif;text-align:center;line-height:36px;margin-right:10px;">ERP</div>
+                </td>
+                <td style="vertical-align:middle;">
+                  <span style="font-size:13px;color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;">ERP Management System</span>
+                </td>
+              </tr>
+            </table>
+            <h1 style="margin:12px 0 0;font-size:22px;font-weight:500;color:#ffffff;font-family:Arial,sans-serif;">${title}</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:28px 32px;">
+
+            <p style="margin:0 0 20px;font-size:15px;color:#111827;line-height:1.7;font-family:Arial,sans-serif;">
+              Hi <strong style="font-weight:500;">${recipientName}</strong>, ${footerNote || "your account has been set up and is ready to use."}
+            </p>
+
+            <!-- Info card -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+              <tr><td>
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  ${rowsHtml}
+                  <tr>
+                    <td style="color:#6b7280;padding:6px 0;width:40%;font-size:14px;font-family:Arial,sans-serif;">Status</td>
+                    <td style="padding:6px 0;">
+                      <span style="background:${statusBg};color:${statusColor};font-size:12px;font-weight:500;padding:3px 12px;border-radius:999px;font-family:Arial,sans-serif;">${statusLabel}</span>
+                    </td>
+                  </tr>
+                </table>
+              </td></tr>
+            </table>
+
+            <p style="font-size:14px;color:#6b7280;margin:0 0 20px;line-height:1.7;font-family:Arial,sans-serif;">
+              If you have any questions, please reach out to your administrator.
+            </p>
+
+            <!-- Footer -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;padding-top:16px;margin-top:4px;">
+              <tr>
+                <td style="font-size:12px;color:#9ca3af;font-family:Arial,sans-serif;">This is an automated message — do not reply.</td>
+                <td align="right" style="font-size:12px;color:#9ca3af;font-family:Arial,sans-serif;">Sent via erp.notification</td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 /* ==============================
    AUTH MIDDLEWARE
 ================================ */
@@ -85,10 +180,6 @@ router.delete("/:id", verifyToken, (req, res) => {
     }
   );
 });
-
-/* ==============================
-   CHANGE PASSWORD
-================================ */
 
 /* ==============================
    EMPLOYEE PROJECTS
@@ -233,8 +324,9 @@ router.post("/", verifyToken, (req, res) => {
   });
 });
 
-/* ============================== */
-
+/* ==============================
+   LOGIN
+================================ */
 router.post("/login", (req, res) => {
   const { email, password } = req.body;
 
@@ -258,8 +350,53 @@ router.post("/login", (req, res) => {
   });
 });
 
+/* ==============================
+   REGISTER (+ Welcome Email)
+================================ */
+router.post("/register", (req, res) => {
+  const { name, email, password, role } = req.body;
+  const hash = bcrypt.hashSync(password, 10);
 
+  db.query(
+    "INSERT INTO users(name,email,password,plain_password,role) VALUES(?,?,?,?,?)",
+    [name, email, hash, password, role],
+    async (err) => {
+      if (err) return res.status(500).json({ message: "User already exists" });
 
+      // Send welcome email (non-blocking — won't fail registration if mail errors)
+      try {
+        await createTransporter().sendMail({
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: "Welcome to ERP — Your account is ready",
+          html: buildEmailHtml({
+            recipientName: name,
+            title: "Welcome aboard!",
+            statusLabel: "Active",
+            statusColor: "#065f46",
+            statusBg: "#d1fae5",
+            footerNote: "your account has been created successfully. Here are your login credentials — please keep them safe.",
+            rows: [
+              { label: "Full Name", value: name },
+              { label: "Email",     value: email },
+              { label: "Password",  value: password },
+              { label: "Role",      value: role || "employee" },
+            ],
+          }),
+        });
+        console.log(`✅ Welcome email sent to ${email}`);
+      } catch (mailErr) {
+        console.error("❌ Failed to send welcome email:", mailErr.message);
+      }
+
+      res.json({ message: "Registered successfully" });
+    }
+  );
+});
+
+/* ==============================
+   GET ALL USERS (ADMIN)
+================================ */
 router.get("/users", verifyToken, (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admins only" });
@@ -269,15 +406,17 @@ router.get("/users", verifyToken, (req, res) => {
     "SELECT id, name, email, role FROM users",
     (err, result) => {
       if (err) {
-        return res.status(500).json({
-          message: "Database query failed",
-        });
+        return res.status(500).json({ message: "Database query failed" });
       }
 
       res.json(result);
     }
   );
 });
+
+/* ==============================
+   CHANGE PASSWORD
+================================ */
 router.put("/change-password", verifyToken, (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
@@ -286,9 +425,7 @@ router.put("/change-password", verifyToken, (req, res) => {
   }
 
   if (currentPassword === newPassword) {
-    return res.status(400).json({
-      message: "New password must be different",
-    });
+    return res.status(400).json({ message: "New password must be different" });
   }
 
   db.query(
@@ -298,22 +435,14 @@ router.put("/change-password", verifyToken, (req, res) => {
       if (err) return res.sendStatus(500);
       if (!result.length) return res.sendStatus(404);
 
-      // check old password
-      const valid = bcrypt.compareSync(
-        currentPassword,
-        result[0].password
-      );
+      const valid = bcrypt.compareSync(currentPassword, result[0].password);
 
       if (!valid) {
-        return res.status(400).json({
-          message: "Wrong current password",
-        });
+        return res.status(400).json({ message: "Wrong current password" });
       }
 
-      // hash new password
       const hash = bcrypt.hashSync(newPassword, 10);
 
-      // update BOTH columns
       db.query(
         "UPDATE users SET password=?, plain_password=? WHERE id=?",
         [hash, newPassword, req.user.id],
@@ -321,28 +450,21 @@ router.put("/change-password", verifyToken, (req, res) => {
           if (err2) return res.sendStatus(500);
 
           if (result2.affectedRows === 0) {
-            return res.status(400).json({
-              message: "Password not updated",
-            });
+            return res.status(400).json({ message: "Password not updated" });
           }
 
-          res.json({
-            message: "Password updated successfully",
-          });
+          res.json({ message: "Password updated successfully" });
         }
       );
     }
   );
 });
 
-
-
 /* ==============================
    UPDATE USER (ADMIN)
 ================================ */
 router.put("/:id", verifyToken, (req, res) => {
   if (req.user.role !== "admin") {
-
     return res.status(403).json({ message: "Admins only" });
   }
 
@@ -368,20 +490,17 @@ router.put("/:id", verifyToken, (req, res) => {
   }
 
   if (password) {
-
     const hash = bcrypt.hashSync(password, 10);
     updates.push("password=?, plain_password=?");
     params.push(hash, password);
   }
 
   if (!updates.length) {
-
-    return res.status(400).json({ message: "No fields to updates" });
+    return res.status(400).json({ message: "No fields to update" });
   }
 
   params.push(userId);
 
-  // ✅ FIXED SQL STRING
   const sql = `UPDATE users SET ${updates.join(", ")} WHERE id=?`;
 
   db.query(sql, params, (err, result) => {
