@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link } from "react-router-dom";
+import SharedSelect from "../../components/SharedSelect";
 
 export default function UsersPresent() {
   const [users, setUsers]             = useState([]);
@@ -305,15 +306,15 @@ export default function UsersPresent() {
 
               <div className="cu-field-group">
                 <label className="sr-label">Role</label>
-                <div className="sr-input-wrap">
-                  <i className="bi bi-shield-check sr-input-icon" />
-                  <select className="sr-input cu-select" name="role" value={selectedUser.role} onChange={handleChange}>
-                    <option value="">Select a role…</option>
-                    <option value="admin">Admin</option>
-                    <option value="employee">Employee</option>
-                  </select>
-                  <i className="bi bi-chevron-down cu-select-arrow" />
-                </div>
+                <SharedSelect
+                  value={selectedUser.role}
+                  onChange={(val) => setSelectedUser({ ...selectedUser, role: val })}
+                  options={[
+                    { value: "admin", label: "Admin" },
+                    { value: "employee", label: "Employee" },
+                  ]}
+                  placeholder="Select a role…"
+                />
               </div>
 
               <div className="cu-field-group">

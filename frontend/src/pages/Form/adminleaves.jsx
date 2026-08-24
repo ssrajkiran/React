@@ -10,6 +10,8 @@ import {
   addMonths, subMonths, isToday,
 } from "date-fns";
 import enUS from "date-fns/locale/en-US";
+import SharedDatePicker from "../../components/SharedDatePicker";
+import SharedSelect from "../../components/SharedSelect";
 
 const locales = { "en-US": enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -689,16 +691,13 @@ const generateSummary = () => {
                 {/* Employee */}
                 <div className="al-field">
                   <label className="al-label">Employee</label>
-                  <select
-                    className="al-input al-select"
+                  <SharedSelect
                     value={applyForm.user_id}
-                    onChange={(e) => setApplyForm({ ...applyForm, user_id: e.target.value })}
-                  >
-                    <option value="">— Select Employee —</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>{emp.name}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setApplyForm({ ...applyForm, user_id: val })}
+                    options={employees.map((emp) => ({ value: emp.id, label: emp.name }))}
+                    placeholder="— Select Employee —"
+                    className="al-select"
+                  />
                 </div>
 
                 {/* Type tabs */}
@@ -724,13 +723,19 @@ const generateSummary = () => {
                     <div className="al-row-2">
                       <div className="al-field">
                         <label className="al-label">Start Date</label>
-                        <input type="date" className="al-input" value={applyForm.start_date}
-                          onChange={(e) => setApplyForm({ ...applyForm, start_date: e.target.value })} />
+                        <SharedDatePicker
+                          value={applyForm.start_date}
+                          onChange={(val) => setApplyForm({ ...applyForm, start_date: val })}
+                          className="al-input"
+                        />
                       </div>
                       <div className="al-field">
                         <label className="al-label">End Date</label>
-                        <input type="date" className="al-input" value={applyForm.end_date}
-                          onChange={(e) => setApplyForm({ ...applyForm, end_date: e.target.value })} />
+                        <SharedDatePicker
+                          value={applyForm.end_date}
+                          onChange={(val) => setApplyForm({ ...applyForm, end_date: val })}
+                          className="al-input"
+                        />
                       </div>
                     </div>
                     {applyForm.start_date === applyForm.end_date && applyForm.start_date && (
@@ -780,8 +785,11 @@ const generateSummary = () => {
                   <>
                     <div className="al-field">
                       <label className="al-label">Leave Date <span className="al-label-hint">(day off to take)</span></label>
-                      <input type="date" className="al-input" value={applyForm.start_date}
-                        onChange={(e) => setApplyForm({ ...applyForm, start_date: e.target.value })} />
+                      <SharedDatePicker
+                        value={applyForm.start_date}
+                        onChange={(val) => setApplyForm({ ...applyForm, start_date: val })}
+                        className="al-input"
+                      />
                     </div>
                     <div className="al-field">
                       <label className="al-label">
@@ -797,18 +805,16 @@ const generateSummary = () => {
                           <span>No eligible holidays found. Employee must be marked <strong>Present</strong> on a holiday first.</span>
                         </div>
                       ) : (
-                        <select
-                          className="al-input al-select"
+                        <SharedSelect
                           value={applyForm.compoff_date}
-                          onChange={(e) => setApplyForm({ ...applyForm, compoff_date: e.target.value })}
-                        >
-                          <option value="">— Select Holiday Worked —</option>
-                          {compoffEligible.map((h) => (
-                            <option key={h.present_id} value={h.date_str}>
-                              {h.holiday_name} — {h.date_str}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => setApplyForm({ ...applyForm, compoff_date: val })}
+                          options={compoffEligible.map((h) => ({
+                            value: h.date_str,
+                            label: `${h.holiday_name} — ${h.date_str}`,
+                          }))}
+                          placeholder="— Select Holiday Worked —"
+                          className="al-select"
+                        />
                       )}
                     </div>
                   </>
@@ -819,8 +825,11 @@ const generateSummary = () => {
                   <>
                     <div className="al-field">
                       <label className="al-label">Date</label>
-                      <input type="date" className="al-input" value={applyForm.start_date}
-                        onChange={(e) => setApplyForm({ ...applyForm, start_date: e.target.value })} />
+                      <SharedDatePicker
+                        value={applyForm.start_date}
+                        onChange={(val) => setApplyForm({ ...applyForm, start_date: val })}
+                        className="al-input"
+                      />
                     </div>
                     <div className="al-row-2">
                       <div className="al-field">

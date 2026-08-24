@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
+import SharedSelect from "../../components/SharedSelect";
 
 export default function TaskReport() {
   const [tasks, setTasks] = useState([]);
@@ -160,55 +161,35 @@ export default function TaskReport() {
         <div className="tr-filter-row">
           <div className="tr-filter-field">
             <label className="tr-label">Project</label>
-            <div className="tr-select-wrap">
-              <i className="bi bi-folder2 tr-select-icon" />
-              <select
-                className="tr-select"
-                name="project_id"
-                value={filters.project_id}
-                onChange={handleFilter}
-              >
-                <option value="">All Projects</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.project_name}</option>
-                ))}
-              </select>
-            </div>
+            <SharedSelect
+              value={filters.project_id}
+              onChange={(val) => setFilters({ ...filters, project_id: val })}
+              options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
+              placeholder="All Projects"
+            />
           </div>
 
           <div className="tr-filter-field">
             <label className="tr-label">Assigned To</label>
-            <div className="tr-select-wrap">
-              <i className="bi bi-person tr-select-icon" />
-              <select
-                className="tr-select"
-                name="assigned_to"
-                value={filters.assigned_to}
-                onChange={handleFilter}
-              >
-                <option value="">All Users</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
+            <SharedSelect
+              value={filters.assigned_to}
+              onChange={(val) => setFilters({ ...filters, assigned_to: val })}
+              options={users.map((u) => ({ value: u.id, label: u.name }))}
+              placeholder="All Users"
+            />
           </div>
 
           <div className="tr-filter-field">
             <label className="tr-label">Status</label>
-            <div className="tr-select-wrap">
-              <i className="bi bi-circle-half tr-select-icon" />
-              <select
-                className="tr-select"
-                name="status"
-                value={filters.status}
-                onChange={handleFilter}
-              >
-                <option value="">All Statuses</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
+            <SharedSelect
+              value={filters.status}
+              onChange={(val) => setFilters({ ...filters, status: val })}
+              options={[
+                { value: "In Progress", label: "In Progress" },
+                { value: "Completed", label: "Completed" },
+              ]}
+              placeholder="All Statuses"
+            />
           </div>
         </div>
       </div>

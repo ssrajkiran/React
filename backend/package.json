@@ -16,7 +16,7 @@
     "datatables.net": "^2.3.7",
     "datatables.net-dt": "^2.3.7",
     "dotenv": "^17.3.1",
-    "express": "^4.22.1",
+    "express": "^4.22.2",
     "jquery": "^4.0.0",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.16.3",

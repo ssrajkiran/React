@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";  // ✅ same import as CreateUser.jsx
 import { Link } from "react-router-dom";
+import SharedDatePicker from "../../components/SharedDatePicker";
+import SharedSelect from "../../components/SharedSelect";
 
 // ─── helpers ─────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -115,19 +117,16 @@ function CreateTodoDialog({ open, onClose, onSaved, editData, showToast }) {
               <div className="cd-field">
                 <label className="sr-label">Priority</label>
                 <div className="sr-input-wrap">
-                  <i className="bi bi-flag sr-input-icon" />
-                  <select
-                    className={`sr-input cu-select ${priorityErr ? "cu-input-error" : ""}`}
-                    name="priority"
+                  <SharedSelect
                     value={form.priority}
-                    onChange={handleChange}
-                  >
-                    <option value="">Select priority…</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                  <i className="bi bi-chevron-down cu-select-arrow" />
+                    onChange={(val) => setForm({ ...form, priority: val })}
+                    options={[
+                      { value: "Low", label: "Low" },
+                      { value: "Medium", label: "Medium" },
+                      { value: "High", label: "High" },
+                    ]}
+                    placeholder="Select priority…"
+                  />
                 </div>
                 {priorityErr && (
                   <span className="cu-field-error">
@@ -140,13 +139,11 @@ function CreateTodoDialog({ open, onClose, onSaved, editData, showToast }) {
               <div className="cd-field">
                 <label className="sr-label">Due Date</label>
                 <div className="sr-input-wrap">
-                  <i className="bi bi-calendar3 sr-input-icon" />
-                  <input
-                    className="sr-input"
-                    type="date"
-                    name="due_date"
+                  <SharedDatePicker
                     value={form.due_date}
-                    onChange={handleChange}
+                    onChange={(val) => setForm({ ...form, due_date: val })}
+                    className="sr-input"
+                    placeholder="Select date"
                   />
                 </div>
               </div>

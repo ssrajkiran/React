@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link } from "react-router-dom";
+import SharedDatePicker from "../../components/SharedDatePicker";
 
 const formatDate = (iso) => {
   if (!iso) return "—";
@@ -344,13 +345,11 @@ export default function Holiday() {
               <div className="cu-field-group">
                 <label className="sr-label">Date</label>
                 <div className="sr-input-wrap">
-                  <i className="bi bi-calendar3 sr-input-icon" />
-                  <input
-                    className="sr-input"
-                    type="date"
-                    name="date"
+                  <SharedDatePicker
                     value={form.date}
-                    onChange={handleChange}
+                    onChange={(val) => setForm({ ...form, date: val })}
+                    className="sr-input"
+                    placeholder="Select date"
                   />
                 </div>
                 {form.date && (

@@ -6,6 +6,8 @@ import AppLayout from "../../components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import enUS from "date-fns/locale/en-US";
+import SharedDatePicker from "../../components/SharedDatePicker";
+import SharedSelect from "../../components/SharedSelect";
 
 const locales = { "en-US": enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -606,18 +608,20 @@ export default function Leaves() {
                     <div className="lv-row-2">
                       <div className="lv-field">
                         <label className="lv-label">Start Date</label>
-                        <input
-                          type="date" className="lv-input"
-                          value={formData.start_date} disabled={isViewMode}
-                          onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        <SharedDatePicker
+                          value={formData.start_date}
+                          disabled={isViewMode}
+                          onChange={(val) => setFormData({ ...formData, start_date: val })}
+                          className="lv-input"
                         />
                       </div>
                       <div className="lv-field">
                         <label className="lv-label">End Date</label>
-                        <input
-                          type="date" className="lv-input"
-                          value={formData.end_date} disabled={isViewMode}
-                          onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        <SharedDatePicker
+                          value={formData.end_date}
+                          disabled={isViewMode}
+                          onChange={(val) => setFormData({ ...formData, end_date: val })}
+                          className="lv-input"
                         />
                       </div>
                     </div>
@@ -665,10 +669,11 @@ export default function Leaves() {
                       <label className="lv-label">
                         Leave Date <span className="lv-label-hint">(day off to take)</span>
                       </label>
-                      <input
-                        type="date" className="lv-input"
-                        value={formData.start_date} disabled={isViewMode}
-                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                      <SharedDatePicker
+                        value={formData.start_date}
+                        disabled={isViewMode}
+                        onChange={(val) => setFormData({ ...formData, start_date: val })}
+                        className="lv-input"
                       />
                     </div>
 
@@ -692,18 +697,16 @@ export default function Leaves() {
                           </span>
                         </div>
                       ) : (
-                        <select
-                          className="lv-select"
+                        <SharedSelect
                           value={formData.compoff_date}
-                          onChange={(e) => setFormData({ ...formData, compoff_date: e.target.value })}
-                        >
-                          <option value="">— Select Holiday Worked —</option>
-                          {compoffEligible.map((h) => (
-                            <option key={h.present_id} value={h.date_str}>
-                              {h.holiday_name} — {h.date_str}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => setFormData({ ...formData, compoff_date: val })}
+                          options={compoffEligible.map((h) => ({
+                            value: h.date_str,
+                            label: `${h.holiday_name} — ${h.date_str}`,
+                          }))}
+                          placeholder="— Select Holiday Worked —"
+                          className="lv-select"
+                        />
                       )}
                     </div>
                   </>
@@ -765,10 +768,11 @@ export default function Leaves() {
                   <>
                     <div className="lv-field">
                       <label className="lv-label">Date</label>
-                      <input
-                        type="date" className="lv-input"
-                        value={formData.start_date} disabled={isViewMode}
-                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                      <SharedDatePicker
+                        value={formData.start_date}
+                        disabled={isViewMode}
+                        onChange={(val) => setFormData({ ...formData, start_date: val })}
+                        className="lv-input"
                       />
                     </div>
                     <div className="lv-row-2">

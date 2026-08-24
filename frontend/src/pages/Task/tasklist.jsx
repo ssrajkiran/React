@@ -3,6 +3,7 @@ import AppLayoutImport from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link } from "react-router-dom";
 import SelectImport from "react-select";
+import SharedSelect from "../../components/SharedSelect";
 
 const AppLayout = AppLayoutImport?.default || AppLayoutImport;
 const Select = SelectImport?.default || SelectImport;
@@ -446,15 +447,13 @@ export default function TaskList() {
                   <div className="tl-field">
                     <label className="tl-label">Project</label>
                     <div className="tl-project-row">
-                      <select
-                        className="tl-input tl-select"
+                      <SharedSelect
                         value={createFormData.project_id || ""}
-                        onChange={(e) => setCreateFormData({ ...createFormData, project_id: parseInt(e.target.value) })}
-                        disabled={isAddingProject}
-                      >
-                        <option value="">— Select Project —</option>
-                        {projects.map((p) => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-                      </select>
+                        onChange={(val) => setCreateFormData({ ...createFormData, project_id: parseInt(val) })}
+                        options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
+                        placeholder="— Select Project —"
+                        isDisabled={isAddingProject}
+                      />
                       <button
                         className={`tl-toggle-new-btn ${isAddingProject ? "cancel" : ""}`}
                         onClick={() => setIsAddingProject(!isAddingProject)}

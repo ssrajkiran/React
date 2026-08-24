@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
+import SharedSelect from "../../components/SharedSelect";
 
 /* ─── Inject responsive styles once ─────────────────────────────────── */
 const STYLE_ID = "register-responsive-styles";
@@ -466,15 +467,15 @@ export default function Register() {
 
             <div className="reg-field-group">
               <label className="reg-label">Role</label>
-              <div className="reg-input-wrap">
-                <i className="bi bi-person-badge reg-input-icon" />
-                <select value={role} onChange={(e) => setRole(e.target.value)}
-                  className="reg-select" onFocus={focusInput} onBlur={blurInput}>
-                  <option value="employee">Employee</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <i className="bi bi-chevron-down reg-select-chevron" />
-              </div>
+              <SharedSelect
+                value={role}
+                onChange={(val) => setRole(val)}
+                options={[
+                  { value: "employee", label: "Employee" },
+                  { value: "admin", label: "Admin" },
+                ]}
+                placeholder="Select role"
+              />
             </div>
 
             <button type="submit" disabled={loading} className="reg-submit-btn">

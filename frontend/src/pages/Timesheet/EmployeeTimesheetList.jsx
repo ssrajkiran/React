@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AppLayoutImport from "../../components/layout/AppLayout";
 import api from "../../api";
+import SharedDatePicker from "../../components/SharedDatePicker";
+import SharedSelect from "../../components/SharedSelect";
 
 const AppLayout = AppLayoutImport?.default || AppLayoutImport;
 
@@ -368,40 +370,33 @@ export default function EmployeeTimesheetList() {
 
                 <div className="et-field">
                   <label className="et-label">Date <span className="et-required">*</span></label>
-                  <input
-                    className="et-input"
-                    type="date"
-                    name="date"
+                  <SharedDatePicker
                     value={form.date}
-                    onChange={handleChange}
+                    onChange={(val) => setForm({ ...form, date: val })}
                     max={new Date().toISOString().split("T")[0]}
+                    className="et-input"
                   />
                 </div>
 
                 <div className="et-field">
                   <label className="et-label">Project</label>
-                  <div className="et-select-wrap">
-                    <i className="bi bi-folder2 et-select-icon" />
-                    <select className="et-select" name="project" value={form.project} onChange={handleChange}>
-                      <option value="">— Select Project —</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>{p.project_name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <SharedSelect
+                    value={form.project}
+                    onChange={(val) => setForm({ ...form, project: val })}
+                    options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
+                    placeholder="— Select Project —"
+                  />
                 </div>
 
                 <div className="et-field">
                   <label className="et-label">Task <span className="et-required">*</span></label>
-                  <div className="et-select-wrap">
-                    <i className="bi bi-check2-square et-select-icon" />
-                    <select className="et-select" name="task" value={form.task} onChange={handleChange} disabled={!form.project}>
-                      <option value="">— Select Task —</option>
-                      {tasks.map((t) => (
-                        <option key={t.id} value={t.id}>{t.task}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <SharedSelect
+                    value={form.task}
+                    onChange={(val) => setForm({ ...form, task: val })}
+                    options={tasks.map((t) => ({ value: t.id, label: t.task }))}
+                    placeholder="— Select Task —"
+                    isDisabled={!form.project}
+                  />
                   {!form.project && <p className="et-field-hint">Select a project first to load tasks.</p>}
                 </div>
 

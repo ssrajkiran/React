@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import api from "../../api";
 import ExcelJS from "exceljs";
 import { Link } from "react-router-dom";
+import SharedSelect from "../../components/SharedSelect";
 
 export default function AttendanceReport() {
   const today = new Date();
@@ -173,19 +174,24 @@ export default function AttendanceReport() {
         <div className="ar-controls-left">
           <div className="ar-field">
             <label className="ar-label">Month</label>
-            <select className="ar-select" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {monthNames.map((name, i) => (
-                <option key={i + 1} value={i + 1}>{name}</option>
-              ))}
-            </select>
+            <SharedSelect
+              value={month}
+              onChange={(val) => setMonth(Number(val))}
+              options={monthNames.map((name, i) => ({ value: i + 1, label: name }))}
+              placeholder="Select month"
+            />
           </div>
           <div className="ar-field">
             <label className="ar-label">Year</label>
-            <select className="ar-select" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {Array.from({ length: 5 }, (_, i) => (
-                <option key={i} value={today.getFullYear() - 2 + i}>{today.getFullYear() - 2 + i}</option>
-              ))}
-            </select>
+            <SharedSelect
+              value={year}
+              onChange={(val) => setYear(Number(val))}
+              options={Array.from({ length: 5 }, (_, i) => ({
+                value: today.getFullYear() - 2 + i,
+                label: String(today.getFullYear() - 2 + i),
+              }))}
+              placeholder="Select year"
+            />
           </div>
           <button className="ar-load-btn" onClick={() => { fetchAttendance(); fetchHolidays(); }} disabled={loading}>
             {loading

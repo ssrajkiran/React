@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
+import SharedDatePicker from "../../components/SharedDatePicker";
+import SharedSelect from "../../components/SharedSelect";
 
 // ── Helper: normalize any date value to "YYYY-MM-DD" (IST-safe) ──
 const toDateStr = (d) => {
@@ -405,57 +407,48 @@ export default function AdminTimesheetList() {
                 {/* User */}
                 <div className="ts-field">
                   <label className="ts-label">User <span className="ts-required">*</span></label>
-                  <div className="ts-select-wrap">
-                    <i className="bi bi-person ts-select-icon" />
-                    <select className="ts-select" name="user" value={form.user} onChange={handleChange}>
-                      <option value="">— Select User —</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <SharedSelect
+                    value={form.user}
+                    onChange={(val) => setForm({ ...form, user: val })}
+                    options={users.map((u) => ({ value: u.id, label: u.name }))}
+                    placeholder="— Select User —"
+                  />
                 </div>
 
                 {/* Date */}
                 <div className="ts-field">
                   <label className="ts-label">Date <span className="ts-required">*</span></label>
-                  <input
-                    className="ts-input"
-                    type="date"
-                    name="date"
+                  <SharedDatePicker
                     value={form.date}
-                    onChange={handleChange}
+                    onChange={(val) => setForm({ ...form, date: val })}
                     max={new Date().toISOString().split("T")[0]}
+                    className="ts-input"
                   />
                 </div>
 
                 {/* Project */}
                 <div className="ts-field">
                   <label className="ts-label">Project</label>
-                  <div className="ts-select-wrap">
-                    <i className="bi bi-folder2 ts-select-icon" />
-                    <select className="ts-select" name="project" value={form.project} onChange={handleChange} disabled={!form.user}>
-                      <option value="">— Select Project —</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>{p.project_name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <SharedSelect
+                    value={form.project}
+                    onChange={(val) => setForm({ ...form, project: val })}
+                    options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
+                    placeholder="— Select Project —"
+                    isDisabled={!form.user}
+                  />
                   {!form.user && <p className="ts-field-hint">Select a user first to load their projects.</p>}
                 </div>
 
                 {/* Task */}
                 <div className="ts-field">
                   <label className="ts-label">Task <span className="ts-required">*</span></label>
-                  <div className="ts-select-wrap">
-                    <i className="bi bi-check2-square ts-select-icon" />
-                    <select className="ts-select" name="task" value={form.task} onChange={handleChange} disabled={!form.project}>
-                      <option value="">— Select Task —</option>
-                      {tasks.map((t) => (
-                        <option key={t.id} value={t.id}>{t.task}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <SharedSelect
+                    value={form.task}
+                    onChange={(val) => setForm({ ...form, task: val })}
+                    options={tasks.map((t) => ({ value: t.id, label: t.task }))}
+                    placeholder="— Select Task —"
+                    isDisabled={!form.project}
+                  />
                   {form.user && !form.project && <p className="ts-field-hint">Select a project first to load tasks.</p>}
                 </div>
 
