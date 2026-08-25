@@ -220,7 +220,11 @@ export default function EmployeeTimesheetList() {
     const isPermission = form.entry_type === "permission";
 
     if (!form.date) {
-      setFormError("Please fill all required fields.");
+      setFormError("Please select a date.");
+      return;
+    }
+    if (!isPermission && !form.project) {
+      setFormError("Please select a project.");
       return;
     }
     if (!isPermission && !form.task) {

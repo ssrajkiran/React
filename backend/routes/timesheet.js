@@ -356,14 +356,14 @@ router.post("/", verifyToken, (req, res) => {
 });
 
 
-// Projects assigned to a specific user (for admin modal)
+// Projects assigned to a specific user (for admin modal) - only completed tasks
 router.get("/admin/projects/:userId", verifyToken, (req, res) => {
   const sql = `
     SELECT DISTINCT p.id, p.project_name
     FROM task t
     JOIN projects p ON p.id = t.project_id
     WHERE FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))
-    AND t.status != 'Completed'
+    AND t.status = 'Completed'
     ORDER BY p.project_name ASC
   `;
   db.query(sql, [req.params.userId], (err, rows) => {
@@ -372,12 +372,12 @@ router.get("/admin/projects/:userId", verifyToken, (req, res) => {
   });
 });
 
-// Tasks for a project assigned to a specific user (for admin modal)
+// Tasks for a project assigned to a specific user (for admin modal) - only completed tasks
 router.get("/admin/tasks/:projectId/:userId", verifyToken, (req, res) => {
   const sql = `
     SELECT id, task FROM task
     WHERE project_id = ? AND FIND_IN_SET(?, REPLACE(assigned_to, ' ', ''))
-    AND status != 'Completed'
+    AND status = 'Completed'
     ORDER BY task ASC
   `;
   db.query(sql, [req.params.projectId, req.params.userId], (err, rows) => {

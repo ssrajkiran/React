@@ -271,8 +271,16 @@ export default function AdminTimesheetList() {
   const handleSave = async () => {
     const isPermission = form.entry_type === "permission";
 
-    if (!form.user || !form.date) {
-      setFormError("Please fill all required fields.");
+    if (!form.user) {
+      setFormError("Please select a user.");
+      return;
+    }
+    if (!form.date) {
+      setFormError("Please select a date.");
+      return;
+    }
+    if (!isPermission && !form.project) {
+      setFormError("Please select a project.");
       return;
     }
     if (!isPermission && !form.task) {
@@ -330,6 +338,7 @@ export default function AdminTimesheetList() {
       showToast("Timesheet added successfully.", "success");
       loadData();
     } catch (err) {
+      console.error("Add timesheet error:", err);
       setFormError(err.response?.data?.message || "Failed to add timesheet.");
     }
   };
