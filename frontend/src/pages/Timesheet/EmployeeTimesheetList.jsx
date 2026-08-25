@@ -14,6 +14,104 @@ const toDateStr = (d) => {
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
 };
 
+// ── AM/PM helpers ──
+const to12h = (h24) => {
+  if (!h24) return { h: 12, m: 0, ap: "AM" };
+  const [hh, mm] = h24.split(":").map(Number);
+  const ap = hh >= 12 ? "PM" : "AM";
+  const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
+  return { h: h12, m: mm || 0, ap };
+};
+
+const to24h = (h12, m, ap) => {
+  let hh = Number(h12);
+  if (ap === "AM" && hh === 12) hh = 0;
+  else if (ap === "PM" && hh !== 12) hh += 12;
+  return `${String(hh).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`;
+};
+
+const formatAMPM = (time24) => {
+  if (!time24) return "";
+  const { h, m, ap } = to12h(time24.substring(0, 5));
+  return `${h}:${String(m).padStart(2, "0")} ${ap}`;
+};
+
+// ── Human-readable hours: 1.5 → "1h 30m", 0.5 → "30m", 2 → "2h" ──
+const fmtHrs = (hrs) => {
+  const n = Number(hrs) || 0;
+  const totalMin = Math.round(n * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+};
+
+// ── Inline AM/PM Time Picker ──
+function AmpmTimePicker({ value, onChange, minTime, disabled }) {
+  const { h, m, ap } = to12h(value);
+  const set = (hh, mm, aa) => onChange(to24h(hh, mm, aa));
+
+  // Convert minTime to 12h format for comparison
+  const min12 = minTime ? to12h(minTime) : null;
+
+  // Filter hours: if same AM/PM as min, only show hours >= min hour
+  const hours = [12,1,2,3,4,5,6,7,8,9,10,11].filter((n) => {
+    if (!min12 || ap !== min12.ap) return true;
+    return n >= min12.h;
+  });
+
+  // Filter minutes: if same hour as min, only show minutes > min minute
+  const minutes = [0,5,10,15,20,25,30,35,40,45,50,55].filter((n) => {
+    if (!min12 || ap !== min12.ap || h !== min12.h) return true;
+    return n > min12.m;
+  });
+
+  const disStyle = disabled ? { opacity: 0.5, pointerEvents: "none" } : {};
+
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center", ...disStyle }}>
+      <select
+        value={h}
+        onChange={(e) => set(e.target.value, m, ap)}
+        className="et-input"
+        style={{ width: 64, padding: "7px 4px", textAlign: "center" }}
+        disabled={disabled}
+      >
+        {hours.map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
+      <span style={{ fontWeight: 700, color: "var(--text-muted)" }}>:</span>
+      <select
+        value={m}
+        onChange={(e) => set(h, e.target.value, ap)}
+        className="et-input"
+        style={{ width: 64, padding: "7px 4px", textAlign: "center" }}
+        disabled={disabled}
+      >
+        {minutes.map((n) => (
+          <option key={n} value={n}>{String(n).padStart(2, "0")}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={() => set(h, m, ap === "AM" ? "PM" : "AM")}
+        disabled={disabled}
+        style={{
+          width: 52, height: 36, borderRadius: "var(--radius)", border: "1px solid var(--border)",
+          background: ap === "AM" ? "#EEF2FF" : "#FFF7ED",
+          color: ap === "AM" ? "#5048E5" : "#C2410C",
+          fontSize: 12, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
+          fontFamily: "'Plus Jakarta Sans', sans-serif", opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        {ap}
+      </button>
+    </div>
+  );
+}
+
 export default function EmployeeTimesheetList() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +123,7 @@ export default function EmployeeTimesheetList() {
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ date: "", project: "", task: "", man_hrs: "" });
+  const [form, setForm] = useState({ date: "", project: "", task: "", start_time: "", end_time: "" });
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [formError, setFormError] = useState("");
@@ -81,37 +179,103 @@ export default function EmployeeTimesheetList() {
     }
   };
 
+  // Live overlap check when time changes
+  const checkOverlapLive = (date, startTime, endTime) => {
+    if (!date || !startTime || !endTime) { setFormError(""); return; }
+    const newStart = startTime.substring(0, 5);
+    const newEnd = endTime.substring(0, 5);
+    const overlapEntry = data.find((t) => {
+      if (toDateStr(t.timesheet_date) !== date) return false;
+      if (!t.start_time || !t.end_time) return false;
+      const existStart = t.start_time.substring(0, 5);
+      const existEnd = t.end_time.substring(0, 5);
+      return existStart < newEnd && existEnd > newStart;
+    });
+    if (overlapEntry) {
+      const oStart = formatAMPM(overlapEntry.start_time);
+      const oEnd = formatAMPM(overlapEntry.end_time);
+      setFormError(`Time overlap! Entry already exists from ${oStart} to ${oEnd}. Choose a different time.`);
+    } else {
+      setFormError("");
+    }
+  };
+
   const openModal = () => {
-    setForm({ date: "", project: "", task: "", man_hrs: "", created_by: loggedUserId });
+    setForm({ date: "", entry_type: "project", project: "", task: "", start_time: "", end_time: "", work_description: "" });
     setTasks([]);
     setFormError("");
     setShowModal(true);
   };
 
+  // Calculate hours from start/end time strings (HH:MM)
+  const calcHoursFromTimes = (start, end) => {
+    if (!start || !end) return 0;
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    const diffMin = (eh * 60 + em) - (sh * 60 + sm);
+    return diffMin > 0 ? diffMin / 60 : 0;
+  };
+
   const handleSave = async () => {
-    if (!form.date || !form.task || !form.man_hrs) {
+    const isPermission = form.entry_type === "permission";
+
+    if (!form.date) {
       setFormError("Please fill all required fields.");
       return;
     }
+    if (!isPermission && !form.task) {
+      setFormError("Please select a task.");
+      return;
+    }
+    if (!form.start_time || !form.end_time) {
+      setFormError("Please select start and end times.");
+      return;
+    }
 
-    // FIX: normalize DB dates before comparing with form.date (plain "YYYY-MM-DD")
+    const hoursToAdd = calcHoursFromTimes(form.start_time, form.end_time);
+    if (hoursToAdd <= 0) {
+      setFormError("End time must be after start time.");
+      return;
+    }
+
     const totalHours = data
       .filter((t) => toDateStr(t.timesheet_date) === form.date)
       .reduce((sum, t) => sum + Number(t.man_hrs), 0);
 
-    if (totalHours + Number(form.man_hrs) > 8) {
-      setFormError(`Only ${8 - totalHours} hr${8 - totalHours !== 1 ? "s" : ""} remaining for this date.`);
+    if (totalHours + hoursToAdd > 8) {
+      setFormError(`Only ${fmtHrs(8 - totalHours)} remaining for this date.`);
       return;
     }
 
+    // Check for overlapping time entries on same date
+    if (form.start_time && form.end_time) {
+      const newStart = form.start_time.substring(0, 5);
+      const newEnd = form.end_time.substring(0, 5);
+      const overlapEntry = data.find((t) => {
+        if (toDateStr(t.timesheet_date) !== form.date) return false;
+        if (!t.start_time || !t.end_time) return false;
+        const existStart = t.start_time.substring(0, 5);
+        const existEnd = t.end_time.substring(0, 5);
+        return existStart < newEnd && existEnd > newStart;
+      });
+      if (overlapEntry) {
+        const oStart = formatAMPM(overlapEntry.start_time);
+        const oEnd = formatAMPM(overlapEntry.end_time);
+        setFormError(`Time overlap! Entry already exists from ${oStart} to ${oEnd}. Choose a different time.`);
+        return;
+      }
+    }
+
     try {
-      // FIX: send only the fields the backend expects
       await api.post(
         "/timesheet",
         {
-          task: form.task,
+          task: isPermission ? null : form.task,
+          entry_type: form.entry_type,
           date: form.date,
-          man_hrs: form.man_hrs,
+          start_time: form.start_time,
+          end_time: form.end_time,
+          work_description: isPermission ? "Permission" : form.work_description,
           created_by: loggedUserId,
         },
         { headers: authHeader }
@@ -170,11 +334,22 @@ export default function EmployeeTimesheetList() {
     "in-progress": { color: "#D97706", bg: "#FFFBEB", border: "#FCD34D", label: "In Progress" },
   };
 
-  // FIX: normalize DB dates when computing live hours-used for selected date
+  // Compute hours from either time-based or legacy man_hrs entries
+  const hoursForEntry = (t) => {
+    if (t.start_time && t.end_time) {
+      return calcHoursFromTimes(
+        t.start_time.substring(0, 5),
+        t.end_time.substring(0, 5)
+      );
+    }
+    return Number(t.man_hrs) || 0;
+  };
+
+  // Hours already used on the selected date (live computation)
   const hoursUsedOnDate = form.date
     ? data
         .filter((t) => toDateStr(t.timesheet_date) === form.date)
-        .reduce((s, t) => s + Number(t.man_hrs), 0)
+        .reduce((s, t) => s + hoursForEntry(t), 0)
     : 0;
   const hoursRemaining = 8 - hoursUsedOnDate;
 
@@ -241,9 +416,11 @@ export default function EmployeeTimesheetList() {
                   { key: "project_name",   label: "Project" },
                   { key: "task_name",      label: "Task" },
                   { key: "task_status",    label: "Status" },
+                  { key: "work_description", label: "Work Description" },
+                  { key: "man_hrs",        label: "Time" },
                   { key: "man_hrs",        label: "Hours" },
-                ].map(({ key, label }) => (
-                  <th key={label} className="et-th-sort" onClick={() => handleSort(key)}>
+                ].map(({ key, label }, i) => (
+                  <th key={`${label}-${i}`} className="et-th-sort" onClick={() => handleSort(key)}>
                     {label} <SortIcon field={key} />
                   </th>
                 ))}
@@ -251,15 +428,18 @@ export default function EmployeeTimesheetList() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="et-state-cell">
+                <tr><td colSpan={8} className="et-state-cell">
                   <div className="et-loading"><i className="bi bi-arrow-repeat et-spin" /> Loading timesheets…</div>
                 </td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={6} className="et-state-cell">
+                <tr><td colSpan={8} className="et-state-cell">
                   <div className="et-empty"><i className="bi bi-clock-history" /><span>No timesheets found</span></div>
                 </td></tr>
               ) : paginated.map((row, idx) => {
                 const sc = statusConfig[(row.task_status || "").toLowerCase()];
+                const rowHours = hoursForEntry(row);
+                const startTime = row.start_time ? formatAMPM(row.start_time) : null;
+                const endTime = row.end_time ? formatAMPM(row.end_time) : null;
                 return (
                   <tr key={row.timesheet_id || idx} className="et-tr">
                     <td className="et-td-muted et-center">{(page - 1) * PAGE_SIZE + idx + 1}</td>
@@ -273,7 +453,9 @@ export default function EmployeeTimesheetList() {
                         ? <span className="et-project-pill">{row.project_name}</span>
                         : <span className="et-td-muted">—</span>}
                     </td>
-                    <td className="et-task-cell" title={row.task_name}>{row.task_name || "—"}</td>
+                    <td className="et-task-cell" title={row.task_name || row.work_description}>
+                      {row.task_name || row.work_description || "—"}
+                    </td>
                     <td>
                       <span
                         className="et-status-pill"
@@ -284,9 +466,15 @@ export default function EmployeeTimesheetList() {
                         {sc ? sc.label : (row.task_status || "Pending")}
                       </span>
                     </td>
+                    <td className="et-td-muted" title={row.work_description} style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "12px" }}>
+                      {row.work_description || "—"}
+                    </td>
+                    <td className="et-td-muted et-nowrap" style={{ fontSize: "12px" }}>
+                      {startTime && endTime ? `${startTime} – ${endTime}` : "—"}
+                    </td>
                     <td>
                       <span className="et-hrs-pill">
-                        <i className="bi bi-stopwatch" />{row.man_hrs || 0} hrs
+                        <i className="bi bi-stopwatch" />{fmtHrs(rowHours)}
                       </span>
                     </td>
                   </tr>
@@ -343,7 +531,7 @@ export default function EmployeeTimesheetList() {
                         Hours used on {new Date(form.date + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                       </span>
                       <span className="et-hrs-meter-val" style={{ color: hoursRemaining <= 0 ? "#DC2626" : hoursRemaining <= 2 ? "#D97706" : "#059669" }}>
-                        {hoursUsedOnDate} / 8 hrs
+                        {fmtHrs(hoursUsedOnDate)} / 8 hrs
                       </span>
                     </div>
                     <div className="et-hrs-bar-bg">
@@ -355,9 +543,9 @@ export default function EmployeeTimesheetList() {
                         }}
                       />
                     </div>
-                    {hoursRemaining <= 0
-                      ? <p className="et-hrs-warning">No hours remaining for this date.</p>
-                      : <p className="et-hrs-hint">{hoursRemaining} hr{hoursRemaining !== 1 ? "s" : ""} remaining</p>}
+                {hoursRemaining <= 0
+                  ? <p className="et-hrs-warning">No hours remaining for this date.</p>
+                  : <p className="et-hrs-hint">{fmtHrs(hoursRemaining)} remaining</p>}
                   </div>
                 )}
 
@@ -379,46 +567,124 @@ export default function EmployeeTimesheetList() {
                 </div>
 
                 <div className="et-field">
-                  <label className="et-label">Project</label>
-                  <SharedSelect
-                    value={form.project}
-                    onChange={(val) => setForm({ ...form, project: val })}
-                    options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
-                    placeholder="— Select Project —"
+                  <label className="et-label">Type <span className="et-required">*</span></label>
+                  <select
+                    className="et-input"
+                    value={form.entry_type}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        entry_type: val,
+                        project: "",
+                        task: "",
+                        work_description: "",
+                        start_time: "",
+                        end_time: "",
+                      }));
+                      setTasks([]);
+                      setFormError("");
+                    }}
+                  >
+                    <option value="project">Project</option>
+                    <option value="permission">Permission</option>
+                  </select>
+                </div>
+
+                {form.entry_type === "project" && (
+                  <>
+                    <div className="et-field">
+                      <label className="et-label">Project</label>
+                      <SharedSelect
+                        value={form.project}
+                        onChange={(val) => {
+                          setForm((prev) => ({ ...prev, project: val, task: "" }));
+                          if (val) loadTasks(val);
+                          else setTasks([]);
+                        }}
+                        options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
+                        placeholder="— Select Project —"
+                      />
+                    </div>
+
+                    <div className="et-field">
+                      <label className="et-label">Task <span className="et-required">*</span></label>
+                      <SharedSelect
+                        value={form.task}
+                        onChange={(val) => setForm({ ...form, task: val })}
+                        options={tasks.map((t) => ({ value: t.id, label: t.task }))}
+                        placeholder="— Select Task —"
+                        isDisabled={!form.project}
+                      />
+                      {!form.project && <p className="et-field-hint">Select a project first to load tasks.</p>}
+                    </div>
+                  </>
+                )}
+
+                <div className="et-field">
+                  <label className="et-label">Start Time <span className="et-required">*</span></label>
+                  <AmpmTimePicker
+                    value={form.start_time}
+                    onChange={(val) => {
+                      const newForm = { ...form, start_time: val };
+                      // Auto-set end time = start time + 15 min for permission
+                      if (form.entry_type === "permission" && val) {
+                        const [h, m] = val.split(":").map(Number);
+                        let endMin = h * 60 + m + 15;
+                        if (endMin >= 24 * 60) endMin = 24 * 60 - 1;
+                        const eh = Math.floor(endMin / 60);
+                        const em = endMin % 60;
+                        newForm.end_time = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                      }
+                      setForm(newForm);
+                      checkOverlapLive(form.date, val, newForm.end_time);
+                    }}
                   />
                 </div>
 
                 <div className="et-field">
-                  <label className="et-label">Task <span className="et-required">*</span></label>
-                  <SharedSelect
-                    value={form.task}
-                    onChange={(val) => setForm({ ...form, task: val })}
-                    options={tasks.map((t) => ({ value: t.id, label: t.task }))}
-                    placeholder="— Select Task —"
-                    isDisabled={!form.project}
+                  <label className="et-label">End Time <span className="et-required">*</span></label>
+                  <AmpmTimePicker
+                    value={form.end_time}
+                    onChange={(val) => {
+                      setForm((prev) => ({ ...prev, end_time: val }));
+                      checkOverlapLive(form.date, form.start_time, val);
+                    }}
+                    minTime={form.start_time}
+                    disabled={form.entry_type === "permission"}
                   />
-                  {!form.project && <p className="et-field-hint">Select a project first to load tasks.</p>}
+                  {form.entry_type === "permission" && form.start_time && (
+                    <span style={{ fontSize: "11px", color: "#5048E5", fontWeight: 600 }}>
+                      Auto: Start + 15 min
+                    </span>
+                  )}
                 </div>
 
-                <div className="et-field">
-                  <label className="et-label">Man Hours <span className="et-required">*</span></label>
-                  <div className="et-hrs-options">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
-                      const wouldExceed = hoursUsedOnDate + h > 8;
-                      return (
-                        <button
-                          key={h}
-                          type="button"
-                          disabled={wouldExceed}
-                          className={`et-hrs-btn ${form.man_hrs == h ? "active" : ""} ${wouldExceed ? "disabled" : ""}`}
-                          onClick={() => !wouldExceed && setForm((prev) => ({ ...prev, man_hrs: h }))}
-                        >
-                          {h}h
-                        </button>
-                      );
-                    })}
+                {form.entry_type === "project" && (
+                  <div className="et-field">
+                    <label className="et-label">Work Description</label>
+                    <textarea
+                      className="et-textarea"
+                      rows={3}
+                      placeholder="Describe what you worked on..."
+                      value={form.work_description}
+                      onChange={(e) => setForm((prev) => ({ ...prev, work_description: e.target.value }))}
+                    />
                   </div>
-                </div>
+                )}
+
+                {form.entry_type === "permission" && (
+                  <div className="et-field-hint" style={{ color: "#5048E5", fontWeight: 600, fontSize: "12px" }}>
+                    <i className="bi bi-info-circle" /> Permission mode: 15 minutes auto-assigned
+                  </div>
+                )}
+
+                {/* Live hours preview */}
+                {form.start_time && form.end_time && (
+                  <div style={{ fontSize: "12px", color: calcHoursFromTimes(form.start_time, form.end_time) > 0 ? "#059669" : "#DC2626", fontWeight: 600 }}>
+                    <i className="bi bi-clock" /> {fmtHrs(calcHoursFromTimes(form.start_time, form.end_time))} will be logged
+                  </div>
+                )}
               </div>
 
               <div className="et-modal-footer">
@@ -562,6 +828,14 @@ const styles = `
   }
   .et-input:focus, .et-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
   .et-input:disabled, .et-select:disabled { background: var(--bg); color: var(--text-muted); cursor: not-allowed; }
+  .et-textarea {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); font-size: 13px; color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s; resize: none; line-height: 1.5;
+  }
+  .et-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
   .et-select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");

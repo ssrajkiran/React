@@ -8,6 +8,16 @@ import SharedSelect from "../../components/SharedSelect";
 const AppLayout = AppLayoutImport?.default || AppLayoutImport;
 const Select = SelectImport?.default || SelectImport;
 
+const fmtHrs = (hrs) => {
+  const n = Number(hrs) || 0;
+  const totalMin = Math.round(n * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+};
+
 export default function TaskList() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
@@ -45,34 +55,58 @@ export default function TaskList() {
       setLoading(true);
       const res = await api.get("/tasks-project");
       setTasks(res.data.tasks || []);
+      if (Array.isArray(res.data.users) && res.data.users.length > 0) {
+        setUsers(res.data.users);
+      }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
   const fetchUsers = async () => {
-    try { const res = await api.get("/list/users"); setUsers(res.data || []); } catch (e) {}
+    try {
+      const res = await api.get("/tasks-project/users");
+      setUsers(Array.isArray(res.data) ? res.data : []);
+    } catch (e) { console.error("fetchUsers:", e); }
   };
 
   const fetchProjects = async () => {
     try { const res = await api.get("/tasks-project/projects"); setProjects(res.data || []); } catch (e) {}
   };
 
+  // ================= OPTIONS =================
+  const employeeList = users.filter((u) => String(u.role).toLowerCase() !== "admin");
+
+  const allUserOptions = users.map((u) => ({ value: u.id, label: u.name }));
+
+  const allEmployeeOptions = employeeList.map((u) => ({ value: u.id, label: u.name }));
+
+  const userOptions = isAdmin
+    ? [{ value: "__all__", label: "All Users" }, ...allUserOptions]
+    : users.filter((u) => u.id === loggedInUserId).map((u) => ({ value: u.id, label: u.name }));
+
+  const resolveAssignee = (sel) => {
+    if (!sel) return [];
+    if (sel.some((s) => s.value === "__all__")) return [...allUserOptions];
+    return sel.filter((s) => s.value !== "__all__");
+  };
+
   // ================= EDIT =================
   const openEditModal = (task) => {
     setSelectedTask(task);
-    const assignedIds = task.assigned_to ? task.assigned_to.split(",").map((id) => parseInt(id.trim())) : [];
-    const selectedUsers = users.filter((u) => assignedIds.includes(u.id)).map((u) => ({ value: u.id, label: u.name }));
-    setEditFormData({ task: task.task, assigned_to: selectedUsers, project_id: task.project_id, status: task.status || "In Progress" });
+    const ids = task.assigned_to ? task.assigned_to.split(",").map(Number) : [];
+    const selected = employeeList.filter((u) => ids.includes(u.id)).map((u) => ({ value: u.id, label: u.name }));
+    setEditFormData({ task: task.task, assigned_to: selected, project_id: task.project_id, status: task.status || "In Progress" });
     setShowEditModal(true);
   };
 
   const handleEditSave = async () => {
     if (!selectedTask) return;
     try {
+      const ids = editFormData.assigned_to.map((u) => u.value).join(",");
       await api.put(`/tasks-project/${selectedTask.id}`, {
         task: editFormData.task,
         project_id: selectedTask.project_id,
-        assigned_to: editFormData.assigned_to.map((u) => u.value).join(","),
+        assigned_to: ids,
         status: editFormData.status,
       });
       await loadTasks();
@@ -98,7 +132,10 @@ export default function TaskList() {
       await api.post("/tasks-project/bulk", {
         project_name: isAddingProject ? createFormData.newProjectName : undefined,
         project_id: !isAddingProject ? createFormData.project_id : undefined,
-        tasks: createFormData.tasks.map((t) => ({ task: t.task, assigned_to: t.assigned_to.map((u) => u.value) })),
+        tasks: createFormData.tasks.map((t) => ({
+          task: t.task,
+          assigned_to: t.assigned_to.map((u) => u.value),
+        })),
       });
       await loadTasks();
       setShowCreateModal(false);
@@ -115,11 +152,6 @@ export default function TaskList() {
       setDeleteConfirm(null);
     } catch (err) { alert("Failed to delete task."); }
   };
-
-  // ================= TABLE =================
-  const userOptions = isAdmin
-    ? users.map((u) => ({ value: u.id, label: u.name }))
-    : users.filter((u) => u.id === loggedInUserId).map((u) => ({ value: u.id, label: u.name }));
 
   const filtered = useMemo(() => {
     const t = searchText.toLowerCase();
@@ -258,7 +290,30 @@ export default function TaskList() {
                       </div>
                     </td>
                     <td className="tl-td-muted">{task.created_by_name || "—"}</td>
-                    <td className="tl-td-muted tl-nowrap">{task.total_man_hrs || 0} hrs</td>
+                    <td className="tl-td-muted tl-nowrap">
+                      {task.user_hours && task.user_hours.length > 0 ? (
+                        <div className="tl-hrs-split">
+                          {task.user_hours.map((uh, i) => (
+                            <div key={i} className="tl-hrs-card">
+                              <div className="tl-hrs-card-left">
+                                <span className="tl-hrs-avatar">{(uh.user_name || "?")[0].toUpperCase()}</span>
+                                <span className="tl-hrs-user">{uh.user_name}</span>
+                              </div>
+                              <div className="tl-hrs-card-right">
+                                <i className="bi bi-clock" />
+                                <span className="tl-hrs-val">{fmtHrs(uh.user_hrs)}</span>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="tl-hrs-total-row">
+                            <i className="bi bi-bar-chart-line-fill" />
+                            <span>{fmtHrs(task.total_man_hrs)} total</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="tl-hrs-empty"><i className="bi bi-dash-circle" /> 0h</span>
+                      )}
+                    </td>
                     <td>
                       <span className="tl-status-pill" style={{ background: sc.bg, color: sc.color, borderColor: sc.border }}>
                         {task.status || "In Progress"}
@@ -383,7 +438,7 @@ export default function TaskList() {
                     isMulti
                     options={userOptions}
                     value={editFormData.assigned_to}
-                    onChange={(sel) => setEditFormData({ ...editFormData, assigned_to: sel })}
+                    onChange={(sel) => setEditFormData({ ...editFormData, assigned_to: resolveAssignee(sel) })}
                     placeholder="Select users…"
                     styles={selectStyles}
                   />
@@ -506,7 +561,7 @@ export default function TaskList() {
                           isMulti
                           options={userOptions}
                           value={t.assigned_to}
-                          onChange={(sel) => handleCreateTaskChange(idx, "assigned_to", sel)}
+                          onChange={(sel) => handleCreateTaskChange(idx, "assigned_to", resolveAssignee(sel))}
                           placeholder="Select users…"
                           styles={selectStyles}
                         />
@@ -661,6 +716,34 @@ const styles = `
     display: inline-block; font-size: 11px; font-weight: 700;
     padding: 3px 10px; border-radius: 20px; border: 1px solid; white-space: nowrap;
   }
+
+  /* Hours split-up */
+  .tl-hrs-split { display: flex; flex-direction: column; gap: 4px; }
+  .tl-hrs-card {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px;
+    padding: 4px 8px; gap: 10px;
+  }
+  .tl-hrs-card:hover { background: #EEF2FF; border-color: #C7D2FE; }
+  .tl-hrs-card-left { display: flex; align-items: center; gap: 6px; }
+  .tl-hrs-card-right { display: flex; align-items: center; gap: 4px; }
+  .tl-hrs-avatar {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: linear-gradient(135deg, #5048E5, #818CF8);
+    color: #fff; font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .tl-hrs-user { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+  .tl-hrs-card-right i { font-size: 9px; color: #5048E5; }
+  .tl-hrs-val { font-size: 11px; font-weight: 700; color: var(--text-primary); }
+  .tl-hrs-total-row {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; color: #5048E5;
+    border-top: 1px solid #E5E7EB; padding-top: 4px; margin-top: 2px;
+  }
+  .tl-hrs-total-row i { font-size: 11px; }
+  .tl-hrs-empty { display: flex; align-items: center; gap: 4px; color: var(--text-muted); font-size: 12px; }
+  .tl-hrs-empty i { font-size: 12px; }
 
   /* Actions */
   .tl-actions { display: flex; gap: 6px; }

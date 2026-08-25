@@ -45,7 +45,7 @@ router.get("/report", verifyToken, (req, res) => {
 
   // FILTER BY ASSIGNED USER
   if (assigned_to) {
-    sql += ` AND FIND_IN_SET(?, t.assigned_to)`;
+    sql += ` AND FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))`;
     params.push(assigned_to);
   }
 

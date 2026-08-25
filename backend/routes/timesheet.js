@@ -2,6 +2,17 @@ const router = require("express").Router();
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
 
+// Helper: format "HH:MM:SS" or "HH:MM" to "9:00 AM" style
+function formatTimeAMPM(timeStr) {
+  if (!timeStr) return "";
+  const parts = timeStr.substring(0, 5).split(":");
+  let h = parseInt(parts[0], 10);
+  const m = parts[1];
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
 /* ==============================
    VERIFY TOKEN MIDDLEWARE
 ================================ */
@@ -25,7 +36,8 @@ router.get("/employee/projects", verifyToken, (req, res) => {
     SELECT DISTINCT p.id, p.project_name
     FROM task t
     JOIN projects p ON p.id = t.project_id
-    WHERE FIND_IN_SET(?, t.assigned_to)
+    WHERE FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))
+    AND t.status != 'Completed'
     ORDER BY p.project_name ASC
   `;
 
@@ -43,7 +55,8 @@ router.get("/employee/tasks/:projectId", verifyToken, (req, res) => {
     SELECT id, task
     FROM task
     WHERE project_id = ?
-    AND FIND_IN_SET(?, assigned_to)
+    AND FIND_IN_SET(?, REPLACE(assigned_to, ' ', ''))
+    AND status != 'Completed'
     ORDER BY task ASC
   `;
 
@@ -84,15 +97,18 @@ router.get("/admin", verifyToken, (req, res) => {
       ts.task AS task_id,
       ts.date AS timesheet_date,
       ts.man_hrs,
+      ts.start_time AS start_time,
+      ts.end_time AS end_time,
+      ts.work_description AS work_description,
       ts.created_by AS timesheet_created_by,
       ts.created_at AS timesheet_created_at,
       ts.updated_at AS timesheet_updated_at,
-      t.task AS task_name,
+      IFNULL(t.task, ts.work_description) AS task_name,
       t.assigned_to AS task_assigned_to,
-      t.status AS task_status,
+      IFNULL(t.status, 'Permission') AS task_status,
       t.created_by AS task_created_by,
       p.id AS project_id,
-      p.project_name,
+      IFNULL(p.project_name, 'Permission') AS project_name,
       u.name AS created_by_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
@@ -112,7 +128,7 @@ router.get("/admin", verifyToken, (req, res) => {
 
 /* ==============================
    GET EMPLOYEE TIMESHEETS
-================================ */
+=============================== */
 router.get("/employee", verifyToken, (req, res) => {
   const sql = `
     SELECT 
@@ -120,19 +136,22 @@ router.get("/employee", verifyToken, (req, res) => {
       ts.task AS task_id,
       ts.date AS timesheet_date,
       ts.man_hrs,
+      ts.start_time AS start_time,
+      ts.end_time AS end_time,
+      ts.work_description AS work_description,
       ts.created_by AS timesheet_created_by,
       ts.created_at AS timesheet_created_at,
       ts.updated_at AS timesheet_updated_at,
-      t.task AS task_name,
+      IFNULL(t.task, ts.work_description) AS task_name,
       t.assigned_to AS task_assigned_to,
-      t.status AS task_status,
+      IFNULL(t.status, 'Permission') AS task_status,
       t.created_by AS task_created_by,
       p.id AS project_id,
-      p.project_name
+      IFNULL(p.project_name, 'Permission') AS project_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
     LEFT JOIN projects p ON t.project_id = p.id
-    WHERE t.assigned_to IS NOT NULL AND FIND_IN_SET(?, t.assigned_to)
+    WHERE ts.created_by = ?
     ORDER BY ts.date DESC, p.id ASC, ts.id ASC
   `;
 
@@ -188,63 +207,152 @@ router.get("/tasks/project/:projectId", verifyToken, (req, res) => {
   });
 });
 router.post("/", verifyToken, (req, res) => {
-  const { task, date, man_hrs, created_by } = req.body;
+  const { task, date, start_time, end_time, man_hrs, created_by, work_description, entry_type } = req.body;
+  const isPermission = entry_type === "permission";
 
-  if (!task || !date || !man_hrs || !created_by) {
-    return res.status(400).json({ message: "All fields are required" });
+  if (!date || !created_by) {
+    return res.status(400).json({ message: "Date and user are required" });
+  }
+  if (!isPermission && !task) {
+    return res.status(400).json({ message: "Task is required for project entries" });
   }
 
-  const hoursToAdd = Number(man_hrs);
+  // Calculate man_hrs from start_time/end_time if provided
+  let hoursToAdd;
+  let dbStartTime = null;
+  let dbEndTime = null;
+
+  if (start_time && end_time) {
+    // Parse times and compute difference in minutes
+    const [sh, sm] = start_time.split(":").map(Number);
+    const [eh, em] = end_time.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    const diffMin = endMin - startMin;
+
+    if (isNaN(diffMin) || diffMin <= 0) {
+      return res.status(400).json({ message: "End time must be after start time." });
+    }
+
+    hoursToAdd = diffMin / 60;
+    dbStartTime = start_time.length === 5 ? start_time + ":00" : start_time;
+    dbEndTime = end_time.length === 5 ? end_time + ":00" : end_time;
+  } else if (man_hrs) {
+    // Legacy support: accept man_hrs directly
+    hoursToAdd = Number(man_hrs);
+    dbStartTime = null;
+    dbEndTime = null;
+  } else {
+    return res.status(400).json({ message: "Either start/end times or man hours are required." });
+  }
 
   if (isNaN(hoursToAdd) || hoursToAdd <= 0 || hoursToAdd > 8) {
-    return res.status(400).json({ message: "Invalid hours. Must be between 1 and 8." });
+    return res.status(400).json({ message: "Invalid hours. Must be between 0 and 8." });
   }
 
   // Frontend <input type="date"> always sends "YYYY-MM-DD"
-  // Split manually to avoid any timezone shift from new Date()
   const parts = date.split("-");
   if (parts.length !== 3) {
     return res.status(400).json({ message: "Invalid date format. Expected YYYY-MM-DD." });
   }
   const [year, month, day] = parts;
-  const normalizedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`; // stored in DB as YYYY-MM-DD
-  const displayDate    = `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;  // shown in UI as DD-MM-YYYY
+  const normalizedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  const displayDate = `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
 
-  // Step 1: Check total hours already logged for that user on that date
-  // DATE() strips any time component so comparison works even if DB stores datetime
-  const checkSql = `
-    SELECT COALESCE(SUM(man_hrs), 0) AS total_hours
-    FROM timesheet
-    WHERE DATE(date) = ? AND created_by = ?
-  `;
+  // For permission entries, skip task validation
+  if (isPermission) {
+    proceedAfterValidation();
+  } else {
+    // Validate that the task is assigned to the target user
+    const validateSql = `
+      SELECT id FROM task
+      WHERE id = ? AND FIND_IN_SET(?, REPLACE(assigned_to, ' ', ''))
+    `;
 
-  db.query(checkSql, [normalizedDate, created_by], (err, results) => {
-    if (err) {
-      console.error("Check timesheet hours error:", err);
-      return res.status(500).json({ message: "Database error" });
-    }
-
-    const totalHours = Number(results[0].total_hours) || 0;
-    const remaining  = 8 - totalHours;
-
-    if (totalHours + hoursToAdd > 8) {
-      return res.status(400).json({
-        message: `Only ${remaining} hr${remaining !== 1 ? "s" : ""} remaining for ${displayDate}. Cannot add ${hoursToAdd} hr${hoursToAdd !== 1 ? "s" : ""}.`,
-      });
-    }
-
-    // Step 2: Insert — always store date as YYYY-MM-DD
-    const insertSql = "INSERT INTO timesheet (task, date, man_hrs, created_by) VALUES (?, ?, ?, ?)";
-
-    db.query(insertSql, [task, normalizedDate, man_hrs, created_by], (err, result) => {
+    db.query(validateSql, [task, created_by], (err, validationResults) => {
       if (err) {
-        console.error("Insert timesheet error:", err);
+        console.error("Validate assignment error:", err);
         return res.status(500).json({ message: "Database error" });
       }
 
-      res.json({ message: "Timesheet added successfully", timesheet_id: result.insertId });
+      if (validationResults.length === 0) {
+        return res.status(400).json({ message: "This task is not assigned to the selected user." });
+      }
+
+      proceedAfterValidation();
     });
-  });
+  }
+
+  function proceedAfterValidation() {
+
+    // Step 1: Check total hours already logged for that user on that date
+    const checkSql = `
+      SELECT COALESCE(SUM(man_hrs), 0) AS total_hours
+      FROM timesheet
+      WHERE DATE(date) = ? AND created_by = ?
+    `;
+
+    db.query(checkSql, [normalizedDate, created_by], (err, results) => {
+      if (err) {
+        console.error("Check timesheet hours error:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      const totalHours = Number(results[0].total_hours) || 0;
+      const remaining = 8 - totalHours;
+
+      if (totalHours + hoursToAdd > 8) {
+        return res.status(400).json({
+          message: `Only ${remaining} hr${remaining !== 1 ? "s" : ""} remaining for ${displayDate}. Cannot add ${hoursToAdd} hr${hoursToAdd !== 1 ? "s" : ""}.`,
+        });
+      }
+
+      // Step 2: Check for overlapping time entries on same date for same user
+      if (dbStartTime && dbEndTime) {
+        const overlapSql = `
+          SELECT id, start_time, end_time, task
+          FROM timesheet
+          WHERE DATE(date) = ? AND created_by = ?
+          AND start_time IS NOT NULL AND end_time IS NOT NULL
+          AND start_time < ? AND end_time > ?
+        `;
+
+        db.query(overlapSql, [normalizedDate, created_by, dbEndTime, dbStartTime], (err, overlapResults) => {
+          if (err) {
+            console.error("Check overlap error:", err);
+            return res.status(500).json({ message: "Database error" });
+          }
+
+          if (overlapResults.length > 0) {
+            const overlap = overlapResults[0];
+            const overlapStart = formatTimeAMPM(overlap.start_time);
+            const overlapEnd = formatTimeAMPM(overlap.end_time);
+            return res.status(400).json({
+              message: `Time overlap detected! You already have an entry from ${overlapStart} to ${overlapEnd} on ${displayDate}. Please choose a different time slot.`,
+            });
+          }
+
+          // No overlap - proceed with insert
+          insertTimesheet();
+        });
+      } else {
+        insertTimesheet();
+      }
+
+      function insertTimesheet() {
+        const insertSql = "INSERT INTO timesheet (task, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+        db.query(insertSql, [task, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, work_description || null, created_by], (err, result) => {
+          if (err) {
+            console.error("Insert timesheet error:", err);
+            return res.status(500).json({ message: "Database error" });
+          }
+
+          res.json({ message: "Timesheet added successfully", timesheet_id: result.insertId });
+        });
+      }
+    });
+  }
 });
 
 
@@ -254,7 +362,8 @@ router.get("/admin/projects/:userId", verifyToken, (req, res) => {
     SELECT DISTINCT p.id, p.project_name
     FROM task t
     JOIN projects p ON p.id = t.project_id
-    WHERE FIND_IN_SET(?, t.assigned_to)
+    WHERE FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))
+    AND t.status != 'Completed'
     ORDER BY p.project_name ASC
   `;
   db.query(sql, [req.params.userId], (err, rows) => {
@@ -267,7 +376,8 @@ router.get("/admin/projects/:userId", verifyToken, (req, res) => {
 router.get("/admin/tasks/:projectId/:userId", verifyToken, (req, res) => {
   const sql = `
     SELECT id, task FROM task
-    WHERE project_id = ? AND FIND_IN_SET(?, assigned_to)
+    WHERE project_id = ? AND FIND_IN_SET(?, REPLACE(assigned_to, ' ', ''))
+    AND status != 'Completed'
     ORDER BY task ASC
   `;
   db.query(sql, [req.params.projectId, req.params.userId], (err, rows) => {

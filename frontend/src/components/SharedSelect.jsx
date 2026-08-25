@@ -19,6 +19,11 @@ const ssStyles = {
     boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
     zIndex: 9999,
   }),
+  menuList: (base) => ({
+    ...base,
+    maxHeight: "200px",
+    overflowY: "auto",
+  }),
   option: (base, state) => ({
     ...base,
     backgroundColor: state.isSelected ? "#5048E5" : state.isFocused ? "#EEF2FF" : "transparent",
@@ -47,7 +52,7 @@ export default function SharedSelect({
   };
 
   return (
-    <div className={`ss-select-wrap ${className}`}>
+    <div className={`ss-select-wrap ${className}`} style={{ position: "relative" }}>
       <Select
         value={selected}
         onChange={handleChange}
@@ -58,6 +63,7 @@ export default function SharedSelect({
         isSearchable={isSearchable}
         styles={ssStyles}
         noOptionsMessage={() => "No options found"}
+        menuPosition="fixed"
         {...rest}
       />
     </div>

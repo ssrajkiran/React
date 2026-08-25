@@ -263,6 +263,8 @@ CREATE TABLE `timesheet` (
   `task` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `date` date NOT NULL,
   `man_hrs` int DEFAULT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

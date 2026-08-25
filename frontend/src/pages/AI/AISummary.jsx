@@ -5,6 +5,17 @@ import api from "../../api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// ── Human-readable hours: 1.5 → "1h 30m", 0.5 → "30m", 2 → "2h" ──
+const fmtHrs = (hrs) => {
+  const n = Number(hrs) || 0;
+  const totalMin = Math.round(n * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+};
+
 export default function AISummary() {
   const [loading, setLoading]               = useState(false);
   const [tableData, setTableData]           = useState([]);
@@ -88,13 +99,13 @@ export default function AISummary() {
     Object.entries(groupedByEmployee).forEach(([emp, tasks]) => {
       doc.setFontSize(11);
       doc.setFont(undefined, "bold");
-      doc.text(`${emp}  (${employeeHours[emp] || 0} hrs)`, 14, startY);
+      doc.text(`${emp}  (${fmtHrs(employeeHours[emp] || 0)})`, 14, startY);
       doc.setFont(undefined, "normal");
       startY += 5;
 
       autoTable(doc, {
         head: [["Date", "Project", "Task", "Status", "Hours"]],
-        body: tasks.map((t) => [formatDate(t.date), t.project, t.task, t.status, t.hours]),
+        body: tasks.map((t) => [formatDate(t.date), t.project, t.task, t.status, fmtHrs(t.hours)]),
         startY,
         styles: { fontSize: 9 },
         headStyles: { fillColor: [80, 72, 229] },
@@ -209,7 +220,7 @@ export default function AISummary() {
             <div className="sr-stat-card">
               <div className="sr-stat-icon sr-stat-blue"><i className="bi bi-clock-history" /></div>
               <div>
-                <p className="sr-stat-val">{totalHours}</p>
+                <p className="sr-stat-val">{fmtHrs(totalHours)}</p>
                 <p className="sr-stat-label">Total Hours</p>
               </div>
             </div>
@@ -254,7 +265,7 @@ export default function AISummary() {
                       <p className="sr-emp-name">{emp}</p>
                       <div className="sr-emp-meta">
                         <span className="sr-meta-pill sr-meta-blue">
-                          <i className="bi bi-stopwatch" /> {empHrs} hrs
+                          <i className="bi bi-stopwatch" /> {fmtHrs(empHrs)}
                         </span>
                         <span className="sr-meta-pill sr-meta-green">
                           <i className="bi bi-check-circle" /> {completedCount} completed
@@ -308,7 +319,7 @@ export default function AISummary() {
                             </td>
                             <td>
                               <span className="sr-hrs-pill">
-                                <i className="bi bi-stopwatch" />{t.hours || 0} hrs
+                                <i className="bi bi-stopwatch" />{fmtHrs(t.hours || 0)}
                               </span>
                             </td>
                           </tr>
@@ -320,7 +331,7 @@ export default function AISummary() {
                         <td colSpan={5} className="sr-tfoot-label">Total</td>
                         <td>
                           <span className="sr-hrs-pill sr-hrs-pill-total">
-                            <i className="bi bi-stopwatch-fill" />{empHrs} hrs
+                            <i className="bi bi-stopwatch-fill" />{fmtHrs(empHrs)}
                           </span>
                         </td>
                       </tr>

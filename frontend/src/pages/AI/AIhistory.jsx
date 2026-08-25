@@ -5,6 +5,17 @@ import api from "../../api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// ── Human-readable hours: 1.5 → "1h 30m", 0.5 → "30m", 2 → "2h" ──
+const fmtHrs = (hrs) => {
+  const n = Number(hrs) || 0;
+  const totalMin = Math.round(n * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+};
+
 const formatDate = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -80,11 +91,11 @@ export default function AIHistory() {
 
     Object.entries(grouped).forEach(([emp, tasks]) => {
       doc.setFontSize(12);
-      doc.text(`${emp} — Total Hours: ${summary.employeeHours?.[emp] || 0}`, 14, startY);
+      doc.text(`${emp} — Total Hours: ${fmtHrs(summary.employeeHours?.[emp] || 0)}`, 14, startY);
       startY += 6;
       autoTable(doc, {
         head: [["Date", "Project", "Task", "Status", "Hours"]],
-        body: tasks.map((t) => [formatDate(t.date), t.project, t.task, t.status, t.hours]),
+        body: tasks.map((t) => [formatDate(t.date), t.project, t.task, t.status, fmtHrs(t.hours)]),
         startY,
         theme: "grid",
         headStyles: { fillColor: [80, 72, 229] },
@@ -197,7 +208,7 @@ export default function AIHistory() {
                       <i className="bi bi-calendar3" /> {formatDateShort(report.created_at)}
                     </span>
                     <span className="sr-meta-pill sr-meta-green">
-                      <i className="bi bi-clock-history" /> {totalHours} hrs
+                      <i className="bi bi-clock-history" /> {fmtHrs(totalHours)}
                     </span>
                     <span className="sr-meta-pill sr-meta-purple">
                       <i className="bi bi-people" /> {totalEmployees} employee{totalEmployees !== 1 ? "s" : ""}
@@ -240,7 +251,7 @@ export default function AIHistory() {
                             <p className="sr-emp-name">{emp}</p>
                             <div className="sr-emp-meta">
                               <span className="sr-meta-pill sr-meta-blue">
-                                <i className="bi bi-stopwatch" /> {empHrs} hrs
+                                <i className="bi bi-stopwatch" /> {fmtHrs(empHrs)}
                               </span>
                               <span className="sr-meta-pill sr-meta-green">
                                 <i className="bi bi-check-circle" /> {completedCount} completed
@@ -293,7 +304,7 @@ export default function AIHistory() {
                                   </td>
                                   <td>
                                     <span className="sr-hrs-pill">
-                                      <i className="bi bi-stopwatch" />{t.hours || 0} hrs
+                                      <i className="bi bi-stopwatch" />{fmtHrs(t.hours || 0)}
                                     </span>
                                   </td>
                                 </tr>
@@ -305,7 +316,7 @@ export default function AIHistory() {
                               <td colSpan={5} className="sr-tfoot-label">Total</td>
                               <td>
                                 <span className="sr-hrs-pill sr-hrs-pill-total">
-                                  <i className="bi bi-stopwatch-fill" />{empHrs} hrs
+                                   <i className="bi bi-stopwatch-fill" />{fmtHrs(empHrs)}
                                 </span>
                               </td>
                             </tr>
@@ -342,7 +353,7 @@ export default function AIHistory() {
                                   </td>
                                   <td>
                                     <span className="sr-hrs-pill">
-                                      <i className="bi bi-stopwatch" />{hrs} hrs
+                                       <i className="bi bi-stopwatch" />{fmtHrs(hrs)}
                                     </span>
                                   </td>
                                 </tr>

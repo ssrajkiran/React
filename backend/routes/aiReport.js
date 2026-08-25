@@ -28,28 +28,35 @@ function generateRefinedSummary(data) {
   const projectTaskCounts = {};
 
   data.forEach(item => {
+    const projectName = item.project_name || "Permission";
+    const taskName = item.task_name || item.work_description || "Permission";
+    const taskStatus = item.task_status || "Permission";
+
     // Total hours per employee
     employeeHours[item.employee_name] = (employeeHours[item.employee_name] || 0) + item.man_hrs;
 
     // Total hours per project
-    projectHours[item.project_name] = (projectHours[item.project_name] || 0) + item.man_hrs;
+    projectHours[projectName] = (projectHours[projectName] || 0) + item.man_hrs;
 
     // Total tasks per project
-    if (!projectTaskCounts[item.project_name]) {
-      projectTaskCounts[item.project_name] = { total: 0, pending: 0, completed: 0 };
+    if (!projectTaskCounts[projectName]) {
+      projectTaskCounts[projectName] = { total: 0, pending: 0, completed: 0 };
     }
-    projectTaskCounts[item.project_name].total += 1;
-    if (item.task_status === "In Progress") projectTaskCounts[item.project_name].pending += 1;
-    if (item.task_status === "Completed") projectTaskCounts[item.project_name].completed += 1;
+    projectTaskCounts[projectName].total += 1;
+    if (taskStatus === "In Progress") projectTaskCounts[projectName].pending += 1;
+    if (taskStatus === "Completed") projectTaskCounts[projectName].completed += 1;
 
     // Build table row
     tableData.push({
       employee: item.employee_name,
-      project: item.project_name,
-      task: item.task_name,
-      status: item.task_status,
+      project: projectName,
+      task: taskName,
+      status: taskStatus,
       hours: item.man_hrs,
-      date: item.timesheet_date
+      start_time: item.start_time,
+      end_time: item.end_time,
+      date: item.timesheet_date,
+      work_description: item.work_description,
     });
   });
 
@@ -70,9 +77,13 @@ router.post("/", verifyToken, (req, res) => {
       ts.id AS timesheet_id,
       ts.date AS timesheet_date,
       ts.man_hrs,
-      t.task AS task_name,
-      t.status AS task_status,
-      p.project_name,
+      ts.start_time AS start_time,
+      ts.end_time AS end_time,
+      ts.work_description AS work_description,
+      ts.task AS task_id,
+      IFNULL(t.task, ts.work_description) AS task_name,
+      IFNULL(t.status, 'Permission') AS task_status,
+      IFNULL(p.project_name, 'Permission') AS project_name,
       u.name AS employee_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
