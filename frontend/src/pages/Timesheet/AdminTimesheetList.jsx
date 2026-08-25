@@ -648,14 +648,27 @@ export default function AdminTimesheetList() {
                     value={form.entry_type}
                     onChange={(e) => {
                       const val = e.target.value;
+                      let autoStart = "";
+                      let autoEnd = "";
+                      if (val === "permission") {
+                        const now = new Date();
+                        const roundMin = Math.ceil(now.getMinutes() / 5) * 5;
+                        let sh = now.getHours(), sm = roundMin;
+                        if (sm >= 60) { sh += 1; sm = 0; }
+                        autoStart = `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
+                        const endMin = sh * 60 + sm + 15;
+                        const eh = Math.floor(endMin / 60);
+                        const em = endMin % 60;
+                        autoEnd = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                      }
                       setForm((prev) => ({
                         ...prev,
                         entry_type: val,
                         project: "",
                         task: "",
                         work_description: "",
-                        start_time: "",
-                        end_time: "",
+                        start_time: autoStart,
+                        end_time: autoEnd,
                       }));
                       setTasks([]);
                       setFormError("");
