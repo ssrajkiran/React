@@ -513,20 +513,20 @@ export default function EmployeeTimesheetList() {
       {/* ── ADD TIMESHEET MODAL ── */}
       {showModal && (
         <>
-          <div className="et-modal-overlay" onClick={() => setShowModal(false)} />
-          <div className="et-modal-wrap">
-            <div className="et-modal">
-              <div className="et-modal-header">
-                <div className="et-modal-header-left">
-                  <span className="et-modal-badge">
+          <div className="modal-overlay" onClick={() => setShowModal(false)} />
+          <div className="modal-wrap">
+            <div className="modal-box">
+              <div className="modal-header">
+                <div className="modal-header-left">
+                  <span className="modal-badge">
                     <i className="bi bi-plus-circle" /> New
                   </span>
-                  <h6 className="et-modal-title">Add Timesheet</h6>
+                  <h6 className="modal-title">Add Timesheet</h6>
                 </div>
-                <button className="et-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
-              <div className="et-modal-body">
+              <div className="modal-body">
                 {/* 8-hour meter */}
                 {form.date && (
                   <div className="et-hrs-meter">
@@ -560,56 +560,56 @@ export default function EmployeeTimesheetList() {
                   </div>
                 )}
 
-                <div className="et-field">
-                  <label className="et-label">Date <span className="et-required">*</span></label>
-                  <SharedDatePicker
-                    value={form.date}
-                    onChange={(val) => setForm({ ...form, date: val })}
-                    max={new Date().toISOString().split("T")[0]}
-                    className="et-input"
-                  />
-                </div>
+                <div className="et-form-grid">
+                  <div className="et-field">
+                    <label className="et-label">Date <span className="et-required">*</span></label>
+                    <SharedDatePicker
+                      value={form.date}
+                      onChange={(val) => setForm({ ...form, date: val })}
+                      max={new Date().toISOString().split("T")[0]}
+                      className="et-input"
+                    />
+                  </div>
 
-                <div className="et-field">
-                  <label className="et-label">Type <span className="et-required">*</span></label>
-                  <select
-                    className="et-input"
-                    value={form.entry_type}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      let autoStart = "";
-                      let autoEnd = "";
-                      if (val === "permission") {
-                        const now = new Date();
-                        const roundMin = Math.ceil(now.getMinutes() / 5) * 5;
-                        let sh = now.getHours(), sm = roundMin;
-                        if (sm >= 60) { sh += 1; sm = 0; }
-                        autoStart = `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
-                        const endMin = sh * 60 + sm + 15;
-                        const eh = Math.floor(endMin / 60);
-                        const em = endMin % 60;
-                        autoEnd = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-                      }
-                      setForm((prev) => ({
-                        ...prev,
-                        entry_type: val,
-                        project: "",
-                        task: "",
-                        work_description: "",
-                        start_time: autoStart,
-                        end_time: autoEnd,
-                      }));
-                      setTasks([]);
-                      setFormError("");
-                    }}
-                  >
-                    <option value="project">Project</option>
-                    <option value="permission">Permission</option>
-                  </select>
-                </div>
+                  <div className="et-field">
+                    <label className="et-label">Type <span className="et-required">*</span></label>
+                    <select
+                      className="et-input"
+                      value={form.entry_type}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        let autoStart = "";
+                        let autoEnd = "";
+                        if (val === "permission") {
+                          const now = new Date();
+                          const roundMin = Math.ceil(now.getMinutes() / 5) * 5;
+                          let sh = now.getHours(), sm = roundMin;
+                          if (sm >= 60) { sh += 1; sm = 0; }
+                          autoStart = `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
+                          const endMin = sh * 60 + sm + 15;
+                          const eh = Math.floor(endMin / 60);
+                          const em = endMin % 60;
+                          autoEnd = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                        }
+                        setForm((prev) => ({
+                          ...prev,
+                          entry_type: val,
+                          project: "",
+                          task: "",
+                          work_description: "",
+                          start_time: autoStart,
+                          end_time: autoEnd,
+                        }));
+                        setTasks([]);
+                        setFormError("");
+                      }}
+                    >
+                      <option value="project">Project</option>
+                      <option value="permission">Permission</option>
+                    </select>
+                  </div>
 
-                {form.entry_type === "project" && (
-                  <>
+                  {form.entry_type === "project" && (
                     <div className="et-field">
                       <label className="et-label">Project</label>
                       <SharedSelect
@@ -623,7 +623,9 @@ export default function EmployeeTimesheetList() {
                         placeholder="— Select Project —"
                       />
                     </div>
+                  )}
 
+                  {form.entry_type === "project" && (
                     <div className="et-field">
                       <label className="et-label">Task <span className="et-required">*</span></label>
                       <SharedSelect
@@ -635,46 +637,45 @@ export default function EmployeeTimesheetList() {
                       />
                       {!form.project && <p className="et-field-hint">Select a project first to load tasks.</p>}
                     </div>
-                  </>
-                )}
-
-                <div className="et-field">
-                  <label className="et-label">Start Time <span className="et-required">*</span></label>
-                  <AmpmTimePicker
-                    value={form.start_time}
-                    onChange={(val) => {
-                      const newForm = { ...form, start_time: val };
-                      // Auto-set end time = start time + 15 min for permission
-                      if (form.entry_type === "permission" && val) {
-                        const [h, m] = val.split(":").map(Number);
-                        let endMin = h * 60 + m + 15;
-                        if (endMin >= 24 * 60) endMin = 24 * 60 - 1;
-                        const eh = Math.floor(endMin / 60);
-                        const em = endMin % 60;
-                        newForm.end_time = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-                      }
-                      setForm(newForm);
-                      checkOverlapLive(form.date, val, newForm.end_time);
-                    }}
-                  />
-                </div>
-
-                <div className="et-field">
-                  <label className="et-label">End Time <span className="et-required">*</span></label>
-                  <AmpmTimePicker
-                    value={form.end_time}
-                    onChange={(val) => {
-                      setForm((prev) => ({ ...prev, end_time: val }));
-                      checkOverlapLive(form.date, form.start_time, val);
-                    }}
-                    minTime={form.start_time}
-                    disabled={form.entry_type === "permission"}
-                  />
-                  {form.entry_type === "permission" && form.start_time && (
-                    <span style={{ fontSize: "11px", color: "#5048E5", fontWeight: 600 }}>
-                      Auto: Start + 15 min
-                    </span>
                   )}
+
+                  <div className="et-field">
+                    <label className="et-label">Start Time <span className="et-required">*</span></label>
+                    <AmpmTimePicker
+                      value={form.start_time}
+                      onChange={(val) => {
+                        const newForm = { ...form, start_time: val };
+                        if (form.entry_type === "permission" && val) {
+                          const [h, m] = val.split(":").map(Number);
+                          let endMin = h * 60 + m + 15;
+                          if (endMin >= 24 * 60) endMin = 24 * 60 - 1;
+                          const eh = Math.floor(endMin / 60);
+                          const em = endMin % 60;
+                          newForm.end_time = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                        }
+                        setForm(newForm);
+                        checkOverlapLive(form.date, val, newForm.end_time);
+                      }}
+                    />
+                  </div>
+
+                  <div className="et-field">
+                    <label className="et-label">End Time <span className="et-required">*</span></label>
+                    <AmpmTimePicker
+                      value={form.end_time}
+                      onChange={(val) => {
+                        setForm((prev) => ({ ...prev, end_time: val }));
+                        checkOverlapLive(form.date, form.start_time, val);
+                      }}
+                      minTime={form.start_time}
+                      disabled={form.entry_type === "permission"}
+                    />
+                    {form.entry_type === "permission" && form.start_time && (
+                      <span style={{ fontSize: "11px", color: "#5048E5", fontWeight: 600 }}>
+                        Auto: Start + 15 min
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {form.entry_type === "project" && (
@@ -704,9 +705,9 @@ export default function EmployeeTimesheetList() {
                 )}
               </div>
 
-              <div className="et-modal-footer">
-                <button className="et-btn et-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="et-btn et-btn-primary" onClick={handleSave}>
+              <div className="modal-footer">
+                <button className="modal-btn modal-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="modal-btn modal-btn-primary" onClick={handleSave}>
                   <i className="bi bi-send" /> Save Timesheet
                 </button>
               </div>
@@ -810,30 +811,10 @@ const styles = `
   .et-page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .et-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  /* Modal */
-  .et-modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px); z-index: 200; }
-  .et-modal-wrap { position: fixed; inset: 0; z-index: 201; display: flex; align-items: center; justify-content: center; padding: 16px; pointer-events: none; }
-  .et-modal {
-    width: 80%; max-width: 520px; max-height: calc(100vh - 32px);
-    background: var(--surface); border-radius: var(--radius-lg);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-    display: flex; flex-direction: column; overflow: hidden;
-    pointer-events: all; animation: et-modal-center-in 0.22s ease;
-  }
-  @keyframes et-modal-center-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-  .et-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .et-modal-header-left { display: flex; flex-direction: column; gap: 5px; }
-  .et-modal-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0; }
-  .et-modal-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: #ECFDF5; color: #059669; width: fit-content; }
-  .et-modal-close { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: var(--radius); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all 0.15s; }
-  .et-modal-close:hover { background: #FEF2F2; border-color: #fca5a5; color: #DC2626; }
-  .et-modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .et-modal-body::-webkit-scrollbar { width: 4px; }
-  .et-modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-  .et-modal-footer { display: flex; align-items: center; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; gap: 8px; }
-
   /* Form fields */
   .et-field { display: flex; flex-direction: column; gap: 6px; }
+  .et-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 20px; }
+  @media (max-width: 560px) { .et-form-grid { grid-template-columns: 1fr; } }
   .et-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
   .et-required { color: #DC2626; }
   .et-input, .et-select {
@@ -886,13 +867,6 @@ const styles = `
   .et-hrs-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background 0.3s ease; }
   .et-hrs-hint { font-size: 11px; color: var(--text-muted); margin: 0; }
   .et-hrs-warning { font-size: 11px; color: #DC2626; font-weight: 600; margin: 0; }
-
-  /* Buttons */
-  .et-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap; }
-  .et-btn-primary { background: var(--primary); color: #fff; }
-  .et-btn-primary:hover { background: var(--primary-dark); }
-  .et-btn-ghost { background: transparent; border-color: var(--border); color: var(--text-secondary); }
-  .et-btn-ghost:hover { background: var(--bg); }
 
   @keyframes et-fade-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 `;

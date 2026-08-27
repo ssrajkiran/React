@@ -562,18 +562,18 @@ export default function AdminTimesheetList() {
       {/* ── ADD TIMESHEET MODAL ── */}
       {showModal && (
         <>
-          <div className="ts-modal-overlay" onClick={() => setShowModal(false)} />
-          <div className="ts-modal-wrap">
-            <div className="ts-modal">
-              <div className="ts-modal-header">
-                <div className="ts-modal-header-left">
-                  <span className="ts-modal-badge"><i className="bi bi-plus-circle" /> New</span>
-                  <h6 className="ts-modal-title">Add Timesheet</h6>
+          <div className="modal-overlay" onClick={() => setShowModal(false)} />
+          <div className="modal-wrap">
+            <div className="modal-box">
+              <div className="modal-header">
+                <div className="modal-header-left">
+                  <span className="modal-badge"><i className="bi bi-plus-circle" /> New</span>
+                  <h6 className="modal-title">Add Timesheet</h6>
                 </div>
-                <button className="ts-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
-              <div className="ts-modal-body">
+              <div className="modal-body">
 
                 {/* Hours meter — show once user + date both selected */}
                 {form.user && form.date && (
@@ -610,78 +610,78 @@ export default function AdminTimesheetList() {
                   </div>
                 )}
 
-                {/* User */}
-                <div className="ts-field">
-                  <label className="ts-label">User <span className="ts-required">*</span></label>
-                  <SharedSelect
-                    value={form.user}
-                    onChange={(val) => {
-                      setForm((prev) => ({ ...prev, user: val, project: "", task: "" }));
-                      setProjects([]); setTasks([]);
-                      if (val) loadProjects(val);
-                      recomputeHours(val, form.date, data);
-                    }}
-                    options={users.map((u) => ({ value: u.id, label: u.name }))}
-                    placeholder="— Select User —"
-                  />
-                </div>
+                <div className="ts-form-grid">
+                  {/* User */}
+                  <div className="ts-field">
+                    <label className="ts-label">User <span className="ts-required">*</span></label>
+                    <SharedSelect
+                      value={form.user}
+                      onChange={(val) => {
+                        setForm((prev) => ({ ...prev, user: val, project: "", task: "" }));
+                        setProjects([]); setTasks([]);
+                        if (val) loadProjects(val);
+                        recomputeHours(val, form.date, data);
+                      }}
+                      options={users.map((u) => ({ value: u.id, label: u.name }))}
+                      placeholder="— Select User —"
+                    />
+                  </div>
 
-                {/* Date */}
-                <div className="ts-field">
-                  <label className="ts-label">Date <span className="ts-required">*</span></label>
-                  <SharedDatePicker
-                    value={form.date}
-                    onChange={(val) => {
-                      setForm((prev) => ({ ...prev, date: val }));
-                      recomputeHours(form.user, val, data);
-                    }}
-                    max={new Date().toISOString().split("T")[0]}
-                    className="ts-input"
-                  />
-                </div>
+                  {/* Date */}
+                  <div className="ts-field">
+                    <label className="ts-label">Date <span className="ts-required">*</span></label>
+                    <SharedDatePicker
+                      value={form.date}
+                      onChange={(val) => {
+                        setForm((prev) => ({ ...prev, date: val }));
+                        recomputeHours(form.user, val, data);
+                      }}
+                      max={new Date().toISOString().split("T")[0]}
+                      className="ts-input"
+                    />
+                  </div>
 
-                {/* Type */}
-                <div className="ts-field">
-                  <label className="ts-label">Type <span className="ts-required">*</span></label>
-                  <select
-                    className="ts-input"
-                    value={form.entry_type}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      let autoStart = "";
-                      let autoEnd = "";
-                      if (val === "permission") {
-                        const now = new Date();
-                        const roundMin = Math.ceil(now.getMinutes() / 5) * 5;
-                        let sh = now.getHours(), sm = roundMin;
-                        if (sm >= 60) { sh += 1; sm = 0; }
-                        autoStart = `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
-                        const endMin = sh * 60 + sm + 15;
-                        const eh = Math.floor(endMin / 60);
-                        const em = endMin % 60;
-                        autoEnd = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-                      }
-                      setForm((prev) => ({
-                        ...prev,
-                        entry_type: val,
-                        project: "",
-                        task: "",
-                        work_description: "",
-                        start_time: autoStart,
-                        end_time: autoEnd,
-                      }));
-                      setTasks([]);
-                      setFormError("");
-                    }}
-                  >
-                    <option value="project">Project</option>
-                    <option value="permission">Permission</option>
-                  </select>
-                </div>
+                  {/* Type */}
+                  <div className="ts-field">
+                    <label className="ts-label">Type <span className="ts-required">*</span></label>
+                    <select
+                      className="ts-input"
+                      value={form.entry_type}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        let autoStart = "";
+                        let autoEnd = "";
+                        if (val === "permission") {
+                          const now = new Date();
+                          const roundMin = Math.ceil(now.getMinutes() / 5) * 5;
+                          let sh = now.getHours(), sm = roundMin;
+                          if (sm >= 60) { sh += 1; sm = 0; }
+                          autoStart = `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
+                          const endMin = sh * 60 + sm + 15;
+                          const eh = Math.floor(endMin / 60);
+                          const em = endMin % 60;
+                          autoEnd = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                        }
+                        setForm((prev) => ({
+                          ...prev,
+                          entry_type: val,
+                          project: "",
+                          task: "",
+                          work_description: "",
+                          start_time: autoStart,
+                          end_time: autoEnd,
+                        }));
+                        setTasks([]);
+                        setFormError("");
+                      }}
+                    >
+                      <option value="project">Project</option>
+                      <option value="permission">Permission</option>
+                    </select>
+                  </div>
 
-                {/* Project */}
-                {form.entry_type === "project" && (
-                  <>
+                  {/* Project */}
+                  {form.entry_type === "project" && (
                     <div className="ts-field">
                       <label className="ts-label">Project</label>
                       <SharedSelect
@@ -697,8 +697,10 @@ export default function AdminTimesheetList() {
                       />
                       {!form.user && <p className="ts-field-hint">Select a user first to load their projects.</p>}
                     </div>
+                  )}
 
-                    {/* Task */}
+                  {/* Task */}
+                  {form.entry_type === "project" && (
                     <div className="ts-field">
                       <label className="ts-label">Task <span className="ts-required">*</span></label>
                       <SharedSelect
@@ -710,48 +712,47 @@ export default function AdminTimesheetList() {
                       />
                       {form.user && !form.project && <p className="ts-field-hint">Select a project first to load tasks.</p>}
                     </div>
-                  </>
-                )}
-
-                {/* Start Time */}
-                <div className="ts-field">
-                  <label className="ts-label">Start Time <span className="ts-required">*</span></label>
-                  <AmpmTimePicker
-                    value={form.start_time}
-                    onChange={(val) => {
-                      const newForm = { ...form, start_time: val };
-                      // Auto-set end time = start time + 15 min for permission
-                      if (form.entry_type === "permission" && val) {
-                        const [h, m] = val.split(":").map(Number);
-                        let endMin = h * 60 + m + 15;
-                        if (endMin >= 24 * 60) endMin = 24 * 60 - 1;
-                        const eh = Math.floor(endMin / 60);
-                        const em = endMin % 60;
-                        newForm.end_time = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-                      }
-                      setForm(newForm);
-                      checkOverlapLive(form.user, form.date, val, newForm.end_time);
-                    }}
-                  />
-                </div>
-
-                {/* End Time */}
-                <div className="ts-field">
-                  <label className="ts-label">End Time <span className="ts-required">*</span></label>
-                  <AmpmTimePicker
-                    value={form.end_time}
-                    onChange={(val) => {
-                      setForm((prev) => ({ ...prev, end_time: val }));
-                      checkOverlapLive(form.user, form.date, form.start_time, val);
-                    }}
-                    minTime={form.start_time}
-                    disabled={form.entry_type === "permission"}
-                  />
-                  {form.entry_type === "permission" && form.start_time && (
-                    <span style={{ fontSize: "11px", color: "#5048E5", fontWeight: 600 }}>
-                      Auto: Start + 15 min
-                    </span>
                   )}
+
+                  {/* Start Time */}
+                  <div className="ts-field">
+                    <label className="ts-label">Start Time <span className="ts-required">*</span></label>
+                    <AmpmTimePicker
+                      value={form.start_time}
+                      onChange={(val) => {
+                        const newForm = { ...form, start_time: val };
+                        if (form.entry_type === "permission" && val) {
+                          const [h, m] = val.split(":").map(Number);
+                          let endMin = h * 60 + m + 15;
+                          if (endMin >= 24 * 60) endMin = 24 * 60 - 1;
+                          const eh = Math.floor(endMin / 60);
+                          const em = endMin % 60;
+                          newForm.end_time = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                        }
+                        setForm(newForm);
+                        checkOverlapLive(form.user, form.date, val, newForm.end_time);
+                      }}
+                    />
+                  </div>
+
+                  {/* End Time */}
+                  <div className="ts-field">
+                    <label className="ts-label">End Time <span className="ts-required">*</span></label>
+                    <AmpmTimePicker
+                      value={form.end_time}
+                      onChange={(val) => {
+                        setForm((prev) => ({ ...prev, end_time: val }));
+                        checkOverlapLive(form.user, form.date, form.start_time, val);
+                      }}
+                      minTime={form.start_time}
+                      disabled={form.entry_type === "permission"}
+                    />
+                    {form.entry_type === "permission" && form.start_time && (
+                      <span style={{ fontSize: "11px", color: "#5048E5", fontWeight: 600 }}>
+                        Auto: Start + 15 min
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {form.entry_type === "project" && (
@@ -773,7 +774,6 @@ export default function AdminTimesheetList() {
                   </div>
                 )}
 
-                {/* Live hours preview */}
                 {form.start_time && form.end_time && (
                   <div style={{ fontSize: "12px", color: calcHoursFromTimes(form.start_time, form.end_time) > 0 ? "#059669" : "#DC2626", fontWeight: 600 }}>
                     <i className="bi bi-clock" /> {fmtHrs(calcHoursFromTimes(form.start_time, form.end_time))} will be logged
@@ -785,9 +785,9 @@ export default function AdminTimesheetList() {
                 )}
               </div>
 
-              <div className="ts-modal-footer">
-                <button className="ts-btn ts-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="ts-btn ts-btn-primary" onClick={handleSave}>
+              <div className="modal-footer">
+                <button className="modal-btn modal-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="modal-btn modal-btn-primary" onClick={handleSave}>
                   <i className="bi bi-send" /> Save Timesheet
                 </button>
               </div>
@@ -799,14 +799,14 @@ export default function AdminTimesheetList() {
       {/* ── DELETE CONFIRM MODAL ── */}
       {deleteConfirm && (
         <>
-          <div className="ts-modal-overlay" onClick={() => setDeleteConfirm(null)} />
-          <div className="ts-modal-wrap ts-modal-center">
-            <div className="ts-modal ts-modal-sm">
-              <div className="ts-modal-header">
-                <h6 className="ts-modal-title">Delete Timesheet</h6>
-                <button className="ts-modal-close" onClick={() => setDeleteConfirm(null)}><i className="bi bi-x-lg" /></button>
+          <div className="modal-overlay" onClick={() => setDeleteConfirm(null)} />
+          <div className="modal-wrap">
+            <div className="modal-box modal-box-sm">
+              <div className="modal-header">
+                <h6 className="modal-title">Delete Timesheet</h6>
+                <button className="modal-close" onClick={() => setDeleteConfirm(null)}><i className="bi bi-x-lg" /></button>
               </div>
-              <div className="ts-modal-body">
+              <div className="modal-body">
                 <div className="ts-delete-warn">
                   <div className="ts-delete-icon"><i className="bi bi-exclamation-triangle" /></div>
                   <p className="ts-delete-msg">Are you sure you want to delete this timesheet?</p>
@@ -816,9 +816,9 @@ export default function AdminTimesheetList() {
                   </p>
                 </div>
               </div>
-              <div className="ts-modal-footer">
-                <button className="ts-btn ts-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                <button className="ts-btn ts-btn-danger" onClick={() => handleDelete(deleteConfirm.timesheet_id)}>
+              <div className="modal-footer">
+                <button className="modal-btn modal-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                <button className="modal-btn modal-btn-danger" onClick={() => handleDelete(deleteConfirm.timesheet_id)}>
                   <i className="bi bi-trash" /> Delete
                 </button>
               </div>
@@ -928,26 +928,11 @@ const styles = `
   .ts-page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .ts-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  /* Modal */
-  .ts-modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px); z-index: 200; }
-  .ts-modal-wrap { position: fixed; inset: 0; z-index: 201; display: flex; align-items: center; justify-content: flex-end; padding: 16px; pointer-events: none; }
-  .ts-modal-center { justify-content: center; }
-  .ts-modal { width: 440px; max-width: 100%; max-height: calc(100vh - 32px); background: var(--surface); border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.18); display: flex; flex-direction: column; overflow: hidden; pointer-events: all; animation: ts-slide-in 0.22s ease; }
-  .ts-modal-sm { width: 380px; }
-  @keyframes ts-slide-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
-  .ts-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .ts-modal-header-left { display: flex; flex-direction: column; gap: 5px; }
-  .ts-modal-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0; }
-  .ts-modal-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: #ECFDF5; color: #059669; width: fit-content; }
-  .ts-modal-close { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: var(--radius); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all 0.15s; }
-  .ts-modal-close:hover { background: #FEF2F2; border-color: #fca5a5; color: #DC2626; }
-  .ts-modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .ts-modal-body::-webkit-scrollbar { width: 4px; }
-  .ts-modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-  .ts-modal-footer { display: flex; align-items: center; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; gap: 8px; }
 
   /* Form */
   .ts-field { display: flex; flex-direction: column; gap: 6px; }
+  .ts-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 20px; }
+  @media (max-width: 560px) { .ts-form-grid { grid-template-columns: 1fr; } }
   .ts-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
   .ts-required { color: #DC2626; }
   .ts-input, .ts-select {
@@ -1000,14 +985,6 @@ const styles = `
   .ts-hrs-hint { font-size: 11px; color: var(--text-muted); margin: 0; }
   .ts-hrs-warning { font-size: 11px; color: #DC2626; font-weight: 600; margin: 0; }
 
-  /* Buttons */
-  .ts-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap; }
-  .ts-btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-  .ts-btn-primary:hover { background: var(--primary-dark); }
-  .ts-btn-ghost { background: transparent; border-color: var(--border); color: var(--text-secondary); }
-  .ts-btn-ghost:hover { background: var(--bg); }
-  .ts-btn-danger { background: #FEF2F2; color: #DC2626; border-color: #fca5a5; }
-  .ts-btn-danger:hover { background: #DC2626; color: #fff; }
 
   /* Delete confirm */
   .ts-delete-warn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; text-align: center; }
