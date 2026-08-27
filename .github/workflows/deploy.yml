@@ -16,7 +16,8 @@ jobs:
       - name: Pull latest code
         run: |
           cd /var/www/html/React
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
 
       # ---------- FRONTEND ----------
       - name: Build Frontend
