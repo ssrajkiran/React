@@ -228,6 +228,9 @@ export default function Login() {
     try {
       const r = await api.post("/auth/login", { email, password });
       localStorage.setItem("token", r.data.token);
+      if (r.data.permissions) {
+        localStorage.setItem("permissions", JSON.stringify(r.data.permissions));
+      }
       navigate(r.data.role === "admin" ? "/admin" : "/employee");
     } catch {
       alert("Invalid credentials. Please try again.");

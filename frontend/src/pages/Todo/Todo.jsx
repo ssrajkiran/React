@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
-import api from "../../api";  // ✅ same import as CreateUser.jsx
+import api from "../../api";
 import { Link } from "react-router-dom";
 import SharedDatePicker from "../../components/SharedDatePicker";
 import SharedSelect from "../../components/SharedSelect";
@@ -9,37 +9,158 @@ import SharedSelect from "../../components/SharedSelect";
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const EMPTY_FORM = { title: "", description: "", priority: "", due_date: "" };
 
+// ─── Field Renderer ──────────────────────────────────────────────
+function FieldRenderer({ field, value, onChange, error }) {
+  const baseClass = `sr-input ${error ? "cu-input-error" : ""}`;
+
+  switch (field.field_type) {
+    case "select":
+      return (
+        <SharedSelect
+          value={value || ""}
+          onChange={(val) => onChange(val)}
+          options={(field.options || []).map((o) => ({ value: o, label: o }))}
+          placeholder={field.placeholder || "Select..."}
+        />
+      );
+
+    case "multi-select":
+      return (
+        <SharedSelect
+          value={value || ""}
+          onChange={(val) => onChange(val)}
+          options={(field.options || []).map((o) => ({ value: o, label: o }))}
+          placeholder={field.placeholder || "Select..."}
+          isMulti
+        />
+      );
+
+    case "textarea":
+      return (
+        <textarea
+          className={`${baseClass} cu-textarea`}
+          name={field.field_key}
+          placeholder={field.placeholder || ""}
+          rows={3}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={field.max_length || undefined}
+        />
+      );
+
+    case "date":
+      return (
+        <SharedDatePicker
+          value={value || ""}
+          onChange={(val) => onChange(val)}
+          className="sr-input"
+          placeholder={field.placeholder || "Select date"}
+        />
+      );
+
+    case "number":
+      return (
+        <input
+          type="number"
+          className={baseClass}
+          name={field.field_key}
+          placeholder={field.placeholder || ""}
+          value={value || ""}
+          min={field.min_value || undefined}
+          max={field.max_value || undefined}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+
+    case "email":
+      return (
+        <input
+          type="email"
+          className={baseClass}
+          name={field.field_key}
+          placeholder={field.placeholder || ""}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+
+    case "toggle":
+      return (
+        <label className="cfg-toggle-wrap">
+          <input
+            type="checkbox"
+            checked={value === 1 || value === "1" || value === true}
+            onChange={(e) => onChange(e.target.checked ? 1 : 0)}
+          />
+          <span className="cfg-toggle-track"><span className="cfg-toggle-thumb" /></span>
+        </label>
+      );
+
+    case "checkbox":
+      return (
+        <label className="cfg-mini-toggle">
+          <input
+            type="checkbox"
+            checked={!!value}
+            onChange={(e) => onChange(e.target.checked ? 1 : 0)}
+          />
+          {field.field_label}
+        </label>
+      );
+
+    default:
+      return (
+        <input
+          type="text"
+          className={baseClass}
+          name={field.field_key}
+          placeholder={field.placeholder || ""}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={field.max_length || undefined}
+        />
+      );
+  }
+}
+
 // ─── CreateTodoDialog (inline) ────────────────────────────────────
-function CreateTodoDialog({ open, onClose, onSaved, editData, showToast }) {
+function CreateTodoDialog({ open, onClose, onSaved, editData, showToast, configFields }) {
   const [form, setForm]       = useState(EMPTY_FORM);
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setForm(
-      editData
-        ? {
-            title:       editData.title,
-            description: editData.description || "",
-            priority:    editData.priority,
-            due_date:    editData.due_date || "",
-          }
-        : EMPTY_FORM
-    );
+    if (editData) {
+      const fd = { title: editData.title, description: editData.description || "", priority: editData.priority, due_date: editData.due_date || "" };
+      configFields.forEach((f) => {
+        if (!["title","description","priority","due_date"].includes(f.field_key)) {
+          fd[f.field_key] = editData[f.field_key] ?? f.default_value ?? "";
+        }
+      });
+      setForm(fd);
+    } else {
+      const fd = { ...EMPTY_FORM };
+      configFields.forEach((f) => {
+        if (!["title","description","priority","due_date"].includes(f.field_key)) {
+          fd[f.field_key] = f.default_value ?? "";
+        }
+      });
+      setForm(fd);
+    }
     setError("");
-  }, [open, editData]);
+  }, [open, editData, configFields]);
 
   if (!open) return null;
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (key, val) => {
+    setForm({ ...form, [key]: val });
     if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) { setError("Title is required.");        return; }
+    if (!form.title.trim()) { setError("Title is required."); return; }
     if (!form.priority)     { setError("Please select a priority."); return; }
     setLoading(true);
     try {
@@ -64,6 +185,10 @@ function CreateTodoDialog({ open, onClose, onSaved, editData, showToast }) {
 
   const titleErr    = error === "Title is required.";
   const priorityErr = error === "Please select a priority.";
+
+  const visibleFields = configFields.filter((f) => f.show_in_form && !["title","priority","due_date","description","completed"].includes(f.field_key));
+  const coreFields = configFields.filter((f) => ["title","priority","due_date","description"].includes(f.field_key));
+  const hasCoreField = (key) => coreFields.some((f) => f.field_key === key);
 
   return (
     <>
@@ -93,73 +218,100 @@ function CreateTodoDialog({ open, onClose, onSaved, editData, showToast }) {
             <div className="cd-grid">
 
               {/* Title */}
-              <div className="cd-field">
-                <label className="sr-label">Title</label>
-                <div className="sr-input-wrap">
-                  <i className="bi bi-check2-square sr-input-icon" />
-                  <input
-                    className={`sr-input ${titleErr ? "cu-input-error" : ""}`}
-                    type="text"
-                    name="title"
-                    placeholder="What needs to be done?"
-                    value={form.title}
-                    onChange={handleChange}
-                  />
+              {(hasCoreField("title") || configFields.length === 0) && (
+                <div className="cd-field">
+                  <label className="sr-label">Title</label>
+                  <div className="sr-input-wrap">
+                    <i className="bi bi-check2-square sr-input-icon" />
+                    <input
+                      className={`sr-input ${titleErr ? "cu-input-error" : ""}`}
+                      type="text"
+                      name="title"
+                      placeholder="What needs to be done?"
+                      value={form.title}
+                      onChange={(e) => handleChange("title", e.target.value)}
+                    />
+                  </div>
+                  {titleErr && (
+                    <span className="cu-field-error">
+                      <i className="bi bi-exclamation-circle" /> {error}
+                    </span>
+                  )}
                 </div>
-                {titleErr && (
-                  <span className="cu-field-error">
-                    <i className="bi bi-exclamation-circle" /> {error}
-                  </span>
-                )}
-              </div>
+              )}
 
               {/* Priority */}
-              <div className="cd-field">
-                <label className="sr-label">Priority</label>
-                <div className="sr-input-wrap">
-                  <SharedSelect
-                    value={form.priority}
-                    onChange={(val) => setForm({ ...form, priority: val })}
-                    options={[
-                      { value: "Low", label: "Low" },
-                      { value: "Medium", label: "Medium" },
-                      { value: "High", label: "High" },
-                    ]}
-                    placeholder="Select priority…"
-                  />
+              {(hasCoreField("priority") || configFields.length === 0) && (
+                <div className="cd-field">
+                  <label className="sr-label">Priority</label>
+                  <div className="sr-input-wrap">
+                    <SharedSelect
+                      value={form.priority}
+                      onChange={(val) => handleChange("priority", val)}
+                      options={[
+                        { value: "Low", label: "Low" },
+                        { value: "Medium", label: "Medium" },
+                        { value: "High", label: "High" },
+                      ]}
+                      placeholder="Select priority..."
+                    />
+                  </div>
+                  {priorityErr && (
+                    <span className="cu-field-error">
+                      <i className="bi bi-exclamation-circle" /> {error}
+                    </span>
+                  )}
                 </div>
-                {priorityErr && (
-                  <span className="cu-field-error">
-                    <i className="bi bi-exclamation-circle" /> {error}
-                  </span>
-                )}
-              </div>
+              )}
 
               {/* Due Date */}
-              <div className="cd-field">
-                <label className="sr-label">Due Date</label>
-                <div className="sr-input-wrap">
-                  <SharedDatePicker
-                    value={form.due_date}
-                    onChange={(val) => setForm({ ...form, due_date: val })}
-                    className="sr-input"
-                    placeholder="Select date"
-                  />
+              {(hasCoreField("due_date") || configFields.length === 0) && (
+                <div className="cd-field">
+                  <label className="sr-label">Due Date</label>
+                  <div className="sr-input-wrap">
+                    <SharedDatePicker
+                      value={form.due_date}
+                      onChange={(val) => handleChange("due_date", val)}
+                      className="sr-input"
+                      placeholder="Select date"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Dynamic config fields */}
+              {visibleFields.map((field) => (
+                <div key={field.field_key} className={`cd-field ${field.field_type === "textarea" ? "cd-full" : ""}`}>
+                  <label className="sr-label">
+                    {field.field_label}
+                    {field.is_required && <span style={{ color: "#DC2626" }}> *</span>}
+                  </label>
+                  <div className="sr-input-wrap">
+                    <FieldRenderer
+                      field={field}
+                      value={form[field.field_key]}
+                      onChange={(val) => handleChange(field.field_key, val)}
+                      error={false}
+                    />
+                  </div>
+                  {field.help_text && <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>{field.help_text}</p>}
+                </div>
+              ))}
 
               {/* Description */}
-              <div className="cd-field cd-full">
-                <label className="sr-label">Description</label>
-                <textarea
-                  className="sr-input cu-textarea"
-                  name="description"
-                  placeholder="Optional details…"
-                  rows={3}
-                  value={form.description}
-                  onChange={handleChange}
-                />
-              </div>
+              {(hasCoreField("description") || configFields.length === 0) && (
+                <div className="cd-field cd-full">
+                  <label className="sr-label">Description</label>
+                  <textarea
+                    className="sr-input cu-textarea"
+                    name="description"
+                    placeholder="Optional details..."
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) => handleChange("description", e.target.value)}
+                  />
+                </div>
+              )}
 
             </div>
           </div>
@@ -172,7 +324,7 @@ function CreateTodoDialog({ open, onClose, onSaved, editData, showToast }) {
             </button>
             <button type="submit" className="cu-save-btn" disabled={loading}>
               {loading
-                ? <><i className="bi bi-arrow-repeat sr-spin" /> Saving…</>
+                ? <><i className="bi bi-arrow-repeat sr-spin" /> Saving...</>
                 : <><i className="bi bi-check2-circle" /> {editData ? "Update" : "Save"} Todo</>}
             </button>
           </div>
@@ -192,10 +344,25 @@ export default function Todo() {
   const [toast, setToast]           = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editData, setEditData]     = useState(null);
+  const [configFields, setConfigFields] = useState([]);
+  const [tableCols, setTableCols]   = useState([]);
 
   const showToast = (msg, type) => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const fetchConfig = async () => {
+    try {
+      const [configRes, colRes] = await Promise.all([
+        api.get("/todos/config"),
+        api.get("/todos/columns"),
+      ]);
+      setConfigFields(configRes.data || []);
+      setTableCols(colRes.data || []);
+    } catch (err) {
+      console.error("Fetch config error:", err);
+    }
   };
 
   const fetchTodos = async () => {
@@ -218,6 +385,10 @@ export default function Todo() {
       console.error("Fetch stats error:", err);
     }
   };
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
 
   useEffect(() => {
     fetchTodos();
@@ -254,6 +425,8 @@ export default function Todo() {
   const onSaved    = ()     => { fetchTodos(); fetchStats(); };
 
   const t = todayStr();
+
+  const extraCols = tableCols.filter((c) => !["id","user_id","title","description","priority","due_date","completed","created_at"].includes(c));
 
   return (
     <AppLayout>
@@ -303,7 +476,7 @@ export default function Todo() {
           <input
             className="sr-input"
             type="text"
-            placeholder="Search todos…"
+            placeholder="Search todos..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -334,15 +507,16 @@ export default function Todo() {
               <th>Priority</th>
               <th>Status</th>
               <th>Due Date</th>
+              {extraCols.map((c) => <th key={c}>{c}</th>)}
               <th>Created</th>
               <th style={{ width: 80 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="7" className="tl-empty">Loading…</td></tr>
+              <tr><td colSpan={7 + extraCols.length} className="tl-empty">Loading...</td></tr>
             ) : todos.length === 0 ? (
-              <tr><td colSpan="7" className="tl-empty">No todos found.</td></tr>
+              <tr><td colSpan={7 + extraCols.length} className="tl-empty">No todos found.</td></tr>
             ) : todos.map((todo) => {
               const overdue = todo.due_date && todo.due_date < t && !todo.completed;
               return (
@@ -363,7 +537,7 @@ export default function Todo() {
                     )}
                   </td>
                   <td>
-                    <span className={`tl-badge tl-badge-${todo.priority.toLowerCase()}`}>
+                    <span className={`tl-badge tl-badge-${(todo.priority || "").toLowerCase()}`}>
                       {todo.priority}
                     </span>
                   </td>
@@ -374,9 +548,14 @@ export default function Todo() {
                   </td>
                   <td>
                     <span className={`tl-due ${overdue ? "overdue" : ""}`}>
-                      {todo.due_date || "—"}{overdue && " ⚠"}
+                      {todo.due_date || "---"}{overdue && " !"}
                     </span>
                   </td>
+                  {extraCols.map((c) => (
+                    <td key={c}>
+                      <span className="tl-due">{todo[c] != null ? String(todo[c]) : "---"}</span>
+                    </td>
+                  ))}
                   <td>
                     <span className="tl-due">{todo.created_at?.slice(0, 10)}</span>
                   </td>
@@ -404,6 +583,7 @@ export default function Todo() {
         onSaved={onSaved}
         editData={editData}
         showToast={showToast}
+        configFields={configFields}
       />
     </AppLayout>
   );
@@ -521,14 +701,15 @@ const styles = `
   .tl-icon-btn.tl-del:hover{border-color:#DC2626;color:#DC2626;background:#FEF2F2}
   .tl-empty{text-align:center;padding:48px;color:var(--text-muted);font-size:13px}
 
-  .cd-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50}
+  .cd-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);backdrop-filter:blur(2px);z-index:50}
   .cd-dialog{
     position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    z-index:51;width:100%;max-width:480px;
+    z-index:51;width:80%;max-width:520px;max-height:calc(100vh - 32px);
     background:var(--surface);border:1px solid var(--border);
     border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.2);
-    animation:sr-fade-in .2s ease;
+    animation:cd-center-in .2s ease;overflow:visible;
   }
+  @keyframes cd-center-in{from{opacity:0;transform:translate(-50%,-50%) scale(.96)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
   .cd-head{display:flex;align-items:center;gap:14px;padding:20px 24px 16px}
   .cd-icon{
     width:40px;height:40px;border-radius:var(--radius);
@@ -545,12 +726,19 @@ const styles = `
   }
   .cd-close:hover{background:#F3F4F6}
   .cd-divider{border:none;border-top:1px solid var(--border);margin:0 0 20px}
-  .cd-body{padding:0 24px}
+  .cd-body{padding:0 24px;overflow-y:auto;max-height:calc(100vh - 160px)}
   .cd-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin-bottom:20px}
   .cd-field{display:flex;flex-direction:column;gap:6px}
   .cd-full{grid-column:1/-1}
   .cd-footer{display:flex;align-items:center;justify-content:space-between;padding:0 24px 20px;gap:10px}
   @media(max-width:520px){.cd-grid{grid-template-columns:1fr}}
+
+  .cfg-toggle-wrap{position:relative;display:inline-block;cursor:pointer;padding-top:2px}
+  .cfg-toggle-wrap input{position:absolute;opacity:0;width:0;height:0}
+  .cfg-toggle-track{display:block;width:40px;height:22px;border-radius:20px;background:#d1d5db;transition:background .2s;position:relative}
+  .cfg-toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+  .cfg-toggle-wrap input:checked+.cfg-toggle-track{background:#5048E5}
+  .cfg-toggle-wrap input:checked+.cfg-toggle-track .cfg-toggle-thumb{transform:translateX(18px)}
 
   @keyframes sr-spin   {to{transform:rotate(360deg)}}
   @keyframes sr-fade-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}

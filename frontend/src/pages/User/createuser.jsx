@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { useNavigate, Link } from "react-router-dom";
@@ -11,6 +11,13 @@ export default function CreateUser() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast]     = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [roles, setRoles]     = useState([]);
+
+  useEffect(() => {
+    api.get("/roles/list").then((res) => {
+      setRoles(Array.isArray(res.data) ? res.data : []);
+    }).catch(() => {});
+  }, []);
 
   const showToast = (msg, type) => {
     setToast({ msg, type });
@@ -167,10 +174,7 @@ export default function CreateUser() {
               <SharedSelect
                 value={form.role}
                 onChange={(val) => setForm({ ...form, role: val })}
-                options={[
-                  { value: "admin", label: "Admin" },
-                  { value: "employee", label: "Employee" },
-                ]}
+                options={roles.map((r) => ({ value: r.name, label: r.name.charAt(0).toUpperCase() + r.name.slice(1) }))}
                 placeholder="Select a role…"
               />
             </div>

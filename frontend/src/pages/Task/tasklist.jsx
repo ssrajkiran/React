@@ -364,7 +364,7 @@ export default function TaskList() {
       {deleteConfirm && (
         <>
           <div className="tl-modal-overlay" onClick={() => setDeleteConfirm(null)} />
-          <div className="tl-modal-wrap tl-modal-center">
+          <div className="tl-modal-wrap">
             <div className="tl-modal tl-modal-sm">
               <div className="tl-modal-header">
                 <div className="tl-modal-header-left">
@@ -792,28 +792,20 @@ const styles = `
   }
   .tl-modal-wrap {
     position: fixed; inset: 0; z-index: 201;
-    display: flex; align-items: center; justify-content: flex-end;
+    display: flex; align-items: center; justify-content: center;
     padding: 16px; pointer-events: none;
   }
-  .tl-modal-center { justify-content: center; }
   .tl-modal {
-    width: 460px; max-width: 100%; max-height: calc(100vh - 32px);
+    width: 80%; max-width: 560px; max-height: calc(100vh - 32px);
     background: var(--surface); border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0,0,0,0.18);
     display: flex; flex-direction: column; overflow: hidden;
-    pointer-events: all; animation: tl-slide-in 0.22s ease;
+    pointer-events: all; animation: tl-modal-center-in 0.22s ease;
   }
-  .tl-modal-sm { width: 380px; }
-  .tl-modal-wide { width: 560px; }
-  @keyframes tl-slide-in {
-    from { opacity: 0; transform: translateX(24px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  .tl-modal-center .tl-modal {
-    animation: tl-fade-in 0.2s ease;
-  }
-  @keyframes tl-fade-in {
-    from { opacity: 0; transform: scale(0.97); }
+  .tl-modal-sm { max-width: 420px; }
+  .tl-modal-wide { max-width: 640px; }
+  @keyframes tl-modal-center-in {
+    from { opacity: 0; transform: scale(0.96); }
     to   { opacity: 1; transform: scale(1); }
   }
 

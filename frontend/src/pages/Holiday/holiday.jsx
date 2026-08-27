@@ -480,10 +480,10 @@ const styles = `
   .cu-back-btn:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
 
   /* ── Overlay / Modal ── */
-  .ul-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; animation: sr-fade-in 0.15s ease; padding: 16px; }
-  .ul-modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.2); padding: 28px; width: 100%; max-width: 400px; animation: ul-slide-up 0.2s ease; text-align: center; }
+  .ul-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px); z-index: 1000; display: flex; align-items: center; justify-content: center; animation: sr-fade-in 0.15s ease; padding: 16px; }
+  .ul-modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.2); padding: 28px; width: 80%; max-width: 460px; max-height: calc(100vh - 32px); animation: ul-modal-center-in 0.2s ease; text-align: center; }
   .ul-modal-sm { max-width: 460px; text-align: left; }
-  @keyframes ul-slide-up { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes ul-modal-center-in { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
   .ul-modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
   .ul-modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px; padding: 4px; border-radius: var(--radius); transition: color 0.15s, background 0.15s; display: flex; align-items: center; flex-shrink: 0; }
   .ul-modal-close:hover { color: var(--text-primary); background: var(--bg); }

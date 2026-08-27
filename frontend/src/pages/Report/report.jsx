@@ -538,9 +538,9 @@ const styles = `
 
   /* ── modal ── */
   .ar-modal-overlay { position:fixed; inset:0; background:rgba(17,24,39,0.45); backdrop-filter:blur(2px); z-index:200; }
-  .ar-modal-wrap { position:fixed; inset:0; z-index:201; display:flex; align-items:center; justify-content:flex-end; padding:16px; pointer-events:none; }
-  .ar-modal { width:400px; max-width:100%; max-height:calc(100vh - 32px); background:var(--surface); border-radius:var(--radius-lg); box-shadow:0 20px 60px rgba(0,0,0,0.18); display:flex; flex-direction:column; overflow:hidden; pointer-events:all; animation:ar-slide-in 0.22s ease; }
-  @keyframes ar-slide-in { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+  .ar-modal-wrap { position:fixed; inset:0; z-index:201; display:flex; align-items:center; justify-content:center; padding:16px; pointer-events:none; }
+  .ar-modal { width:80%; max-width:520px; max-height:calc(100vh - 32px); background:var(--surface); border-radius:var(--radius-lg); box-shadow:0 20px 60px rgba(0,0,0,0.18); display:flex; flex-direction:column; overflow:hidden; pointer-events:all; animation:ar-modal-center-in 0.22s ease; }
+  @keyframes ar-modal-center-in { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
   .ar-modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 20px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
   .ar-modal-header-left { display:flex; flex-direction:column; gap:5px; }
   .ar-modal-title { font-size:14px; font-weight:700; color:var(--text-primary); margin:0; letter-spacing:-0.01em; }

@@ -37,5 +37,9 @@ app.use("/api/ai-summary", require("./routes/aiReport"));
 
 app.use("/api/tasks_report", require("./routes/taskreports"));
 
+app.use("/api/roles", require("./routes/roles"));
+
+app.use("/api/crud", require("./routes/crud"));
+
 app.listen(5000,()=>console.log("Backend running"));
 

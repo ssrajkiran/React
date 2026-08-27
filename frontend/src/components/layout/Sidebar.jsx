@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 export default function Sidebar({ isOpen, onClose }) {
   const { pathname }          = useLocation();
   const [role, setRole]       = useState("employee");
+  const [permissions, setPermissions] = useState({});
   const [userName, setUserName]       = useState("User");
   const [userInitials, setUserInitials] = useState("U");
   const [openAttendance, setOpenAttendance] = useState(false);
@@ -30,7 +31,22 @@ export default function Sidebar({ isOpen, onClose }) {
         console.error("Failed to decode token:", err);
       }
     }
+    // Load permissions from localStorage
+    try {
+      const stored = localStorage.getItem("permissions");
+      if (stored) {
+        const arr = JSON.parse(stored);
+        const map = {};
+        arr.forEach((p) => { map[p.menu_key] = p; });
+        setPermissions(map);
+      }
+    } catch (err) {}
   }, []);
+
+  const can = (menuKey) => {
+    if (role === "admin") return true;
+    return !!permissions[menuKey]?.can_view;
+  };
 
   useEffect(() => {
     setOpenAttendance(
@@ -47,7 +63,7 @@ export default function Sidebar({ isOpen, onClose }) {
         pathname.includes("/admin/ai-summary")
     );
     setOpenSetup(
-      pathname.includes("/userslist") || pathname.includes("/holidays")
+      pathname.includes("/userslist") || pathname.includes("/holidays") || pathname.includes("/admin/config-manager")
     );
   }, [pathname]);
 
@@ -132,7 +148,7 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             Attendance Form
           </Link>
-          {role === "admin" && (
+          {can("attendance_report") && (
             <Link
               to="/employee/report"
               className={`submenu-item ${isActive("/employee/report", true) ? "active" : ""}`}
@@ -172,7 +188,7 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             Task Form
           </Link>
-          {role === "admin" && (
+          {can("task_report") && (
             <Link
               to="/tasks/report"
               className={`submenu-item ${isActive("/tasks/report", true) ? "active" : ""}`}
@@ -215,7 +231,7 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             Timesheet Form
           </Link>
-          {role === "admin" && (
+          {can("ai_summary") && (
             <>
               <Link
                 to="/admin/ai-summary"
@@ -239,7 +255,7 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       {/* Admin Setup */}
-      {role === "admin" && (
+      {(can("users") || can("holidays") || can("roles")) && (
         <div className="sidebar-section" style={{ marginTop: 8 }}>
           <div className="sidebar-section-label">Admin</div>
           <div
@@ -259,19 +275,40 @@ export default function Sidebar({ isOpen, onClose }) {
             ></i>
           </div>
           <div className={`submenu ${openSetup ? "open" : ""}`}>
+            {can("users") && (
+              <Link
+                to="/employee/userslist"
+                className={`submenu-item ${isActive("/employee/userslist", true) ? "active" : ""}`}
+                onClick={handleNavClick}
+              >
+                Users
+              </Link>
+            )}
+            {can("holidays") && (
+              <Link
+                to="/holidays"
+                className={`submenu-item ${isActive("/holidays", true) ? "active" : ""}`}
+                onClick={handleNavClick}
+              >
+                Holiday
+              </Link>
+            )}
+            {can("roles") && (
+              <Link
+                to="/admin/roles"
+                className={`submenu-item ${isActive("/admin/roles", true) ? "active" : ""}`}
+                onClick={handleNavClick}
+              >
+                Roles
+              </Link>
+            )}
             <Link
-              to="/employee/userslist"
-              className={`submenu-item ${isActive("/employee/userslist", true) ? "active" : ""}`}
+              to="/admin/config-manager"
+              className={`submenu-item ${isActive("/admin/config-manager", true) ? "active" : ""}`}
               onClick={handleNavClick}
             >
-              Users
-            </Link>
-            <Link
-              to="/holidays"
-              className={`submenu-item ${isActive("/holidays", true) ? "active" : ""}`}
-              onClick={handleNavClick}
-            >
-              Holiday
+              <i className="bi bi-grid-3x3-gap" style={{ marginRight: 6, fontSize: 13 }} />
+              Config Manager
             </Link>
           </div>
         </div>

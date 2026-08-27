@@ -20,6 +20,9 @@ import AIHistory from "./pages/AI/AIhistory.jsx";
 import Todo from "./pages/Todo/Todo.jsx";
 import EmployeeTimesheet from "./pages/Timesheet/EmployeeTimesheetList.jsx";
 import AdminTimesheet from "./pages/Timesheet/AdminTimesheetList.jsx";
+import Roles from "./pages/Roles/Roles.jsx";
+import DynamicPage from "./pages/Dynamic/DynamicPage.jsx";
+import ConfigManager from "./pages/Dynamic/ConfigManager.jsx";
 
 export default function App() {
   const location = useLocation(); // ✅ ADD THIS
@@ -55,7 +58,10 @@ export default function App() {
         <Route path="/tasks" element={<TaskList />} />
         <Route path="/admin/ai-summary" element={<AISummary />} />
         <Route path="/admin/ai-summary/history" element={<AIHistory />} />
-        <Route path="/tasks/report" element={<TaskReport />} />
+         <Route path="/tasks/report" element={<TaskReport />} />
+         <Route path="/admin/roles" element={<Roles />} />
+         <Route path="/admin/config-manager" element={<ConfigManager />} />
+         <Route path="/admin/dynamic/:module" element={<DynamicPage />} />
          <Route path="/todo" element={<Todo />} />
       </Routes>
     </>

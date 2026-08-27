@@ -194,16 +194,26 @@ router.post("/login", (req, res) => {
     const valid = bcrypt.compareSync(password, result[0].password);
     if (!valid) return res.sendStatus(401);
 
-    const token = jwt.sign(
-      { id: result[0].id, role: result[0].role },
-      "secret",
-      { expiresIn: "1d" }
-    );
+    db.query(
+      `SELECT rp.menu_key, rp.can_view, rp.can_create, rp.can_edit, rp.can_delete 
+       FROM role_permissions rp 
+       JOIN roles r ON rp.role_id = r.id 
+       WHERE r.name = ?`,
+      [result[0].role],
+      (err2, permissions) => {
+        const token = jwt.sign(
+          { id: result[0].id, role: result[0].role },
+          "secret",
+          { expiresIn: "1d" }
+        );
 
-    res.json({
-      token,
-      role: result[0].role,
-    });
+        res.json({
+          token,
+          role: result[0].role,
+          permissions: permissions || [],
+        });
+      }
+    );
   });
 });
 

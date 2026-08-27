@@ -882,7 +882,7 @@ const generateSummary = () => {
       {showSummaryModal && (
         <>
           <div className="al-modal-overlay" onClick={() => setShowSummaryModal(false)} />
-          <div className="al-modal-wrap al-modal-wrap-center">
+          <div className="al-modal-wrap">
             <div className="al-modal al-modal-lg">
               <div className="al-modal-header">
                 <div className="al-modal-header-left">
@@ -1007,13 +1007,10 @@ const styles = `
   .al-status-pill { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:20px; letter-spacing:0.04em; width:fit-content; }
   /* ── modal ── */
   .al-modal-overlay { position:fixed; inset:0; background:rgba(17,24,39,0.45); backdrop-filter:blur(2px); z-index:200; }
-  .al-modal-wrap { position:fixed; inset:0; z-index:201; display:flex; align-items:center; justify-content:flex-end; padding:16px; pointer-events:none; }
-  .al-modal-wrap-center { justify-content:center; }
-  .al-modal { width:420px; max-width:100%; max-height:calc(100vh - 32px); background:var(--surface); border-radius:var(--radius-lg); box-shadow:0 20px 60px rgba(0,0,0,0.18); display:flex; flex-direction:column; overflow:hidden; pointer-events:all; animation:al-slide-in 0.22s ease; }
-  .al-modal-lg { width:700px; }
-  @keyframes al-slide-in { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
-  .al-modal-wrap-center .al-modal { animation:al-fade-in 0.2s ease; }
-  @keyframes al-fade-in { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
+  .al-modal-wrap { position:fixed; inset:0; z-index:201; display:flex; align-items:center; justify-content:center; padding:16px; pointer-events:none; }
+  .al-modal { width:80%; max-width:720px; max-height:calc(100vh - 32px); background:var(--surface); border-radius:var(--radius-lg); box-shadow:0 20px 60px rgba(0,0,0,0.18); display:flex; flex-direction:column; overflow:hidden; pointer-events:all; animation:al-modal-center-in 0.22s ease; }
+  .al-modal-lg { max-width:720px; }
+  @keyframes al-modal-center-in { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
   .al-modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 20px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
   .al-modal-header-left { display:flex; flex-direction:column; gap:5px; }
   .al-modal-title { font-size:14px; font-weight:700; color:var(--text-primary); margin:0; letter-spacing:-0.01em; }

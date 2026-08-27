@@ -15,9 +15,10 @@ export default function UsersPresent() {
   const [showPassword, setShowPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // id to delete
   const [currentPage, setCurrentPage] = useState(1);
+  const [roles, setRoles]             = useState([]);
   const ROWS_PER_PAGE = 10;
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => { loadUsers(); loadRoles(); }, []);
 
   const showToast = (msg, type) => {
     setToast({ msg, type });
@@ -42,6 +43,15 @@ export default function UsersPresent() {
       showToast("Failed to load users.", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const res = await api.get("/roles/list");
+      setRoles(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Failed to load roles:", err);
     }
   };
 
@@ -309,10 +319,7 @@ export default function UsersPresent() {
                 <SharedSelect
                   value={selectedUser.role}
                   onChange={(val) => setSelectedUser({ ...selectedUser, role: val })}
-                  options={[
-                    { value: "admin", label: "Admin" },
-                    { value: "employee", label: "Employee" },
-                  ]}
+                  options={roles.map((r) => ({ value: r.name, label: r.name.charAt(0).toUpperCase() + r.name.slice(1) }))}
                   placeholder="Select a role…"
                 />
               </div>
@@ -543,20 +550,20 @@ const styles = `
 
   /* ── Overlay ── */
   .ul-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px);
     z-index: 1000; display: flex; align-items: center; justify-content: center;
     animation: sr-fade-in 0.15s ease; padding: 16px;
   }
   .ul-modal {
     background: var(--surface); border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    padding: 28px; width: 100%; max-width: 400px;
-    animation: ul-slide-up 0.2s ease;
+    padding: 28px; width: 80%; max-width: 420px; max-height: calc(100vh - 32px);
+    animation: ul-modal-center-in 0.2s ease;
     text-align: center;
   }
-  .ul-modal-lg { max-width: 640px; text-align: left; }
+  .ul-modal-lg { max-width: 720px; text-align: left; }
 
-  @keyframes ul-slide-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes ul-modal-center-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 
   .ul-modal-header {
     display: flex; align-items: flex-start; justify-content: space-between;
