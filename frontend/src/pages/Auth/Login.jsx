@@ -1,216 +1,369 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
+import Logo from "../../components/Logo";
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
   .vt-root *, .vt-root *::before, .vt-root *::after { box-sizing: border-box; }
 
   .vt-root {
     display: flex;
-    min-height: 100vh;
-    font-family: 'DM Sans', sans-serif;
-    background: #ECEEF5;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+    background: #F0F2F9;
   }
 
-  /* ─── LEFT ─── */
+  /* ═══ LEFT PANEL ═══ */
   .vt-left {
-    flex: 0 0 48%;
-    background: linear-gradient(150deg, #0B0A24 0%, #1A1660 52%, #3D35C2 100%);
+    flex: 0 0 52%;
+    background: linear-gradient(160deg, #0C0B2E 0%, #161452 40%, #2D28A0 100%);
     display: flex;
     flex-direction: column;
-    padding: clamp(32px, 5vw, 64px) clamp(28px, 5vw, 64px);
+    padding: 40px 60px;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
   }
+
   .vt-left::before {
     content: '';
     position: absolute; inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-    background-size: 52px 52px;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
     pointer-events: none;
   }
-  .vt-blob1 {
-    position: absolute; width: 420px; height: 420px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(99,82,255,0.22) 0%, transparent 68%);
-    top: -110px; right: -110px; pointer-events: none;
+
+  .vt-orb {
+    position: absolute; border-radius: 50%; pointer-events: none;
+    filter: blur(60px);
   }
-  .vt-blob2 {
-    position: absolute; width: 280px; height: 280px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(96,165,250,0.14) 0%, transparent 68%);
-    bottom: 20px; left: -80px; pointer-events: none;
+  .vt-orb-1 { width: 300px; height: 300px; background: rgba(99,102,241,0.2); top: -80px; right: -60px; animation: vt-pulse 7s ease-in-out infinite; }
+  .vt-orb-2 { width: 220px; height: 220px; background: rgba(59,130,246,0.12); bottom: 10%; left: -50px; animation: vt-pulse 9s ease-in-out infinite reverse; }
+  .vt-orb-3 { width: 160px; height: 160px; background: rgba(168,85,247,0.1); top: 45%; right: 20%; animation: vt-pulse 11s ease-in-out infinite; }
+
+  @keyframes vt-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.08); }
   }
 
   .vt-left-inner {
     flex: 1; display: flex; flex-direction: column;
-    justify-content: center; position: relative; z-index: 1;
+    position: relative; z-index: 1;
   }
+
   .vt-brand {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: clamp(28px, 4vw, 48px);
-  }
-  .vt-brand-icon {
-    width: 42px; height: 42px; border-radius: 11px;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.18);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; color: #C4B5FD; backdrop-filter: blur(6px);
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 40px;
   }
   .vt-brand-name {
- 
-    font-size: 15px; font-weight: 800; color: #fff; letter-spacing: 0.06em;
+    font-size: 16px; font-weight: 700; color: #fff;
   }
-  .vt-heading {
-  
-    font-size: clamp(22px, 3.2vw, 32px);
-    font-weight: 700; color: #fff; line-height: 1.22;
-    margin: 0 0 clamp(12px, 1.8vw, 18px);
+  .vt-brand-tag {
+    display: block;
+    font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-top: 2px;
   }
-  .vt-heading em { font-style: normal; color: #A5B4FC; }
-  .vt-sub {
-    font-size: clamp(12px, 1.1vw, 14.5px);
-    color: rgba(255,255,255,0.48); line-height: 1.78;
-    max-width: 370px; margin: 0 0 clamp(28px, 4vw, 44px);
-  }
-  .vt-tiles {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: clamp(8px, 1.2vw, 13px);
-  }
-  .vt-tile {
-    background: rgba(255,255,255,0.055);
-    border: 1px solid rgba(255,255,255,0.09); border-radius: 12px;
-    padding: clamp(11px, 1.3vw, 16px) clamp(12px, 1.3vw, 16px);
-    display: flex; align-items: center; gap: 10px;
-    transition: background 0.2s, border-color 0.2s;
-  }
-  .vt-tile:hover { background: rgba(255,255,255,0.1); border-color: rgba(165,180,252,0.28); }
-  .vt-tile i { font-size: 14px; color: #A5B4FC; flex-shrink: 0; }
-  .vt-tile span {
-    font-size: clamp(11px, 0.95vw, 11.5px); font-weight: 600;
-    color: rgba(255,255,255,0.75);
-  }
-  .vt-left-foot {
-    display: flex; align-items: center; gap: 7px;
-    position: relative; z-index: 1;
-    margin-top: clamp(24px, 3.5vw, 40px);
-  }
-  .vt-left-foot span { font-size: 11px; color: rgba(255,255,255,0.32); font-weight: 500; }
 
-  /* ─── RIGHT ─── */
+  .vt-heading {
+    font-size: 32px;
+    font-weight: 700; color: #fff; line-height: 1.2;
+    margin: 0 0 14px;
+  }
+  .vt-heading em {
+    font-style: normal;
+    background: linear-gradient(135deg, #818CF8 0%, #C4B5FD 50%, #93C5FD 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .vt-sub {
+    font-size: 14px;
+    color: rgba(255,255,255,0.38); line-height: 1.75;
+    max-width: 360px; margin: 0;
+    font-weight: 300;
+  }
+
+  /* ── Clock Illustration ── */
+  .vt-illustration {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 36px 0;
+    overflow: visible;
+  }
+
+  .vt-clock-wrap {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    overflow: visible;
+  }
+
+  .vt-clock-ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.06);
+    animation: vt-rotate 30s linear infinite;
+  }
+  .vt-clock-ring::before {
+    content: '';
+    position: absolute; top: -3px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #818CF8;
+  }
+
+  @keyframes vt-rotate { to { transform: rotate(360deg); } }
+
+  .vt-clock-face {
+    position: absolute; inset: 16px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .vt-clock-tick {
+    position: absolute;
+    width: 2px; height: 10px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    top: 10px; left: 50%; transform-origin: bottom center;
+  }
+  .vt-clock-tick.major { height: 14px; background: rgba(255,255,255,0.4); width: 2.5px; }
+
+  .vt-clock-hand-hour {
+    position: absolute;
+    width: 3px; height: 35%;
+    background: #fff; border-radius: 3px;
+    bottom: 50%; left: 50%; transform-origin: bottom center;
+    transform: translateX(-50%) rotate(-30deg);
+  }
+  .vt-clock-hand-min {
+    position: absolute;
+    width: 2px; height: 42%;
+    background: rgba(255,255,255,0.7); border-radius: 2px;
+    bottom: 50%; left: 50%; transform-origin: bottom center;
+    transform: translateX(-50%) rotate(60deg);
+  }
+  .vt-clock-center {
+    position: absolute;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #818CF8;
+    box-shadow: 0 0 16px rgba(129,140,248,0.6);
+    z-index: 2;
+  }
+
+  .vt-float-card {
+    position: absolute;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 12px 16px;
+    backdrop-filter: blur(12px);
+    animation: vt-float-card 5s ease-in-out infinite;
+  }
+  .vt-float-card-1 { bottom: 4%; right: -55%; animation-delay: 0s; }
+  .vt-float-card-2 { top: 2%; left: -56%; animation-delay: 1.5s; }
+
+  @keyframes vt-float-card {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .vt-fc-row { display: flex; align-items: center; gap: 10px; }
+  .vt-fc-icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .vt-fc-icon-green { background: rgba(16,185,129,0.2); color: #6EE7B7; }
+  .vt-fc-icon-blue { background: rgba(59,130,246,0.2); color: #93C5FD; }
+  .vt-fc-label { font-size: 10.5px; color: rgba(255,255,255,0.4); font-weight: 500; }
+  .vt-fc-value { font-size: 14px; color: #fff; font-weight: 600; margin-top: 2px; }
+
+  .vt-left-foot {
+    display: flex; align-items: center; gap: 16px;
+    position: relative; z-index: 1;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .vt-stat { display: flex; align-items: center; gap: 6px; }
+  .vt-stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .vt-stat-dot.green { background: #10B981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+  .vt-stat-dot.blue { background: #3B82F6; box-shadow: 0 0 8px rgba(59,130,246,0.5); }
+  .vt-stat-label { font-size: 11px; color: rgba(255,255,255,0.3); font-weight: 500; }
+
+  /* ═══ RIGHT PANEL — Integrated White Area ═══ */
   .vt-right {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    padding: clamp(32px, 5vw, 64px) clamp(20px, 4vw, 48px);
+    padding: 40px 48px;
+    position: relative;
+    background: #ffffff;
   }
-  .vt-card {
-    width: 100%; max-width: 430px; background: #fff;
-    border-radius: 20px;
-    padding: clamp(28px, 4vw, 44px) clamp(24px, 4vw, 44px);
-    border: 1px solid #DDE0EC;
-    box-shadow: 0 10px 48px rgba(14,18,56,0.1), 0 2px 8px rgba(14,18,56,0.04);
-  }
-  .vt-card-head {
-    display: flex; align-items: center; gap: 13px;
-    margin-bottom: clamp(22px, 3vw, 32px);
-  }
-  .vt-head-icon {
-    width: 46px; height: 46px; border-radius: 12px; background: #EDEEFF;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; color: #4338CA; flex-shrink: 0;
-  }
-  .vt-card-title {
-  
-    font-size: clamp(14px, 1.8vw, 21px); font-weight: 700;
-    color: #0D1030; margin: 0; line-height: 1.2;
-  }
-  .vt-card-sub { font-size: 11px; color: #828BAA; margin: 3px 0 0; }
 
-  .vt-form { display: flex; flex-direction: column; gap: clamp(14px, 1.8vw, 20px); }
-  .vt-field { display: flex; flex-direction: column; gap: 6px; }
+  .vt-login-wrap {
+    width: 100%; max-width: 400px;
+  }
+
+  .vt-login-head {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .vt-login-logo-img {
+    display: block;
+    margin: 0 auto 20px;
+    width: 180px; height: 56px;
+    object-fit: contain;
+  }
+  .vt-login-title {
+    font-size: 24px; font-weight: 700;
+    color: #0F1029; margin: 0 0 8px; line-height: 1.2;
+  }
+  .vt-login-sub {
+    font-size: 14px; color: #8B92B3; margin: 0; font-weight: 400;
+  }
+
+  .vt-form {
+    display: flex; flex-direction: column;
+    gap: 20px;
+  }
+  .vt-field { display: flex; flex-direction: column; gap: 7px; }
   .vt-lrow { display: flex; justify-content: space-between; align-items: center; }
-  .vt-label { font-size: 13px; font-weight: 600; color: #2D3460; }
-  .vt-forgot { font-size: 12px; color: #4338CA; font-weight: 500; cursor: pointer; }
-  .vt-forgot:hover { text-decoration: underline; }
+  .vt-label { font-size: 14px; font-weight: 600; color: #374151; }
+  .vt-forgot {
+    font-size: 12px; color: #4338CA; font-weight: 600;
+    cursor: pointer; transition: color 0.15s;
+  }
+  .vt-forgot:hover { color: #3730A3; text-decoration: underline; }
 
   .vt-iw {
     display: flex; align-items: center;
-    border: 1.5px solid #E0E3EF; border-radius: 10px;
-    background: #F8F9FD;
-    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    border: 1.5px solid #E2E4ED;
+    border-radius: 10px;
+    background: #F9FAFC;
+    transition: all 0.2s ease;
     position: relative;
   }
   .vt-iw:focus-within {
     border-color: #4338CA;
-    box-shadow: 0 0 0 3px rgba(67,56,202,0.1);
+    box-shadow: 0 0 0 3px rgba(67,56,202,0.08);
     background: #fff;
   }
-  .vt-iw .vt-icon { font-size: 12px; color: #A8AECA; padding: 0 12px; flex-shrink: 0; }
+  .vt-iw .vt-icon {
+    font-size: 15px; color: #A8AECA;
+    padding: 0 14px; flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .vt-iw:focus-within .vt-icon { color: #4338CA; }
   .vt-iw input {
     flex: 1; border: none; outline: none;
-    font-size: 12px; font-weight: 500; color: #0D1030;
+    font-size: 14px; font-weight: 500; color: #0F1029;
     background: transparent;
-    padding: clamp(9px, 1.1vw, 12px) 12px clamp(9px, 1.1vw, 12px) 0;
-    font-family: 'DM Sans', sans-serif; width: 100%;
+    padding: 14px 14px 14px 0;
+    font-family: 'Poppins', sans-serif; width: 100%;
   }
-  .vt-iw input::placeholder { color: #BFC6DC; font-weight: 400; }
+  .vt-iw input::placeholder { color: #C0C6D8; font-weight: 400; }
+
   .vt-eye {
-    position: absolute; right: 10px;
+    position: absolute; right: 12px;
     background: none; border: none; cursor: pointer;
-    padding: 4px 6px; color: #A8AECA; font-size: 12px;
-    display: flex; align-items: center; transition: color 0.15s;
+    padding: 4px 6px; color: #A8AECA; font-size: 15px;
+    display: flex; align-items: center;
+    transition: color 0.15s;
   }
   .vt-eye:hover { color: #4338CA; }
 
   .vt-btn {
     width: 100%;
-    padding: clamp(10px, 1.3vw, 13px) 20px;
+    padding: 14px 24px;
     background: linear-gradient(135deg, #3730A3 0%, #5048E5 100%);
     color: #fff; border: none; border-radius: 10px;
-    font-size: 12px; font-weight: 600;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    font-family: 'DM Sans', sans-serif; letter-spacing: 0.015em;
-    box-shadow: 0 4px 18px rgba(55,48,163,0.38);
-    transition: opacity 0.15s, transform 0.12s, box-shadow 0.15s;
+    font-size: 16px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 4px 16px rgba(55,48,163,0.3);
+    transition: all 0.2s ease;
     margin-top: 4px;
+    cursor: pointer;
   }
   .vt-btn:hover:not(:disabled) {
-    opacity: 0.92; transform: translateY(-1px);
-    box-shadow: 0 7px 22px rgba(55,48,163,0.44);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(55,48,163,0.38);
   }
   .vt-btn:active:not(:disabled) { transform: translateY(0); }
   .vt-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+  .vt-btn i { font-size: 16px; }
 
   .vt-div {
-    display: flex; align-items: center; gap: 12px;
-    margin: clamp(18px, 2.5vw, 26px) 0 clamp(14px, 2vw, 20px);
+    display: flex; align-items: center; gap: 14px;
+    margin: 24px 0 20px;
   }
   .vt-div-line { flex: 1; height: 1px; background: #E8EAF2; }
-  .vt-div-txt { font-size: 11px; color: #B8BDD4; font-weight: 500; }
+  .vt-div-txt {
+    font-size: 12px; color: #B8BDD4; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
 
-  .vt-reg { text-align: center; font-size: 10px; color: #828BAA; margin: 0; }
-  .vt-reg a { color: #4338CA; font-weight: 600; text-decoration: none; }
-  .vt-reg a:hover { text-decoration: underline; }
-  .vt-foot { margin-top: clamp(20px, 3vw, 30px); font-size: 10px; color: #A8AECA; text-align: center; }
+  .vt-reg { text-align: center; font-size: 14px; color: #8B92B3; margin: 0; }
+  .vt-reg a {
+    color: #4338CA; font-weight: 600; text-decoration: none;
+    transition: color 0.15s;
+  }
+  .vt-reg a:hover { color: #3730A3; text-decoration: underline; }
 
-  /* ─── RESPONSIVE ─── */
-  @media (max-width: 900px) {
+  .vt-foot {
+    margin-top: 32px;
+    font-size: 12px; color: #A8AECA; text-align: center;
+  }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 1200px) {
+    .vt-left { flex: 0 0 48%; padding: 36px 52px; }
+    .vt-heading { font-size: 28px; }
+    .vt-clock-wrap { width: 220px; height: 220px; }
+  }
+  @media (max-width: 1024px) {
+    .vt-left { flex: 0 0 45%; padding: 32px 40px; }
+    .vt-heading { font-size: 24px; }
+    .vt-clock-wrap { width: 200px; height: 200px; }
+  }
+  @media (max-width: 860px) {
     .vt-root { flex-direction: column; }
-    .vt-left { flex: 0 0 auto; }
-    .vt-tiles { grid-template-columns: repeat(4, 1fr); }
-    .vt-card { max-width: 100%; }
+    .vt-left { flex: 0 0 auto; height: auto; padding: 28px 28px 24px; overflow: hidden; }
+    .vt-brand { margin-bottom: 20px; }
+    .vt-heading { font-size: 22px; margin-bottom: 10px; }
+    .vt-sub { font-size: 13px; }
+    .vt-illustration { margin: 16px 0; }
+    .vt-clock-wrap { width: 160px; height: 160px; }
+    .vt-float-card { display: none; }
+    .vt-left-foot { display: none; }
+    .vt-right { padding: 28px 24px 32px; }
+    .vt-login-title { font-size: 20px; }
   }
-  @media (max-width: 600px) {
-    .vt-left { padding: 28px 20px; }
-    .vt-tiles { grid-template-columns: 1fr 1fr; }
-    .vt-right { padding: 28px 16px; }
-    .vt-card { padding: 26px 20px; border-radius: 16px; }
+  @media (max-width: 640px) {
+    .vt-left { padding: 22px 18px 20px; }
+    .vt-heading { font-size: 20px; }
+    .vt-sub { font-size: 12.5px; }
+    .vt-clock-wrap { width: 130px; height: 130px; }
+    .vt-right { padding: 24px 16px 28px; }
+    .vt-login-head { margin-bottom: 24px; }
+    .vt-login-title { font-size: 18px; }
+    .vt-form { gap: 16px; }
+    .vt-btn { padding: 12px 20px; font-size: 15px; }
+    .vt-foot { margin-top: 20px; font-size: 11px; }
   }
-  @media (max-width: 360px) {
-    .vt-card { padding: 22px 14px; }
-    .vt-tile span { font-size: 10.5px; }
+  @media (max-width: 380px) {
+    .vt-left { padding: 18px 14px 16px; }
+    .vt-heading { font-size: 18px; }
+    .vt-clock-wrap { width: 110px; height: 110px; }
+    .vt-right { padding: 20px 14px 24px; }
   }
 `;
 
@@ -219,9 +372,14 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [now, setNow] = useState(new Date());
   const navigate = useNavigate();
 
-  // ── LOGIC UNTOUCHED ──
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const login = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -239,71 +397,114 @@ export default function Login() {
     }
   };
 
+  const ticks = Array.from({ length: 12 }, (_, i) => i);
+
+  const hours = now.getHours() % 12;
+  const minutes = now.getMinutes();
+  const seconds = now.getSeconds();
+  const hourDeg = hours * 30 + minutes * 0.5;
+  const minDeg = minutes * 6 + seconds * 0.1;
+
+  const fmtTime = (d) => {
+    let h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${h}:${m} ${ampm}`;
+  };
+
   return (
     <>
       <style>{css}</style>
       <div className="vt-root">
 
-        {/* ── LEFT PANEL ── */}
+        {/* LEFT */}
         <div className="vt-left">
-          <div className="vt-blob1" />
-          <div className="vt-blob2" />
+          <div className="vt-orb vt-orb-1" />
+          <div className="vt-orb vt-orb-2" />
+          <div className="vt-orb vt-orb-3" />
 
           <div className="vt-left-inner">
             <div className="vt-brand">
-              <div className="vt-brand-icon">
-                <i className="bi bi-layers-half" />
+              {/* <Logo size={38} /> */}
+              <div>
+                <span className="vt-brand-name">Voltech</span>
+                <span className="vt-brand-tag">Attendance Platform</span>
               </div>
-              <span className="vt-brand-name">Voltech</span>
             </div>
 
             <h2 className="vt-heading">
-              Manage attendances<br />
-              <em>&amp; timesheets easily.</em>
+              Track time,<br />
+              <em>manage attendance.</em>
             </h2>
             <p className="vt-sub">
-              Everything your team needs — attendance tracking, timesheets,
-              task management, and AI-powered summaries in one places.
+              Clock in, log hours, and stay on top of your team&apos;s
+              schedule — all from a single dashboard.
             </p>
 
-            <div className="vt-tiles">
-              {[
-                { icon: "bi-people-fill", label: "Team Management" },
-                { icon: "bi-calendar2-check-fill", label: "Attendance" },
-                { icon: "bi-clock-fill", label: "Timesheets" },
-                { icon: "bi-journal-check", label: "Task Reports" },
-              ].map((f) => (
-                <div key={f.label} className="vt-tile">
-                  <i className={`bi ${f.icon}`} />
-                  <span>{f.label}</span>
+            <div className="vt-illustration">
+              <div className="vt-clock-wrap">
+                <div className="vt-clock-ring" />
+                <div className="vt-clock-face">
+                  {ticks.map((i) => (
+                    <div
+                      key={i}
+                      className={`vt-clock-tick ${i % 3 === 0 ? "major" : ""}`}
+                      style={{ transform: `translateX(-50%) rotate(${i * 30}deg)` }}
+                    />
+                  ))}
+                  <div className="vt-clock-hand-hour" style={{ transform: `translateX(-50%) rotate(${hourDeg}deg)` }} />
+                  <div className="vt-clock-hand-min" style={{ transform: `translateX(-50%) rotate(${minDeg}deg)` }} />
+                  <div className="vt-clock-center" />
                 </div>
-              ))}
+                <div className="vt-float-card vt-float-card-1">
+                  <div className="vt-fc-row">
+                    <div className="vt-fc-icon vt-fc-icon-green">
+                      <i className="bi bi-box-arrow-in-right" />
+                    </div>
+                    <div>
+                      <div className="vt-fc-label">Time</div>
+                      <div className="vt-fc-value">{fmtTime(now)}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="vt-float-card vt-float-card-2">
+                  <div className="vt-fc-row">
+                    <div className="vt-fc-icon vt-fc-icon-blue">
+                      <i className="bi bi-clock-history" />
+                    </div>
+                    <div>
+                      <div className="vt-fc-label">Hours Today</div>
+                      <div className="vt-fc-value">8h 30m</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="vt-left-foot">
-            <i className="bi bi-shield-check" style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }} />
-            <span>Secure &amp; encrypted access</span>
+            <div className="vt-stat">
+              <div className="vt-stat-dot green" />
+              <span className="vt-stat-label">System Online</span>
+            </div>
+            <div className="vt-stat">
+              <div className="vt-stat-dot blue" />
+              <span className="vt-stat-label">v2.4.1</span>
+            </div>
           </div>
         </div>
 
-        {/* ── RIGHT PANEL ── */}
+        {/* RIGHT — Integrated White Area (no card/panel) */}
         <div className="vt-right">
-          <div className="vt-card">
-
-            <div className="vt-card-head">
-              <div className="vt-head-icon">
-                <i className="bi bi-person-fill" />
-              </div>
-              <div>
-                <h3 className="vt-card-title">Sign In</h3>
-                <p className="vt-card-sub">Welcome back! Enter your credentials.</p>
-              </div>
+          <div className="vt-login-wrap">
+            <div className="vt-login-head">
+              <img src="/logo2.png" alt="Voltech Logo" className="vt-login-logo-img" />
+              <h3 className="vt-login-title">Welcome back</h3>
+              <p className="vt-login-sub">Sign in to your account to continue.</p>
             </div>
 
             <form onSubmit={login} className="vt-form">
-
-              {/* Email */}
               <div className="vt-field">
                 <label className="vt-label">Email address</label>
                 <div className="vt-iw">
@@ -318,7 +519,6 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Password */}
               <div className="vt-field">
                 <div className="vt-lrow">
                   <label className="vt-label">Password</label>
@@ -328,11 +528,11 @@ export default function Login() {
                   <i className="bi bi-lock vt-icon" />
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    style={{ paddingRight: 40 }}
+                    style={{ paddingRight: 42 }}
                   />
                   <button
                     type="button"
@@ -344,29 +544,19 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Submit — logic props preserved exactly */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="vt-btn"
-                style={{ opacity: loading ? 0.75 : 1, cursor: loading ? "not-allowed" : "pointer" }}
-              >
+              <button type="submit" disabled={loading} className="vt-btn">
                 {loading ? (
                   <>
-                    <span
-                      className="spinner-border spinner-border-sm"
-                      style={{ width: 14, height: 14 }}
-                    />
+                    <span className="spinner-border spinner-border-sm" style={{ width: 15, height: 15 }} />
                     Signing in...
                   </>
                 ) : (
                   <>
                     Sign In
-                    <i className="bi bi-arrow-right" style={{ fontSize: 14 }} />
+                    <i className="bi bi-arrow-right" />
                   </>
                 )}
               </button>
-
             </form>
 
             <div className="vt-div">
@@ -376,8 +566,7 @@ export default function Login() {
             </div>
 
             <p className="vt-reg">
-              New employee?{" "}
-              <Link to="/register">Create an account</Link>
+              New employee? <Link to="/register">Create an account</Link>
             </p>
           </div>
 

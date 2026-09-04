@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import Logo from "../Logo";
 
 export default function Sidebar({ isOpen, onClose }) {
   const { pathname }          = useLocation();
@@ -82,8 +83,8 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* Brand */}
       <div className="sidebar-brand">
-        <div className="sidebar-brand-icon">
-          <i className="bi bi-layers-half"></i>
+        <div className="sidebar-logo-rect">
+          <Logo size={26} />
         </div>
         <div className="sidebar-brand-text">
           Voltech

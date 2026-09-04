@@ -84,12 +84,13 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
           height: 64px;
           padding: 0 24px;
           background: #ffffff;
-          border-bottom: 1px solid #e8ecf0;
-          box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+          border-bottom: 1px solid #e2e8f0;
+          box-shadow: 0 1px 8px rgba(0,0,0,0.04);
           position: sticky;
           top: 0;
           z-index: 100;
           gap: 12px;
+          font-family: 'Poppins', sans-serif;
         }
 
         /* ── Left side ────────────────────────────────── */
@@ -106,9 +107,9 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
         }
 
         .topbar-title {
-          font-size: 17px;
-          font-weight: 700;
-          color: #111827;
+          font-size: 15px;
+          font-weight: 600;
+          color: #1e293b;
           line-height: 1.2;
           white-space: nowrap;
           overflow: hidden;
@@ -117,7 +118,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
 
         .topbar-subtitle {
           font-size: 11px;
-          color: #9ca3af;
+          color: #94a3b8;
           font-weight: 400;
           white-space: nowrap;
           overflow: hidden;
@@ -126,7 +127,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
 
         /* ── Hamburger Button ─────────────────────────── */
         .topbar-hamburger {
-          display: none;            /* hidden on desktop */
+          display: none;
           flex-shrink: 0;
           width: 40px;
           height: 40px;
@@ -142,11 +143,11 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
         }
 
         .topbar-hamburger:hover {
-          background: #f3f4f6;
+          background: #f1f5f9;
         }
 
         .topbar-hamburger:active {
-          background: #e5e7eb;
+          background: #e2e8f0;
           transform: scale(0.95);
         }
 
@@ -165,7 +166,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
           display: block;
           height: 2px;
           border-radius: 2px;
-          background: #374151;
+          background: #475569;
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           transform-origin: center;
         }
@@ -205,19 +206,19 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
           border: none;
           border-radius: 10px;
           background: transparent;
-          color: #6b7280;
+          color: #64748b;
           font-size: 17px;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           position: relative;
-          transition: background 0.16s ease, color 0.16s ease;
+          transition: background 0.18s ease, color 0.18s ease;
         }
 
         .topbar-icon-btn:hover {
-          background: #f3f4f6;
-          color: #111827;
+          background: #f1f5f9;
+          color: #1e293b;
         }
 
         .topbar-notif-badge {
@@ -238,17 +239,17 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
           gap: 9px;
           height: 40px;
           padding: 0 10px 0 6px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          background: #f9fafb;
+          background: #f8fafc;
           cursor: pointer;
-          transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+          transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
 
         .topbar-profile-btn:hover {
-          background: #f3f4f6;
-          border-color: #d1d5db;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          background: #f1f5f9;
+          border-color: #cbd5e1;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
 
         .topbar-profile-info {
@@ -259,7 +260,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
         .topbar-profile-name {
           font-size: 13px;
           font-weight: 600;
-          color: #111827;
+          color: #1e293b;
           white-space: nowrap;
           max-width: 120px;
           overflow: hidden;
@@ -268,7 +269,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
 
         .topbar-profile-role {
           font-size: 11px;
-          color: #9ca3af;
+          color: #94a3b8;
         }
 
         .topbar-profile-chevron {
@@ -285,7 +286,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
         .ui-avatar.sm {
           width: 32px;
           height: 32px;
-          border-radius: 8px;
+          border-radius: 10px;
           background: linear-gradient(135deg, var(--primary, #6366f1), #8b5cf6);
           color: #fff;
           font-size: 12px;
@@ -299,30 +300,30 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
 
         /* ── Dropdown ─────────────────────────────────── */
         .dropdown-menu {
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
           padding: 6px;
           min-width: 180px;
         }
 
         .dropdown-item {
-          border-radius: 8px;
-          font-size: 14px;
+          border-radius: 10px;
+          font-size: 13px;
           padding: 9px 12px;
           display: flex;
           align-items: center;
           gap: 9px;
-          transition: background 0.14s ease;
+          transition: background 0.16s ease;
         }
 
         .dropdown-item:hover {
-          background: #f3f4f6;
+          background: #f1f5f9;
         }
 
         .dropdown-divider {
           margin: 4px 0;
-          border-color: #f3f4f6;
+          border-color: #f1f5f9;
         }
 
         /* ── TABLET  (768px – 1023px) ─────────────────── */
@@ -333,11 +334,11 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
           }
 
           .topbar-subtitle {
-            display: none;          /* hide subtitle on tablet */
+            display: none;
           }
 
           .topbar-title {
-            font-size: 15px;
+            font-size: 14px;
           }
         }
 
@@ -348,17 +349,14 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
             height: 56px;
           }
 
-          /* Show hamburger */
           .topbar-hamburger {
             display: flex;
           }
 
-          /* Hide search on small phones */
           .topbar-icon-btn[title="Search"] {
             display: none;
           }
 
-          /* Collapse profile text, show avatar only */
           .topbar-profile-info,
           .topbar-profile-chevron {
             display: none;
@@ -379,7 +377,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
           }
 
           .topbar-title {
-            font-size: 14px;
+            font-size: 13px;
           }
 
           .topbar-icon-btn[title="Notifications"] {

@@ -2,42 +2,68 @@ import { useState, useEffect } from "react";
 import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import SharedSelect from "../../components/SharedSelect";
+import Logo from "../../components/Logo";
 
-/* ─── Inject responsive styles once ─────────────────────────────────── */
-const STYLE_ID = "register-responsive-styles";
+const STYLE_ID = "register-corporate-styles";
 const injectStyles = () => {
   if (document.getElementById(STYLE_ID)) return;
   const el = document.createElement("style");
   el.id = STYLE_ID;
   el.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; }
-
-    html, body, #root {
-      height: 100%;
-      overflow: hidden;
-      margin: 0;
-      padding: 0;
-    }
+    html, body, #root { height: 100%; overflow: hidden; margin: 0; padding: 0; }
 
     .reg-root {
       display: flex;
       height: 100vh;
       overflow: hidden;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background: #F3F4F9;
+      font-family: 'Poppins', sans-serif;
+      background: #F0F2F9;
     }
 
     /* ── Left panel ── */
     .reg-left {
-      flex: 0 0 46%;
-      background: linear-gradient(145deg, #1E1B4B 0%, #3730A3 60%, #5048E5 100%);
+      flex: 0 0 48%;
+      background: linear-gradient(155deg, #0F0E2A 0%, #1A1660 48%, #3D35C2 100%);
       display: flex;
       flex-direction: column;
-      padding: 44px 52px;
+      padding: clamp(32px, 5vw, 64px) clamp(28px, 5vw, 56px);
       position: relative;
       overflow: hidden;
+    }
+
+    .reg-left::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+    }
+
+    .reg-blob1 {
+      position: absolute; width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,82,255,0.18) 0%, transparent 65%);
+      top: -120px; right: -100px; pointer-events: none;
+      animation: reg-float 8s ease-in-out infinite;
+    }
+    .reg-blob2 {
+      position: absolute; width: 280px; height: 280px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(96,165,250,0.1) 0%, transparent 65%);
+      bottom: -30px; left: -60px; pointer-events: none;
+      animation: reg-float 10s ease-in-out infinite reverse;
+    }
+    .reg-blob3 {
+      position: absolute; width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 65%);
+      top: 45%; left: 25%; pointer-events: none;
+      animation: reg-float 12s ease-in-out infinite;
+    }
+
+    @keyframes reg-float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.02); }
     }
 
     .reg-left-content {
@@ -49,80 +75,73 @@ const injectStyles = () => {
       z-index: 1;
     }
 
-    .reg-brand-mark {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 12px;
+    /* Brand */
+    .reg-brand {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: clamp(28px, 4vw, 48px);
     }
-
     .reg-brand-name {
-      font-size: 13px;
-      font-weight: 700;
-      color: rgba(255,255,255,0.5);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 28px;
+      font-size: 16px; font-weight: 700; color: #fff;
+    }
+    .reg-brand-tag {
+      display: block;
+      font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.3);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-top: 2px;
     }
 
+    /* Heading */
     .reg-left-heading {
-      font-size: 34px;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1.2;
-      margin: 0 0 16px;
+      font-size: clamp(24px, 3.5vw, 34px);
+      font-weight: 700; color: #fff; line-height: 1.2;
+      margin: 0 0 clamp(14px, 2vw, 20px);
     }
-
-    .reg-left-heading-accent { color: #A5B4FC; }
-
+    .reg-left-heading-accent {
+      font-style: normal;
+      background: linear-gradient(135deg, #818CF8 0%, #C4B5FD 50%, #93C5FD 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     .reg-left-sub {
-      font-size: 14.5px;
-      color: rgba(255,255,255,0.55);
-      line-height: 1.7;
-      margin: 0 0 32px;
-      max-width: 340px;
+      font-size: clamp(13px, 1.2vw, 14px);
+      color: rgba(255,255,255,0.38); line-height: 1.75;
+      margin: 0 0 clamp(28px, 4vw, 44px);
+      max-width: 360px; font-weight: 300;
     }
 
-    .reg-steps-list {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+    /* Steps */
+    .reg-steps {
+      display: flex; flex-direction: column; gap: 14px;
     }
-
-    .reg-step-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
+    .reg-step {
+      display: flex; align-items: center; gap: 14px;
     }
-
     .reg-step-icon-wrap {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 40px; height: 40px; border-radius: 11px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
-      border: 1px solid rgba(255,255,255,0.1);
     }
-
     .reg-step-icon { font-size: 16px; color: #A5B4FC; }
-    .reg-step-text { font-size: 13.5px; font-weight: 500; color: rgba(255,255,255,0.75); }
+    .reg-step-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); }
 
-    .reg-left-footer {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      position: relative;
-      z-index: 1;
+    /* Bottom */
+    .reg-left-foot {
+      display: flex; align-items: center; gap: 8px;
+      position: relative; z-index: 1;
+      margin-top: clamp(24px, 3.5vw, 40px);
+      padding-top: clamp(18px, 3vw, 28px);
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
-
-    .reg-left-footer-text { font-size: 12px; color: rgba(255,255,255,0.35); font-weight: 500; }
+    .reg-left-foot-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: rgba(5,150,105,0.15);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .reg-left-foot-icon i { font-size: 12px; color: #6EE7B7; }
+    .reg-left-foot span { font-size: 11.5px; color: rgba(255,255,255,0.3); font-weight: 500; }
 
     /* ── Right panel ── */
     .reg-right {
@@ -131,193 +150,147 @@ const injectStyles = () => {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 32px 28px;
+      padding: clamp(28px, 4vw, 48px) clamp(20px, 4vw, 44px);
       overflow: hidden;
+      position: relative;
+      background: #ffffff;
     }
 
+    /* ── Form Area (integrated, no card) ── */
     .reg-form-card {
       width: 100%;
-      max-width: 460px;
-      background: #fff;
-      border-radius: 18px;
-      padding: 36px 38px;
-      border: 1px solid #E5E7EB;
-      box-shadow: 0 6px 30px rgba(0,0,0,0.08);
-    }
-
-    .reg-form-header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 24px;
-    }
-
-    .reg-form-icon-wrap {
-      width: 46px;
-      height: 46px;
-      border-radius: 12px;
-      background: #EEF2FF;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .reg-form-title  { font-size: 18px; font-weight: 700; color: #111827; margin: 0; line-height: 1.2; }
-    .reg-form-subtitle { font-size: 13px; color: #6B7280; margin: 3px 0 0; }
-
-    .reg-error-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #FEF2F2;
-      border: 1px solid #FECACA;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 12.5px;
-      font-weight: 500;
-      color: #DC2626;
-      margin-bottom: 16px;
-    }
-
-    .reg-form { display: flex; flex-direction: column; gap: 14px; }
-
-    .reg-field-group { display: flex; flex-direction: column; gap: 5px; }
-
-    .reg-label { font-size: 12.5px; font-weight: 600; color: #374151; }
-
-    .reg-input-wrap {
-      display: flex;
-      align-items: center;
-      border: 1.5px solid #E5E7EB;
-      border-radius: 9px;
-      background: #fff;
+      max-width: 420px;
       position: relative;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      height: 46px;
+      z-index: 1;
     }
 
-    .reg-input-icon { font-size: 14px; color: #9CA3AF; padding: 0 12px; flex-shrink: 0; }
+    /* Card header */
+    .reg-form-header {
+      text-align: center;
+      margin-bottom: clamp(24px, 3vw, 32px);
+    }
+    .reg-form-logo {
+      margin: 0 auto 20px;
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 12px rgba(67,56,202,0.1);
+    }
+    .reg-form-logo img {
+      width: 32px; height: 32px; object-fit: contain;
+    }
+    .reg-form-title {
+      font-size: 24px; font-weight: 700;
+      color: #0D1030; margin: 0 0 8px; line-height: 1.2;
+    }
+    .reg-form-subtitle { font-size: 14px; color: #828BAA; margin: 0; font-weight: 400; }
 
+    /* Error */
+    .reg-error-box {
+      display: flex; align-items: center; gap: 8px;
+      background: #FEF2F2; border: 1px solid #FECACA;
+      border-radius: 10px; padding: 11px 16px;
+      font-size: 12.5px; font-weight: 600;
+      color: #DC2626; margin-bottom: 16px;
+    }
+
+    /* Form */
+    .reg-form { display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 20px); }
+    .reg-field-group { display: flex; flex-direction: column; gap: 7px; }
+    .reg-label { font-size: 14px; font-weight: 600; color: #374151; }
+
+    /* Input */
+    .reg-input-wrap {
+      display: flex; align-items: center;
+      border: 1.5px solid #E2E4ED; border-radius: 10px;
+      background: #F9FAFC; position: relative;
+      transition: all 0.2s ease; height: 48px;
+    }
+    .reg-input-wrap:focus-within {
+      border-color: #4338CA;
+      box-shadow: 0 0 0 3px rgba(67,56,202,0.08);
+      background: #fff;
+    }
+    .reg-input-icon { font-size: 14px; color: #A8AECA; padding: 0 14px; flex-shrink: 0; transition: color 0.2s; }
+    .reg-input-wrap:focus-within .reg-input-icon { color: #4338CA; }
     .reg-input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 13px;
-      font-weight: 500;
-      color: #111827;
-      background: transparent;
-      padding: 0 10px 0 0;
-      font-family: inherit;
-      min-width: 0;
-      height: 100%;
+      flex: 1; border: none; outline: none;
+      font-size: 14px; font-weight: 500; color: #0D1030;
+      background: transparent; padding: 0 12px 0 0;
+      font-family: 'Poppins', sans-serif;
+      min-width: 0; height: 100%;
     }
-
-    .reg-input::placeholder { color: #D1D5DB; font-weight: 400; }
-
-    .reg-select {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 13px;
-      font-weight: 500;
-      color: #111827;
-      background: transparent;
-      padding: 0 36px 0 0;
-      font-family: inherit;
-      appearance: none;
-      cursor: pointer;
-      min-width: 0;
-      height: 100%;
-    }
-
-    .reg-select-chevron {
-      position: absolute;
-      right: 12px;
-      font-size: 11px;
-      color: #9CA3AF;
-      pointer-events: none;
-    }
+    .reg-input::placeholder { color: #C0C6D8; font-weight: 400; }
 
     .reg-eye-btn {
-      position: absolute;
-      right: 10px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px 6px;
-      color: #9CA3AF;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
+      position: absolute; right: 12px;
+      background: none; border: none; cursor: pointer;
+      padding: 4px 6px; color: #A8AECA; font-size: 14px;
+      display: flex; align-items: center;
+      transition: color 0.15s;
     }
+    .reg-eye-btn:hover { color: #4338CA; }
 
+    /* Submit */
     .reg-submit-btn {
       width: 100%;
-      padding: 13px 18px;
-      background: #5048E5;
-      color: #fff;
-      border: none;
-      border-radius: 9px;
-      font-size: 14px;
-      font-weight: 600;
+      padding: clamp(13px, 1.4vw, 14px) 24px;
+      background: linear-gradient(135deg, #3730A3 0%, #5048E5 100%);
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 16px; font-weight: 600;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 4px;
-      font-family: inherit;
-      transition: background 0.15s, transform 0.1s;
-      letter-spacing: 0.02em;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 4px; font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(55,48,163,0.3);
     }
-
-    .reg-submit-btn:hover:not(:disabled) { background: #4338CA; transform: translateY(-1px); }
+    .reg-submit-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(55,48,163,0.38);
+    }
     .reg-submit-btn:active:not(:disabled) { transform: translateY(0); }
-    .reg-submit-btn:disabled { opacity: 0.75; cursor: not-allowed; }
+    .reg-submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .reg-submit-btn i { font-size: 15px; }
 
-    .reg-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; }
-    .reg-divider-line { flex: 1; height: 1px; background: #E5E7EB; }
-    .reg-divider-text { font-size: 12px; color: #9CA3AF; font-weight: 500; }
-
-    .reg-login-text  { text-align: center; font-size: 13px; color: #6B7280; margin: 0; }
-    .reg-login-link  { color: #5048E5; font-weight: 600; text-decoration: none; }
-    .reg-login-link:hover { text-decoration: underline; }
-
-    .reg-right-footer { margin-top: 16px; font-size: 11.5px; color: #9CA3AF; text-align: center; }
-
-    /* ── Tablet landscape: ≤ 1024px ── */
-    @media (max-width: 1024px) {
-      .reg-left { flex: 0 0 44%; padding: 36px 40px; }
-      .reg-left-heading { font-size: 28px; }
+    /* Divider */
+    .reg-divider {
+      display: flex; align-items: center; gap: 14px;
+      margin: clamp(24px, 2.5vw, 28px) 0 clamp(18px, 2vw, 22px);
+    }
+    .reg-divider-line { flex: 1; height: 1px; background: #E8EAF2; }
+    .reg-divider-text {
+      font-size: 12px; color: #B8BDD4; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
     }
 
-    /* ── Tablet portrait: ≤ 768px → stack, re-enable scroll ── */
-    @media (max-width: 768px) {
-      html, body, #root { overflow: auto; height: auto; }
+    /* Login link */
+    .reg-login-text { text-align: center; font-size: 14px; color: #828BAA; margin: 0; }
+    .reg-login-link { color: #4338CA; font-weight: 600; text-decoration: none; transition: color 0.15s; }
+    .reg-login-link:hover { color: #3730A3; text-decoration: underline; }
 
+    .reg-right-footer {
+      margin-top: 32px; font-size: 12px; color: #A8AECA;
+      text-align: center; font-weight: 400;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 960px) {
       .reg-root { flex-direction: column; height: auto; min-height: 100vh; overflow: auto; }
-
-      .reg-left { flex: none; width: 100%; padding: 28px 24px 32px; }
+      .reg-left { flex: none; width: 100%; padding: 36px 28px 32px; }
       .reg-left-content { justify-content: flex-start; }
-      .reg-left-heading { font-size: 26px; margin-bottom: 10px; }
-      .reg-left-sub { font-size: 13.5px; margin-bottom: 20px; }
-
-      .reg-steps-list { display: grid !important; grid-template-columns: 1fr 1fr; gap: 12px !important; }
-
-      .reg-right { padding: 24px 18px 32px; overflow: auto; }
-      .reg-form-card { padding: 28px 24px; max-width: 100%; }
+      .reg-steps { display: grid !important; grid-template-columns: 1fr 1fr; gap: 12px !important; }
+      .reg-right { padding: 28px 20px 36px; }
+      .reg-form-card { max-width: 100%; }
     }
-
-    /* ── Mobile: ≤ 480px ── */
-    @media (max-width: 480px) {
-      .reg-left { padding: 22px 18px 26px; }
-      .reg-left-heading { font-size: 22px; }
-      .reg-left-sub { font-size: 13px; }
-      .reg-steps-list { grid-template-columns: 1fr !important; }
-      .reg-form-card { padding: 22px 18px; }
-      .reg-form-title { font-size: 16px; }
-      .reg-input-wrap { height: 44px; }
-      .reg-submit-btn { padding: 12px 16px; font-size: 13.5px; }
+    @media (max-width: 640px) {
+      .reg-left { padding: 28px 20px 24px; }
+      .reg-steps { grid-template-columns: 1fr !important; }
+      .reg-right { padding: 24px 16px 32px; }
+      .reg-left-foot { display: none; }
+    }
+    @media (max-width: 380px) {
+      .reg-right { padding: 20px 14px 24px; }
     }
   `;
   document.head.appendChild(el);
@@ -334,15 +307,6 @@ export default function Register() {
   const navigate = useNavigate();
 
   useEffect(() => { injectStyles(); }, []);
-
-  const focusInput = (e) => {
-    e.target.parentNode.style.borderColor = "#5048E5";
-    e.target.parentNode.style.boxShadow = "0 0 0 3px rgba(80,72,229,0.12)";
-  };
-  const blurInput = (e) => {
-    e.target.parentNode.style.borderColor = "#E5E7EB";
-    e.target.parentNode.style.boxShadow = "none";
-  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -372,13 +336,18 @@ export default function Register() {
 
       {/* ── LEFT PANEL ── */}
       <div className="reg-left">
-        <div style={dc1} /><div style={dc2} /><div style={dc3} />
+        <div className="reg-blob1" />
+        <div className="reg-blob2" />
+        <div className="reg-blob3" />
 
         <div className="reg-left-content">
-          <div className="reg-brand-mark">
-            <i className="bi bi-layers-half" style={{ fontSize: 22, color: "#fff" }} />
+          <div className="reg-brand">
+            <Logo size={38} />
+            <div>
+              <span className="reg-brand-name">Voltech</span>
+              <span className="reg-brand-tag">Attendance Platform</span>
+            </div>
           </div>
-          <div className="reg-brand-name">Voltech</div>
 
           <h2 className="reg-left-heading">
             Join your team<br />
@@ -390,9 +359,9 @@ export default function Register() {
             and task management — all in one place.
           </p>
 
-          <div className="reg-steps-list">
+          <div className="reg-steps">
             {steps.map((step, i) => (
-              <div key={i} className="reg-step-item">
+              <div key={i} className="reg-step">
                 <div className="reg-step-icon-wrap">
                   <i className={`bi ${step.icon} reg-step-icon`} />
                 </div>
@@ -402,9 +371,11 @@ export default function Register() {
           </div>
         </div>
 
-        <div className="reg-left-footer">
-          <i className="bi bi-shield-check" style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }} />
-          <span className="reg-left-footer-text">Your data is safe with us</span>
+        <div className="reg-left-foot">
+          <div className="reg-left-foot-icon">
+            <i className="bi bi-shield-check" />
+          </div>
+          <span>Your data is safe with us</span>
         </div>
       </div>
 
@@ -413,18 +384,16 @@ export default function Register() {
         <div className="reg-form-card">
 
           <div className="reg-form-header">
-            <div className="reg-form-icon-wrap">
-              <i className="bi bi-person-plus-fill" style={{ fontSize: 20, color: "#5048E5" }} />
+            <div className="reg-form-logo">
+              <Logo size={28} />
             </div>
-            <div>
-              <h3 className="reg-form-title">Create Account</h3>
-              <p className="reg-form-subtitle">Fill in your details to register.</p>
-            </div>
+            <h3 className="reg-form-title">Create Account</h3>
+            <p className="reg-form-subtitle">Fill in your details to register.</p>
           </div>
 
           {error && (
             <div className="reg-error-box">
-              <i className="bi bi-exclamation-circle-fill" style={{ fontSize: 13, flexShrink: 0 }} />
+              <i className="bi bi-exclamation-circle-fill" style={{ fontSize: 14, flexShrink: 0 }} />
               {error}
             </div>
           )}
@@ -437,7 +406,7 @@ export default function Register() {
                 <i className="bi bi-person reg-input-icon" />
                 <input type="text" placeholder="John Doe" value={name}
                   onChange={(e) => setName(e.target.value)} required
-                  className="reg-input" onFocus={focusInput} onBlur={blurInput} />
+                  className="reg-input" />
               </div>
             </div>
 
@@ -447,7 +416,7 @@ export default function Register() {
                 <i className="bi bi-envelope reg-input-icon" />
                 <input type="email" placeholder="employee@company.com" value={email}
                   onChange={(e) => setEmail(e.target.value)} required
-                  className="reg-input" onFocus={focusInput} onBlur={blurInput} />
+                  className="reg-input" />
               </div>
             </div>
 
@@ -455,10 +424,9 @@ export default function Register() {
               <label className="reg-label">Password</label>
               <div className="reg-input-wrap">
                 <i className="bi bi-lock reg-input-icon" />
-                <input type={showPassword ? "text" : "password"} placeholder="••••••••"
+                <input type={showPassword ? "text" : "password"} placeholder="Enter a secure password"
                   value={password} onChange={(e) => setPassword(e.target.value)} required
-                  className="reg-input" style={{ paddingRight: 36 }}
-                  onFocus={focusInput} onBlur={blurInput} />
+                  className="reg-input" style={{ paddingRight: 42 }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="reg-eye-btn">
                   <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
                 </button>
@@ -482,13 +450,13 @@ export default function Register() {
               {loading ? (
                 <>
                   <span className="spinner-border spinner-border-sm"
-                    style={{ width: 14, height: 14, marginRight: 8 }} />
+                    style={{ width: 15, height: 15, marginRight: 8 }} />
                   Creating account...
                 </>
               ) : (
                 <>
                   Create Account
-                  <i className="bi bi-arrow-right" style={{ marginLeft: 8, fontSize: 14 }} />
+                  <i className="bi bi-arrow-right" style={{ marginLeft: 8, fontSize: 15 }} />
                 </>
               )}
             </button>
@@ -513,8 +481,3 @@ export default function Register() {
     </div>
   );
 }
-
-/* Decorative circles */
-const dc1 = { position:"absolute", width:320, height:320, borderRadius:"50%", background:"rgba(255,255,255,0.04)", top:-80, right:-80, pointerEvents:"none" };
-const dc2 = { position:"absolute", width:200, height:200, borderRadius:"50%", background:"rgba(255,255,255,0.04)", bottom:55, left:-55, pointerEvents:"none" };
-const dc3 = { position:"absolute", width:110, height:110, borderRadius:"50%", background:"rgba(255,255,255,0.03)", top:"45%", right:18, pointerEvents:"none" };
