@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayoutImport from "../../components/layout/AppLayout";
 import api from "../../api";
 import SharedDatePicker from "../../components/SharedDatePicker";
 import SharedSelect from "../../components/SharedSelect";
+import TimesheetDetailModal from "../../components/modals/TimesheetDetailModal";
 
 const AppLayout = AppLayoutImport?.default || AppLayoutImport;
 
@@ -82,7 +83,7 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
           <option key={n} value={n}>{n}</option>
         ))}
       </select>
-      <span style={{ fontWeight: 700, color: "var(--text-muted)" }}>:</span>
+      <span style={{ fontWeight: 700, color: "var(--t-muted)" }}>:</span>
       <select
         value={m}
         onChange={(e) => set(h, e.target.value, ap)}
@@ -103,7 +104,7 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
           background: ap === "AM" ? "#EEF2FF" : "#FFF7ED",
           color: ap === "AM" ? "#5048E5" : "#C2410C",
           fontSize: 12, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
-          fontFamily: "'Plus Jakarta Sans', sans-serif", opacity: disabled ? 0.5 : 1,
+          fontFamily: "var(--font)", opacity: disabled ? 0.5 : 1,
         }}
       >
         {ap}
@@ -113,12 +114,16 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
 }
 
 export default function EmployeeTimesheetList() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefillTaskId = searchParams.get("task");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
   const [sortField, setSortField] = useState("timesheet_date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
+  const [detailTimesheetId, setDetailTimesheetId] = useState(null);
   const PAGE_SIZE = 10;
 
   // Modal state
@@ -143,6 +148,13 @@ export default function EmployeeTimesheetList() {
     loadProjects();
     if (loggedUserId) setForm((prev) => ({ ...prev, created_by: loggedUserId }));
   }, []);
+
+  // Auto-open modal if task query param is present
+  useEffect(() => {
+    if (prefillTaskId) {
+      openModal(prefillTaskId);
+    }
+  }, [prefillTaskId]);
 
   const loadData = async () => {
     try {
@@ -200,8 +212,8 @@ export default function EmployeeTimesheetList() {
     }
   };
 
-  const openModal = () => {
-    setForm({ date: "", entry_type: "project", project: "", task: "", start_time: "", end_time: "", work_description: "" });
+  const openModal = (prefillTaskIdFromUrl) => {
+    setForm({ date: "", entry_type: "project", project: "", task: prefillTaskIdFromUrl || "", start_time: "", end_time: "", work_description: "" });
     setTasks([]);
     setFormError("");
     setShowModal(true);
@@ -228,7 +240,7 @@ export default function EmployeeTimesheetList() {
       return;
     }
     if (!isPermission && !form.task) {
-      setFormError("Please select a task.");
+      setFormError("Please select a module.");
       return;
     }
     if (!form.start_time || !form.end_time) {
@@ -382,7 +394,7 @@ export default function EmployeeTimesheetList() {
             <span>Timesheets</span>
           </nav>
         </div>
-        <button className="et-add-btn" onClick={openModal}>
+        <button className="et-add-btn" onClick={() => openModal(prefillTaskId)}>
           <i className="bi bi-plus-lg" /> Add Timesheet
         </button>
       </div>
@@ -396,7 +408,7 @@ export default function EmployeeTimesheetList() {
             <input
               className="et-search"
               type="text"
-              placeholder="Search by task, project, or status…"
+              placeholder="Search by module, project, or status…"
               value={searchText}
               onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
             />
@@ -418,7 +430,7 @@ export default function EmployeeTimesheetList() {
                 {[
                   { key: "timesheet_date", label: "Date" },
                   { key: "project_name",   label: "Project" },
-                  { key: "task_name",      label: "Task" },
+                  { key: "task_name",      label: "Module" },
                   { key: "task_status",    label: "Status" },
                   { key: "work_description", label: "Work Description" },
                   { key: "man_hrs",        label: "Time" },
@@ -445,7 +457,7 @@ export default function EmployeeTimesheetList() {
                 const startTime = row.start_time ? formatAMPM(row.start_time) : null;
                 const endTime = row.end_time ? formatAMPM(row.end_time) : null;
                 return (
-                  <tr key={row.timesheet_id || idx} className="et-tr">
+                  <tr key={row.timesheet_id || idx} className="et-tr" style={{ cursor: "pointer" }} onClick={() => setDetailTimesheetId(row.timesheet_id)}>
                     <td className="et-td-muted et-center">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                     <td className="et-td-muted et-nowrap">
                       {row.timesheet_date
@@ -512,21 +524,22 @@ export default function EmployeeTimesheetList() {
 
       {/* ── ADD TIMESHEET MODAL ── */}
       {showModal && (
-        <>
-          <div className="modal-overlay" onClick={() => setShowModal(false)} />
-          <div className="modal-wrap">
-            <div className="modal-box">
-              <div className="modal-header">
-                <div className="modal-header-left">
-                  <span className="modal-badge">
-                    <i className="bi bi-plus-circle" /> New
-                  </span>
-                  <h6 className="modal-title">Add Timesheet</h6>
+        <div className="ul-overlay" onClick={() => setShowModal(false)}>
+          <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-header">
+              <div className="ul-modal-header-left">
+                <div className="ul-modal-icon ul-modal-icon-success"><i className="bi bi-plus-circle" /></div>
+                <div>
+                  <h6 className="ul-modal-title">Add Timesheet</h6>
+                  <p className="ul-modal-sub">Log your work hours</p>
                 </div>
-                <button className="modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
+              <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+            </div>
 
-              <div className="modal-body">
+            <div className="ul-modal-divider" />
+
+              <div className="ul-modal-body">
                 {/* 8-hour meter */}
                 {form.date && (
                   <div className="et-hrs-meter">
@@ -627,15 +640,15 @@ export default function EmployeeTimesheetList() {
 
                   {form.entry_type === "project" && (
                     <div className="et-field">
-                      <label className="et-label">Task <span className="et-required">*</span></label>
+                      <label className="et-label">Module <span className="et-required">*</span></label>
                       <SharedSelect
                         value={form.task}
                         onChange={(val) => setForm({ ...form, task: val })}
                         options={tasks.map((t) => ({ value: t.id, label: t.task }))}
-                        placeholder="— Select Task —"
+                        placeholder="— Select Module —"
                         isDisabled={!form.project}
                       />
-                      {!form.project && <p className="et-field-hint">Select a project first to load tasks.</p>}
+                      {!form.project && <p className="et-field-hint">Select a project first to load modules.</p>}
                     </div>
                   )}
 
@@ -705,15 +718,28 @@ export default function EmployeeTimesheetList() {
                 )}
               </div>
 
-              <div className="modal-footer">
-                <button className="modal-btn modal-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="modal-btn modal-btn-primary" onClick={handleSave}>
+              <div className="ul-modal-footer">
+                <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="ul-btn ul-btn-primary" onClick={handleSave}>
                   <i className="bi bi-send" /> Save Timesheet
                 </button>
               </div>
             </div>
           </div>
-        </>
+      )}
+
+      {/* Timesheet Detail Modal */}
+      {detailTimesheetId && (
+        <TimesheetDetailModal
+          timesheetId={detailTimesheetId}
+          onClose={() => setDetailTimesheetId(null)}
+          onNavigate={(type, id) => {
+            setDetailTimesheetId(null);
+            if (type === "project") navigate(`/admin/projects/${id}`);
+            else if (type === "module") navigate(`/admin/modules/${id}`);
+            else if (type === "user") navigate(`/admin/users/${id}`);
+          }}
+        />
       )}
     </AppLayout>
   );
@@ -726,7 +752,7 @@ const styles = `
     position: fixed; top: 20px; right: 20px; z-index: 999;
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-lg);
-    font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: et-fade-in 0.2s ease;
   }
   .et-toast-success { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
@@ -738,8 +764,8 @@ const styles = `
     display: flex; align-items: flex-start; justify-content: space-between;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
-  .et-page-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; letter-spacing: -0.01em; }
-  .et-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .et-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; letter-spacing: -0.01em; }
+  .et-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
   .et-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
   .et-breadcrumb a:hover { text-decoration: underline; }
   .et-breadcrumb i { font-size: 10px; opacity: 0.5; }
@@ -748,34 +774,34 @@ const styles = `
     padding: 9px 18px; background: var(--primary); color: #fff;
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .et-add-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
   /* Card */
-  .et-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+  .et-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
 
   /* Toolbar */
   .et-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); gap: 12px; }
   .et-search-wrap { position: relative; display: flex; align-items: center; flex: 1; max-width: 360px; }
-  .et-search-icon { position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none; }
+  .et-search-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; }
   .et-search {
     width: 100%; padding: 8px 32px 8px 34px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 13px; color: var(--text-primary); background: var(--bg);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    font-size: 13px; color: var(--t-base); background: var(--bg);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .et-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); background: var(--surface); }
-  .et-search-clear { position: absolute; right: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 2px; display: flex; align-items: center; }
-  .et-search-clear:hover { color: var(--text-primary); }
-  .et-count { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+  .et-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); background: var(--bg-card); }
+  .et-search-clear { position: absolute; right: 8px; background: none; border: none; color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px; display: flex; align-items: center; }
+  .et-search-clear:hover { color: var(--t-base); }
+  .et-count { font-size: 12px; font-weight: 600; color: var(--t-muted); background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
 
   /* Table */
   .et-table-wrap { overflow-x: auto; }
   .et-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .et-table thead tr { border-bottom: 2px solid var(--border); }
-  .et-table th { padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left; white-space: nowrap; background: var(--surface); }
+  .et-table th { padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left; white-space: nowrap; background: var(--bg-card); }
   .et-th-sm { width: 48px; text-align: center; }
   .et-th-sort { cursor: pointer; user-select: none; }
   .et-th-sort:hover { color: var(--primary); }
@@ -784,10 +810,10 @@ const styles = `
   .et-tr { transition: background 0.1s; }
   .et-tr:hover td { background: #fafbff; }
   .et-tr:last-child td { border-bottom: none; }
-  .et-td-muted { color: var(--text-secondary); font-size: 12.5px; }
+  .et-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .et-center { text-align: center; }
   .et-nowrap { white-space: nowrap; }
-  .et-task-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font-weight: 500; }
+  .et-task-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-base); font-weight: 500; }
 
   /* Chips */
   .et-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #EEF2FF; color: #5048E5; white-space: nowrap; }
@@ -797,16 +823,16 @@ const styles = `
 
   /* States */
   .et-state-cell { padding: 0 !important; border: none !important; }
-  .et-loading, .et-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 56px 20px; color: var(--text-muted); font-size: 13px; }
+  .et-loading, .et-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 56px 20px; color: var(--t-muted); font-size: 13px; }
   .et-empty i { font-size: 28px; opacity: 0.35; }
   .et-spin { animation: et-spin 0.7s linear infinite; display: inline-block; }
   @keyframes et-spin { to { transform: rotate(360deg); } }
 
   /* Pagination */
   .et-pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
-  .et-page-info { font-size: 12px; color: var(--text-muted); }
+  .et-page-info { font-size: 12px; color: var(--t-muted); }
   .et-page-btns { display: flex; gap: 4px; }
-  .et-page-btn { width: 30px; height: 30px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .et-page-btn { width: 30px; height: 30px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-card); color: var(--t-muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-family: var(--font); }
   .et-page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
   .et-page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .et-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -815,22 +841,22 @@ const styles = `
   .et-field { display: flex; flex-direction: column; gap: 6px; }
   .et-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 20px; }
   @media (max-width: 560px) { .et-form-grid { grid-template-columns: 1fr; } }
-  .et-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .et-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .et-required { color: #DC2626; }
   .et-input, .et-select {
     width: 100%; padding: 9px 12px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .et-input:focus, .et-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
-  .et-input:disabled, .et-select:disabled { background: var(--bg); color: var(--text-muted); cursor: not-allowed; }
+  .et-input:disabled, .et-select:disabled { background: var(--bg); color: var(--t-muted); cursor: not-allowed; }
   .et-textarea {
     width: 100%; padding: 9px 12px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s; resize: none; line-height: 1.5;
   }
   .et-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
@@ -840,9 +866,9 @@ const styles = `
     background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
   }
   .et-select-wrap { position: relative; display: flex; align-items: center; }
-  .et-select-icon { position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none; z-index: 1; }
+  .et-select-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .et-select-wrap .et-select { padding-left: 32px; }
-  .et-field-hint { font-size: 11.5px; color: var(--text-muted); margin: 0; }
+  .et-field-hint { font-size: 11.5px; color: var(--t-muted); margin: 0; }
   .et-form-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #FEF2F2; color: #DC2626; border: 1px solid #fca5a5; border-radius: var(--radius); font-size: 12.5px; font-weight: 600; }
 
   /* Hours picker */
@@ -850,9 +876,9 @@ const styles = `
   .et-hrs-btn {
     width: 44px; height: 36px; border-radius: var(--radius);
     border: 1px solid var(--border); background: var(--bg);
-    color: var(--text-secondary); font-size: 12.5px; font-weight: 600;
+    color: var(--t-muted); font-size: 12.5px; font-weight: 600;
     cursor: pointer; transition: all 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .et-hrs-btn:hover:not(.disabled) { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
   .et-hrs-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -861,11 +887,11 @@ const styles = `
   /* Hours meter */
   .et-hrs-meter { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; }
   .et-hrs-meter-top { display: flex; align-items: center; justify-content: space-between; }
-  .et-hrs-meter-label { font-size: 11.5px; color: var(--text-secondary); font-weight: 500; }
+  .et-hrs-meter-label { font-size: 11.5px; color: var(--t-muted); font-weight: 500; }
   .et-hrs-meter-val { font-size: 12px; font-weight: 700; }
   .et-hrs-bar-bg { width: 100%; height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
   .et-hrs-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background 0.3s ease; }
-  .et-hrs-hint { font-size: 11px; color: var(--text-muted); margin: 0; }
+  .et-hrs-hint { font-size: 11px; color: var(--t-muted); margin: 0; }
   .et-hrs-warning { font-size: 11px; color: #DC2626; font-weight: 600; margin: 0; }
 
   @keyframes et-fade-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }

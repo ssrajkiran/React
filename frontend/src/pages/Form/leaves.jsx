@@ -403,24 +403,27 @@ export default function Leaves() {
       </div>
 
       {showModal && (
-        <>
-          <div className="modal-overlay" onClick={() => setShowModal(false)} />
-          <div className="modal-wrap">
-            <div className="modal modal-lg">
-              <div className="modal-header">
-                <div className="modal-header-left">
+        <div className="ul-overlay" onClick={() => setShowModal(false)}>
+          <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
+              <div className="ul-modal-header">
+                <div className="ul-modal-header-left">
                   {formData.status && (
                     <span className="lv-status-pill-sm" style={{ background: statusConfig[formData.status]?.bg, color: statusConfig[formData.status]?.color }}>
                       <span className="lv-status-dot" style={{ background: statusConfig[formData.status]?.color }} />
                       {statusConfig[formData.status]?.label || formData.status}
                     </span>
                   )}
-                  <h3 className="modal-title">{modalTitle}</h3>
+                  <div>
+                    <h6 className="ul-modal-title">{modalTitle}</h6>
+                    <p className="ul-modal-sub">{isViewMode ? "View request details" : "Submit a leave request"}</p>
+                  </div>
                 </div>
-                <button className="modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
-              <div className="modal-body">
+              <div className="ul-modal-divider" />
+
+              <div className="ul-modal-body">
                 {isViewMode ? (
                   /* ===== VIEW MODE ===== */
                   <div className="lv-view-content">
@@ -633,52 +636,44 @@ export default function Leaves() {
                 )}
               </div>
 
-              <div className="modal-footer">
+              <div className="ul-modal-divider" />
+
+              <div className="ul-modal-footer">
                 {formData.id && formData.status === "pending" && (
-                  <button className="btn btn-danger btn-md" onClick={() => setShowDeleteConfirm(true)} disabled={loading}>
+                  <button className="ul-btn ul-btn-danger" onClick={() => setShowDeleteConfirm(true)} disabled={loading}>
                     <i className="bi bi-trash" /> Delete
                   </button>
                 )}
-                <div className="lv-footer-right">
-                  <button className="btn btn-ghost btn-md" onClick={() => setShowModal(false)}>Close</button>
+                <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                  <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Close</button>
                   {!isViewMode && (
-                    <button className="btn btn-primary btn-md" onClick={handleSubmit} disabled={loading}>
-                      {loading ? <><i className="bi bi-arrow-repeat lv-spin" /> Submitting…</> : <><i className="bi bi-send" /> Submit</>}
+                    <button className="ul-btn ul-btn-primary" onClick={handleSubmit} disabled={loading}>
+                      {loading ? <><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> Submitting…</> : <><i className="bi bi-send" /> Submit</>}
                     </button>
                   )}
                 </div>
               </div>
-            </div>
           </div>
-        </>
+        </div>
       )}
 
       {showDeleteConfirm && (
-        <>
-          <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="modal-wrap">
-            <div className="modal" style={{ maxWidth: 420, width: "100%" }}>
-              <div className="modal-header">
-                <h3 className="modal-title">Confirm Delete</h3>
-                <button className="modal-close" onClick={() => setShowDeleteConfirm(false)}><i className="bi bi-x-lg" /></button>
-              </div>
-              <div className="modal-body" style={{ gap: 16, alignItems: "center", textAlign: "center" }}>
-                <div className="lv-delete-icon-wrap">
-                  <i className="bi bi-exclamation-triangle" />
-                </div>
-                <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
-                  Are you sure you want to delete this {formData.leave_type} request? This action cannot be undone.
-                </p>
-              </div>
-              <div className="modal-footer" style={{ justifyContent: "center", gap: 10 }}>
-                <button className="btn btn-ghost btn-md" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
-                <button className="btn btn-danger btn-md" onClick={handleDelete} disabled={loading}>
-                  {loading ? <><i className="bi bi-arrow-repeat lv-spin" /> Deleting…</> : <><i className="bi bi-trash" /> Delete</>}
-                </button>
-              </div>
+        <div className="ul-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="ul-modal ul-modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-icon ul-modal-icon-danger">
+              <i className="bi bi-trash" />
+            </div>
+            <h6 className="ul-modal-title">Confirm Delete</h6>
+            <p className="ul-modal-sub">Are you sure you want to delete this {formData.leave_type} request? This action cannot be undone.</p>
+            <div className="ul-modal-divider" />
+            <div className="ul-modal-footer">
+              <button className="ul-btn ul-btn-ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button className="ul-btn ul-btn-danger" onClick={handleDelete} disabled={loading}>
+                {loading ? <><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> Deleting…</> : <><i className="bi bi-trash" /> Delete</>}
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </AppLayout>
   );
@@ -686,14 +681,14 @@ export default function Leaves() {
 
 const styles = `
   .lv-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
-  .lv-page-title { font-size:20px; font-weight:700; color:var(--text-primary); margin:0 0 4px; }
-  .lv-breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); }
+  .lv-page-title { font-size:20px; font-weight:700; color:var(--t-base); margin:0 0 4px; }
+  .lv-breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--t-muted); }
   .lv-breadcrumb a { color:var(--primary); text-decoration:none; font-weight:500; }
   .lv-breadcrumb a:hover { text-decoration:underline; }
   .lv-breadcrumb i { font-size:10px; opacity:0.5; }
   .lv-header-actions { display:flex; align-items:center; gap:10px; }
   .lv-view-toggle { display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-  .lv-toggle-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; border:none; background:var(--surface); font-size:12.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; font-family:var(--font); }
+  .lv-toggle-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; border:none; background:var(--bg-card); font-size:12.5px; font-weight:600; color:var(--t-muted); cursor:pointer; transition:all 0.15s; font-family:var(--font); }
   .lv-toggle-btn:hover { background:var(--bg); }
   .lv-toggle-btn.active { background:var(--primary-light); color:var(--primary); }
   .lv-toggle-btn i { font-size:13px; }
@@ -701,21 +696,21 @@ const styles = `
   .lv-apply-btn:hover { background:var(--primary-dark); transform:translateY(-1px); }
   .lv-apply-btn i { font-size:14px; }
 
-  .lv-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow); }
+  .lv-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow); }
   .lv-legend { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
-  .lv-legend-item { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-secondary); font-weight:500; }
+  .lv-legend-item { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--t-muted); font-weight:500; }
   .lv-legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .lv-legend-sep { flex:1; }
-  .lv-legend-hint { font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+  .lv-legend-hint { font-size:12px; color:var(--t-muted); display:flex; align-items:center; gap:5px; }
 
   .rbc-calendar { font-family:var(--font) !important; }
-  .rbc-toolbar button { border-radius:var(--radius) !important; font-size:12.5px !important; font-weight:600 !important; color:var(--text-secondary) !important; border-color:var(--border) !important; }
+  .rbc-toolbar button { border-radius:var(--radius) !important; font-size:12.5px !important; font-weight:600 !important; color:var(--t-muted) !important; border-color:var(--border) !important; }
   .rbc-toolbar button.rbc-active, .rbc-toolbar button:hover { background:var(--primary-light) !important; color:var(--primary) !important; border-color:#c7d2fe !important; box-shadow:none !important; }
-  .rbc-toolbar-label { font-size:14px !important; font-weight:700 !important; color:var(--text-primary) !important; }
-  .rbc-header { font-size:11px !important; font-weight:700 !important; color:var(--text-muted) !important; text-transform:uppercase !important; letter-spacing:0.06em !important; padding:8px 0 !important; border-color:var(--border) !important; }
+  .rbc-toolbar-label { font-size:14px !important; font-weight:700 !important; color:var(--t-base) !important; }
+  .rbc-header { font-size:11px !important; font-weight:700 !important; color:var(--t-muted) !important; text-transform:uppercase !important; letter-spacing:0.06em !important; padding:8px 0 !important; border-color:var(--border) !important; }
   .rbc-today { background:var(--primary-light) !important; }
   .rbc-off-range-bg { background:#fafafa !important; }
-  .rbc-date-cell { font-size:12px !important; color:var(--text-secondary) !important; font-weight:500 !important; }
+  .rbc-date-cell { font-size:12px !important; color:var(--t-muted) !important; font-weight:500 !important; }
   .rbc-date-cell.rbc-now a { color:var(--primary) !important; font-weight:700 !important; }
   .rbc-day-bg:hover { background:#f5f6ff !important; cursor:pointer; }
   .rbc-month-row, .rbc-month-view, .rbc-day-bg, .rbc-header { border-color:var(--border) !important; }
@@ -723,56 +718,56 @@ const styles = `
   .lv-table-wrap { overflow-x:auto; }
   .lv-table { width:100%; border-collapse:collapse; font-size:14px; }
   .lv-table thead tr { border-bottom:2px solid var(--border); }
-  .lv-table th { padding:12px 14px; font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; }
+  .lv-table th { padding:12px 14px; font-size:12px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; }
   .lv-th-sortable { cursor:pointer; user-select:none; }
   .lv-th-sortable:hover { color:var(--primary); }
   .lv-sort-icon { font-size:10px; margin-left:4px; }
-  .lv-table td { padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text-primary); }
+  .lv-table td { padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--t-base); }
   .lv-tr { transition:background 0.12s; }
   .lv-tr:hover { background:var(--primary-light); }
   .lv-date-cell { display:flex; flex-direction:column; gap:2px; }
   .lv-date-main { font-size:14px; font-weight:500; }
-  .lv-date-sub { font-size:12px; color:var(--text-muted); }
-  .lv-duration { font-size:14px; font-weight:600; color:var(--text-primary); }
-  .lv-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:var(--text-secondary); }
-  .lv-muted { color:var(--text-muted); }
+  .lv-date-sub { font-size:12px; color:var(--t-muted); }
+  .lv-duration { font-size:14px; font-weight:600; color:var(--t-base); }
+  .lv-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:var(--t-muted); }
+  .lv-muted { color:var(--t-muted); }
   .lv-type-pill, .lv-status-pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:0.02em; white-space:nowrap; }
   .lv-status-pill-sm { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:20px; letter-spacing:0.04em; width:fit-content; }
   .lv-status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
   .lv-actions { display:flex; align-items:center; gap:6px; }
-  .lv-action-btn { width:32px; height:32px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--text-secondary); transition:all 0.15s; }
+  .lv-action-btn { width:32px; height:32px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-card); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--t-muted); transition:all 0.15s; }
   .lv-view-btn:hover { background:#EEF2FF; border-color:#c7d2fe; color:var(--primary); }
   .lv-edit-btn:hover { background:#FEF2F2; border-color:#fca5a5; color:#DC2626; }
   .lv-empty-state { text-align:center; padding:48px 24px; }
-  .lv-empty-icon { font-size:48px; color:var(--text-muted); opacity:0.4; display:block; margin-bottom:16px; }
-  .lv-empty-state h3 { font-size:16px; font-weight:600; color:var(--text-primary); margin:0 0 8px; }
-  .lv-empty-state p { font-size:14px; color:var(--text-muted); margin:0; }
+  .lv-empty-icon { font-size:48px; color:var(--t-muted); opacity:0.4; display:block; margin-bottom:16px; }
+  .lv-empty-state h3 { font-size:16px; font-weight:600; color:var(--t-base); margin:0 0 8px; }
+  .lv-empty-state p { font-size:14px; color:var(--t-muted); margin:0; }
 
   .lv-field { display:flex; flex-direction:column; gap:6px; }
   .lv-field-full { grid-column:1 / -1; }
   .lv-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .lv-label { font-size:13px; font-weight:600; color:var(--text-secondary); display:flex; align-items:center; gap:5px; }
-  .lv-label-hint { font-size:11.5px; font-weight:500; color:var(--text-muted); }
-  .lv-input, .lv-textarea { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--surface); font-size:14px; color:var(--text-primary); font-family:var(--font); transition:border-color 0.15s,box-shadow 0.15s; outline:none; box-sizing:border-box; height:40px; }
+  .lv-label { font-size:13px; font-weight:600; color:var(--t-muted); display:flex; align-items:center; gap:5px; }
+  .lv-label-hint { font-size:11.5px; font-weight:500; color:var(--t-muted); }
+  .lv-input, .lv-textarea { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--bg-card); font-size:14px; color:var(--t-base); font-family:var(--font); transition:border-color 0.15s,box-shadow 0.15s; outline:none; box-sizing:border-box; height:40px; }
   .lv-input:focus, .lv-textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(80,72,229,0.1); }
-  .lv-input:disabled, .lv-textarea:disabled { background:var(--bg); color:var(--text-muted); cursor:default; }
-  .lv-input-readonly { background:var(--bg); color:var(--text-secondary); cursor:default; height:40px; display:flex; align-items:center; }
+  .lv-input:disabled, .lv-textarea:disabled { background:var(--bg); color:var(--t-muted); cursor:default; }
+  .lv-input-readonly { background:var(--bg); color:var(--t-muted); cursor:default; height:40px; display:flex; align-items:center; }
   .lv-textarea { resize:none; line-height:1.5; height:auto; }
 
   .lv-type-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .lv-type-tab { padding:10px 8px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--surface); font-size:13px; font-weight:600; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; font-family:var(--font); text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .lv-type-tab { padding:10px 8px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--bg-card); font-size:13px; font-weight:600; color:var(--t-muted); cursor:pointer; transition:all 0.15s; font-family:var(--font); text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
   .lv-type-tab i { font-size:16px; }
   .lv-type-tab:hover { background:var(--primary-light); color:var(--primary); border-color:#c7d2fe; }
   .lv-type-badge { display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:600; padding:8px 14px; border-radius:var(--radius); width:fit-content; }
 
   .lv-radio-group { display:flex; gap:8px; }
-  .lv-radio-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:1.5px solid var(--border); border-radius:var(--radius); font-size:13px; font-weight:500; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; user-select:none; background:var(--surface); }
+  .lv-radio-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:1.5px solid var(--border); border-radius:var(--radius); font-size:13px; font-weight:500; color:var(--t-muted); cursor:pointer; transition:all 0.15s; user-select:none; background:var(--bg-card); }
   .lv-radio-btn input[type="radio"] { display:none; }
   .lv-radio-btn.active { background:var(--primary-light); color:var(--primary); border-color:var(--primary); font-weight:600; }
   .lv-radio-btn:has(input:disabled) { opacity:0.5; cursor:default; }
 
   .lv-days-display { display:flex; align-items:center; gap:8px; padding:0 12px; background:var(--primary-light); border:1.5px solid var(--primary); border-radius:var(--radius); font-size:14px; font-weight:700; color:var(--primary); height:40px; }
-  .lv-info-text { font-size:13px; color:var(--text-muted); margin:0; display:flex; align-items:center; gap:6px; }
+  .lv-info-text { font-size:13px; color:var(--t-muted); margin:0; display:flex; align-items:center; gap:6px; }
   .lv-hint-text { font-size:12px; color:#0891B2; margin:0; display:flex; align-items:center; gap:5px; background:#ECFEFF; padding:8px 10px; border-radius:var(--radius); border:1px solid #a5f3fc; }
   .lv-empty-compoff { display:flex; align-items:flex-start; gap:10px; padding:12px; background:#FFFBEB; border:1px solid #fcd34d; border-radius:var(--radius); font-size:13px; color:#92400E; line-height:1.5; }
   .lv-empty-compoff i { font-size:16px; margin-top:1px; flex-shrink:0; color:#D97706; }
@@ -786,8 +781,8 @@ const styles = `
   .lv-view-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; background:var(--bg); padding:16px; border-radius:var(--radius-lg); border:1px solid var(--border); }
   .lv-view-item { display:flex; flex-direction:column; gap:4px; }
   .lv-view-full { grid-column:1 / -1; }
-  .lv-view-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; }
-  .lv-view-value { font-size:14px; font-weight:500; color:var(--text-primary); line-height:1.4; }
+  .lv-view-label { font-size:11px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.05em; }
+  .lv-view-value { font-size:14px; font-weight:500; color:var(--t-base); line-height:1.4; }
   .lv-view-highlight { font-size:18px; font-weight:700; color:var(--primary); }
 
   .lv-footer-right { display:flex; gap:8px; margin-left:auto; }
@@ -797,9 +792,9 @@ const styles = `
 
   .hcal { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
   .hcal-nav { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--bg); border-bottom:1px solid var(--border); }
-  .hcal-nav-btn { width:28px; height:28px; border:1px solid var(--border); border-radius:6px; background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--text-muted); transition:all 0.12s; }
+  .hcal-nav-btn { width:28px; height:28px; border:1px solid var(--border); border-radius:6px; background:var(--bg-card); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--t-muted); transition:all 0.12s; }
   .hcal-nav-btn:hover { background:var(--primary-light); border-color:#C7D2FE; color:var(--primary); }
-  .hcal-title { font-size:13px; font-weight:700; color:var(--text-primary); }
+  .hcal-title { font-size:13px; font-weight:700; color:var(--t-base); }
   .hcal-grid { padding:10px; }
   .hcal-dow { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:4px; }
   .hcal-dow-cell { text-align:center; font-size:10px; font-weight:700; color:#9CA3AF; letter-spacing:0.05em; padding:3px 0; text-transform:uppercase; }
@@ -812,7 +807,7 @@ const styles = `
   .hcal-selected { background:var(--primary) !important; color:#fff !important; font-weight:700 !important; box-shadow:0 2px 8px rgba(80,72,229,0.3); transform:scale(1.06); }
   .hcal-dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
   .hcal-legend { display:flex; gap:12px; flex-wrap:wrap; padding:8px 12px; border-top:1px solid var(--border); background:var(--bg); }
-  .hcal-leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-muted); font-weight:500; }
+  .hcal-leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--t-muted); font-weight:500; }
   .hcal-leg-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
   .lv-selected-date-chip { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--primary-light); border:1px solid #C7D2FE; border-radius:var(--radius); font-size:13px; font-weight:600; color:var(--primary); }
 `;

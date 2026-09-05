@@ -34,7 +34,32 @@ router.get("/list", verifyToken, (req, res) => {
 router.get("/", verifyToken, isAdmin, (req, res) => {
   db.query("SELECT * FROM roles", (err, roles) => {
     if (err) return res.status(500).json({ message: "Database query failed" });
-    res.json(roles);
+
+    if (!roles || !roles.length) {
+      return res.json([]);
+    }
+
+    const roleIds = roles.map((r) => r.id);
+    db.query(
+      "SELECT * FROM role_permissions WHERE role_id IN (?)",
+      [roleIds],
+      (err2, allPerms) => {
+        if (err2) return res.json(roles);
+
+        const permMap = {};
+        (allPerms || []).forEach((p) => {
+          if (!permMap[p.role_id]) permMap[p.role_id] = [];
+          permMap[p.role_id].push(p);
+        });
+
+        const result = roles.map((r) => ({
+          ...r,
+          permissions: permMap[r.id] || [],
+        }));
+
+        res.json(result);
+      }
+    );
   });
 });
 
@@ -47,8 +72,30 @@ router.get("/:id", verifyToken, isAdmin, (req, res) => {
     db.query(
       "SELECT * FROM role_permissions WHERE role_id=?",
       [req.params.id],
-      (err2, permissions) => {
+      (err2, dbPermissions) => {
         if (err2) return res.status(500).json({ message: "Database query failed" });
+
+        // Merge with full menu key list to ensure all keys are present
+        const ALL_MENU_KEYS = [
+          "dashboard", "leave_dashboard", "timesheet_dashboard",
+          "attendance", "attendance_report",
+          "task", "task_report",
+          "timesheet", "ai_summary", "summary_history",
+          "users", "holidays", "roles", "todo", "profile"
+        ];
+        const permMap = {};
+        (dbPermissions || []).forEach((p) => { permMap[p.menu_key] = p; });
+        const permissions = ALL_MENU_KEYS.map((key) => {
+          const existing = permMap[key];
+          return {
+            menu_key: key,
+            can_view: existing ? !!existing.can_view : false,
+            can_create: existing ? !!existing.can_create : false,
+            can_edit: existing ? !!existing.can_edit : false,
+            can_delete: existing ? !!existing.can_delete : false,
+          };
+        });
+
         res.json({ ...role[0], permissions });
       }
     );

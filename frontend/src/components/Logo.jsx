@@ -6,7 +6,7 @@ export default function Logo({ size = 34, className = "" }) {
       width={size}
       height={size}
       className={className}
-      style={{ borderRadius: 8, objectFit: "contain", flexShrink: 0 }}
+      style={{ borderRadius: 2, objectFit: "contain", flexShrink: 0 ,    width: 40 }}
       onError={(e) => { e.target.style.display = "none"; }}
     />
   );

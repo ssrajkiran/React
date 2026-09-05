@@ -5,7 +5,7 @@ import AppLayout from "../../components/layout/AppLayout";
 import SharedSelect from "../../components/SharedSelect";
 
 export default function TaskReport() {
-  const [tasks, setTasks] = useState([]);
+  const [entries, setEntries] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,29 +16,18 @@ export default function TaskReport() {
     status: "",
   });
 
-  const [sortField, setSortField] = useState("project_name");
-  const [sortOrder, setSortOrder] = useState("asc");
-  const [page, setPage] = useState(1);
+  const [expandedProjects, setExpandedProjects] = useState({});
   const [searchText, setSearchText] = useState("");
-  const PAGE_SIZE = 10;
 
   // ================= FETCH =================
-  const fetchTasks = async () => {
+  const fetchEntries = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/tasks_report/report", { params: filters });
-      const data = Array.isArray(res.data) ? res.data : [];
-      setTasks(
-        data.map((t) => ({
-          project_name: t?.project_name || "-",
-          task: t?.task || "-",
-          status: t?.status || "Pending",
-          assigned_to_names: t?.assigned_to_names || "-",
-        }))
-      );
+      const res = await api.get("/tasks_report/report/timesheet", { params: filters });
+      setEntries(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("Task fetch error:", err);
-      setTasks([]);
+      console.error("Report fetch error:", err);
+      setEntries([]);
     } finally {
       setLoading(false);
     }
@@ -68,8 +57,7 @@ export default function TaskReport() {
   }, []);
 
   useEffect(() => {
-    fetchTasks();
-    setPage(1);
+    fetchEntries();
   }, [filters]);
 
   const handleFilter = (e) => {
@@ -83,65 +71,78 @@ export default function TaskReport() {
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
-  // ================= TABLE LOGIC =================
+  // ================= GROUP BY PROJECT =================
   const filtered = useMemo(() => {
     const t = searchText.toLowerCase();
-    return tasks.filter(
-      (task) =>
+    return entries.filter(
+      (e) =>
         !t ||
-        (task.task || "").toLowerCase().includes(t) ||
-        (task.project_name || "").toLowerCase().includes(t) ||
-        (task.assigned_to_names || "").toLowerCase().includes(t)
+        (e.project_name || "").toLowerCase().includes(t) ||
+        (e.module_name || "").toLowerCase().includes(t) ||
+        (e.work_description || "").toLowerCase().includes(t) ||
+        (e.user_name || "").toLowerCase().includes(t)
     );
-  }, [tasks, searchText]);
+  }, [entries, searchText]);
 
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const va = (a[sortField] || "").toLowerCase();
-      const vb = (b[sortField] || "").toLowerCase();
-      if (va < vb) return sortOrder === "asc" ? -1 : 1;
-      if (va > vb) return sortOrder === "asc" ? 1 : -1;
-      return 0;
+  const grouped = useMemo(() => {
+    const groups = {};
+    filtered.forEach((entry) => {
+      const key = entry.project_name || "Unknown";
+      if (!groups[key]) {
+        groups[key] = { project_name: key, project_id: entry.project_id, entries: [] };
+      }
+      groups[key].entries.push(entry);
     });
-  }, [filtered, sortField, sortOrder]);
+    return Object.values(groups).sort((a, b) => a.project_name.localeCompare(b.project_name));
+  }, [filtered]);
 
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalHours = useMemo(
+    () => filtered.reduce((sum, e) => sum + (parseFloat(e.man_hrs) || 0), 0),
+    [filtered]
+  );
 
-  const handleSort = (field) => {
-    if (sortField === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    else { setSortField(field); setSortOrder("asc"); }
-    setPage(1);
+  const toggleProject = (name) => {
+    setExpandedProjects((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  const toggleAll = () => {
+    const allExpanded = grouped.every((g) => expandedProjects[g.project_name]);
+    const next = {};
+    if (!allExpanded) {
+      grouped.forEach((g) => { next[g.project_name] = true; });
+    }
+    setExpandedProjects(next);
   };
 
   const statusConfig = {
     "In Progress": { color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
-    Completed:     { color: "#059669", bg: "#ECFDF5", border: "#6ee7b7" },
-    Pending:       { color: "#6B7280", bg: "#F3F4F6", border: "#D1D5DB" },
+    Completed: { color: "#059669", bg: "#ECFDF5", border: "#6ee7b7" },
+    Pending: { color: "#6B7280", bg: "#F3F4F6", border: "#D1D5DB" },
   };
 
-  const SortIcon = ({ field }) =>
-    sortField === field ? (
-      <i className={`bi bi-chevron-${sortOrder === "asc" ? "up" : "down"} tr-sort-icon`} />
-    ) : null;
+  const formatDate = (d) => {
+    if (!d) return "-";
+    const dt = new Date(d);
+    return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
 
   return (
     <AppLayout>
       <style>{styles}</style>
 
-      {/* ── PAGE HEADER ── */}
+      {/* PAGE HEADER */}
       <div className="tr-page-header">
         <div>
-          <h5 className="tr-page-title">Task Report</h5>
+          <h5 className="tr-page-title">Module Report</h5>
           <nav className="tr-breadcrumb">
-            <Link to="/admin/dashboard">Dashboard</Link>
+            <Link to="/admin">Dashboard</Link>
             <i className="bi bi-chevron-right" />
-            <span>Task Report</span>
+            <span>Module Report</span>
           </nav>
         </div>
       </div>
 
-      {/* ── FILTER CARD ── */}
+      {/* FILTER CARD */}
       <div className="tr-filter-card">
         <div className="tr-filter-header">
           <div className="tr-filter-header-left">
@@ -194,7 +195,7 @@ export default function TaskReport() {
         </div>
       </div>
 
-      {/* ── DATA CARD ── */}
+      {/* DATA CARD */}
       <div className="tr-card">
         {/* Toolbar */}
         <div className="tr-toolbar">
@@ -203,9 +204,9 @@ export default function TaskReport() {
             <input
               className="tr-search"
               type="text"
-              placeholder="Search tasks, projects, assignees…"
+              placeholder="Search projects, modules, work..."
               value={searchText}
-              onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
+              onChange={(e) => { setSearchText(e.target.value); }}
             />
             {searchText && (
               <button className="tr-search-clear" onClick={() => setSearchText("")}>
@@ -213,123 +214,112 @@ export default function TaskReport() {
               </button>
             )}
           </div>
-          <span className="tr-count">{filtered.length} tasks</span>
-        </div>
-
-        {/* Table */}
-        <div className="tr-table-wrap">
-          <table className="tr-table">
-            <thead>
-              <tr>
-                <th className="tr-th-sm">#</th>
-                {[
-                  { key: "project_name", label: "Project" },
-                  { key: "task",         label: "Task" },
-                  { key: "assigned_to_names", label: "Assigned To" },
-                  { key: "status",       label: "Status" },
-                ].map(({ key, label }) => (
-                  <th key={label} className="tr-th-sort" onClick={() => handleSort(key)}>
-                    {label} <SortIcon field={key} />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="tr-state-cell">
-                    <div className="tr-loading">
-                      <i className="bi bi-arrow-repeat tr-spin" /> Loading tasks…
-                    </div>
-                  </td>
-                </tr>
-              ) : paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="tr-state-cell">
-                    <div className="tr-empty">
-                      <i className="bi bi-inbox" />
-                      <span>No tasks found</span>
-                      {(activeFilterCount > 0 || searchText) && (
-                        <button className="tr-empty-reset" onClick={handleClearFilters}>
-                          Clear filters
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((task, idx) => {
-                  const assignees = task.assigned_to_names
-                    ? task.assigned_to_names.split(",").map((u) => u.trim())
-                    : [];
-                  const sc = statusConfig[task.status] || statusConfig["Pending"];
-                  return (
-                    <tr key={idx} className="tr-tr">
-                      <td className="tr-td-muted tr-center">{(page - 1) * PAGE_SIZE + idx + 1}</td>
-                      <td>
-                        <span className="tr-project-pill">{task.project_name}</span>
-                      </td>
-                      <td className="tr-task-cell" title={task.task}>{task.task}</td>
-                      <td>
-                        <div className="tr-assignees">
-                          {assignees.slice(0, 3).map((name, i) => (
-                            <span key={i} className="tr-assignee-chip">{name}</span>
-                          ))}
-                          {assignees.length > 3 && (
-                            <span className="tr-assignee-more">+{assignees.length - 3}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <span
-                          className="tr-status-pill"
-                          style={{ background: sc.bg, color: sc.color, borderColor: sc.border }}
-                        >
-                          {task.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="tr-pagination">
-            <span className="tr-page-info">
-              Page {page} of {totalPages} · {filtered.length} results
+          <div className="tr-toolbar-right">
+            <span className="tr-count">{filtered.length} entries</span>
+            <span className="tr-total-hours">
+              <i className="bi bi-clock-history"></i> {totalHours.toFixed(1)}h total
             </span>
-            <div className="tr-page-btns">
-              <button className="tr-page-btn" disabled={page === 1} onClick={() => setPage(1)}>
-                <i className="bi bi-chevron-double-left" />
+            {grouped.length > 1 && (
+              <button className="tr-expand-toggle" onClick={toggleAll}>
+                <i className={`bi ${grouped.every((g) => expandedProjects[g.project_name]) ? "bi-arrows-collapse" : "bi-arrows-expand"}`}></i>
+                {grouped.every((g) => expandedProjects[g.project_name]) ? "Collapse All" : "Expand All"}
               </button>
-              <button className="tr-page-btn" disabled={page === 1} onClick={() => setPage(page - 1)}>
-                <i className="bi bi-chevron-left" />
-              </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const p = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
-                return (
-                  <button
-                    key={p}
-                    className={`tr-page-btn ${p === page ? "active" : ""}`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-              <button className="tr-page-btn" disabled={page === totalPages} onClick={() => setPage(page + 1)}>
-                <i className="bi bi-chevron-right" />
-              </button>
-              <button className="tr-page-btn" disabled={page === totalPages} onClick={() => setPage(totalPages)}>
-                <i className="bi bi-chevron-double-right" />
-              </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Content */}
+        <div className="tr-content">
+          {loading ? (
+            <div className="tr-loading">
+              <i className="bi bi-arrow-repeat tr-spin" /> Loading report...
+            </div>
+          ) : grouped.length === 0 ? (
+            <div className="tr-empty">
+              <i className="bi bi-inbox" />
+              <span>No entries found</span>
+              {(activeFilterCount > 0 || searchText) && (
+                <button className="tr-empty-reset" onClick={handleClearFilters}>
+                  Clear filters
+                </button>
+              )}
+            </div>
+          ) : (
+            grouped.map((group) => {
+              const isExpanded = !!expandedProjects[group.project_name];
+              const groupHours = group.entries.reduce((s, e) => s + (parseFloat(e.man_hrs) || 0), 0);
+              return (
+                <div key={group.project_name} className="tr-project-group">
+                  {/* Project Header */}
+                  <button
+                    className={`tr-project-header ${isExpanded ? "expanded" : ""}`}
+                    onClick={() => toggleProject(group.project_name)}
+                  >
+                    <div className="tr-project-header-left">
+                      <i className={`bi bi-chevron-right tr-chevron ${isExpanded ? "rotated" : ""}`}></i>
+                      <span className="tr-project-name">{group.project_name}</span>
+                      <span className="tr-project-count">{group.entries.length} entries</span>
+                    </div>
+                    <div className="tr-project-header-right">
+                      <span className="tr-project-hours">{groupHours.toFixed(1)}h</span>
+                    </div>
+                  </button>
+
+                  {/* Project Table */}
+                  {isExpanded && (
+                    <div className="tr-project-table-wrap">
+                      <table className="tr-table">
+                        <thead>
+                          <tr>
+                            <th className="tr-th-sm">#</th>
+                            <th>Date</th>
+                            <th>Module</th>
+                            <th>Work Description</th>
+                            <th>Status</th>
+                            <th className="tr-th-right">Hours</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.entries.map((entry, idx) => {
+                            const sc = statusConfig[entry.module_status] || statusConfig["Pending"];
+                            return (
+                              <tr key={entry.id} className="tr-tr">
+                                <td className="tr-td-muted tr-center">{idx + 1}</td>
+                                <td className="tr-date-cell">
+                                  <i className="bi bi-calendar3 tr-date-icon"></i>
+                                  {formatDate(entry.date)}
+                                </td>
+                                <td className="tr-task-cell" title={entry.module_name}>
+                                  <span className="tr-module-pill">{entry.module_name}</span>
+                                </td>
+                                <td className="tr-desc-cell" title={entry.work_description}>
+                                  {entry.work_description}
+                                </td>
+                                <td>
+                                  <span
+                                    className="tr-status-pill"
+                                    style={{ background: sc.bg, color: sc.color, borderColor: sc.border }}
+                                  >
+                                    {entry.module_status}
+                                  </span>
+                                </td>
+                                <td className="tr-td-right">
+                                  <span className="tr-hours-badge">
+                                    {entry.man_hrs ? `${entry.man_hrs}h` : "-"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </AppLayout>
   );
@@ -343,11 +333,11 @@ const styles = `
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
   .tr-page-title {
-    font-size: 15px; font-weight: 700; color: var(--text-primary);
+    font-size: 15px; font-weight: 700; color: var(--t-base);
     margin: 0 0 4px; letter-spacing: -0.01em;
   }
   .tr-breadcrumb {
-    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted);
   }
   .tr-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
   .tr-breadcrumb a:hover { text-decoration: underline; }
@@ -355,8 +345,8 @@ const styles = `
 
   /* Filter card */
   .tr-filter-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow);
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
     padding: 16px 20px; margin-bottom: 16px;
   }
   .tr-filter-header {
@@ -364,121 +354,153 @@ const styles = `
     margin-bottom: 14px;
   }
   .tr-filter-header-left { display: flex; align-items: center; gap: 8px; }
-  .tr-filter-icon { color: var(--text-muted); font-size: 13px; }
-  .tr-filter-title { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .tr-filter-icon { color: var(--t-muted); font-size: 13px; }
+  .tr-filter-title { font-size: 12px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .tr-filter-badge {
     font-size: 10.5px; font-weight: 700; padding: 2px 8px;
-    background: #EEF2FF; color: #5048E5; border-radius: 20px;
+    background: var(--primary-soft); color: var(--primary); border-radius: 20px;
   }
   .tr-clear-btn {
     display: flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 600; color: #DC2626;
-    background: #FEF2F2; border: 1px solid #fca5a5;
+    font-size: 12px; font-weight: 600; color: var(--danger);
+    background: var(--danger-soft); border: 1px solid #fca5a5;
     border-radius: var(--radius); padding: 4px 12px;
-    cursor: pointer; transition: all 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer; transition: all 0.15s; font-family: var(--font);
   }
-  .tr-clear-btn:hover { background: #DC2626; color: #fff; }
+  .tr-clear-btn:hover { background: var(--danger); color: #fff; }
   .tr-filter-row {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
   }
   @media (max-width: 640px) { .tr-filter-row { grid-template-columns: 1fr; } }
   .tr-filter-field { display: flex; flex-direction: column; gap: 6px; }
   .tr-label {
-    font-size: 11px; font-weight: 700; color: var(--text-secondary);
+    font-size: 11px; font-weight: 700; color: var(--t-muted);
     text-transform: uppercase; letter-spacing: 0.05em;
   }
-  .tr-select-wrap { position: relative; display: flex; align-items: center; }
-  .tr-select-icon {
-    position: absolute; left: 11px; color: var(--text-muted);
-    font-size: 13px; pointer-events: none; z-index: 1;
-  }
-  .tr-select {
-    width: 100%; padding: 9px 12px 9px 32px;
-    border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 12px center;
-    padding-right: 32px; cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  .tr-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
 
   /* Main card */
   .tr-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
   }
 
   /* Toolbar */
   .tr-toolbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 20px; border-bottom: 1px solid var(--border); gap: 12px;
+    flex-wrap: wrap;
   }
   .tr-search-wrap {
     position: relative; display: flex; align-items: center; flex: 1; max-width: 360px;
   }
   .tr-search-icon {
-    position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none;
+    position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none;
   }
   .tr-search {
     width: 100%; padding: 8px 32px 8px 34px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 13px; color: var(--text-primary); background: var(--bg);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    font-size: 13px; color: var(--t-base); background: var(--bg);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .tr-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); background: var(--surface); }
+  .tr-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); background: var(--bg-card); }
   .tr-search-clear {
     position: absolute; right: 8px; background: none; border: none;
-    color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 2px;
+    color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px;
     display: flex; align-items: center; justify-content: center;
   }
-  .tr-search-clear:hover { color: var(--text-primary); }
+  .tr-search-clear:hover { color: var(--t-base); }
+  .tr-toolbar-right { display: flex; align-items: center; gap: 8px; }
   .tr-count {
-    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    font-size: 12px; font-weight: 600; color: var(--t-muted);
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 20px; padding: 3px 10px; white-space: nowrap;
   }
+  .tr-total-hours {
+    font-size: 12px; font-weight: 700; color: var(--primary);
+    background: var(--primary-soft); border: 1px solid var(--primary-ring);
+    border-radius: 20px; padding: 3px 10px; white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .tr-expand-toggle {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; color: var(--t-muted);
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 5px 12px;
+    cursor: pointer; transition: all 0.15s; font-family: var(--font);
+  }
+  .tr-expand-toggle:hover { border-color: var(--primary); color: var(--primary); }
 
-  /* Table */
-  .tr-table-wrap { overflow-x: auto; }
+  /* Content area */
+  .tr-content { min-height: 200px; }
+
+  /* Project group */
+  .tr-project-group { border-bottom: 1px solid var(--border); }
+  .tr-project-group:last-child { border-bottom: none; }
+
+  .tr-project-header {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 14px 20px;
+    background: var(--bg); border: none;
+    cursor: pointer; transition: background 0.15s;
+    font-family: var(--font); text-align: left;
+  }
+  .tr-project-header:hover { background: var(--bg-hover); }
+  .tr-project-header.expanded { background: var(--primary-soft); }
+  .tr-project-header-left { display: flex; align-items: center; gap: 10px; }
+  .tr-chevron {
+    font-size: 12px; color: var(--t-muted);
+    transition: transform 0.2s ease;
+  }
+  .tr-chevron.rotated { transform: rotate(90deg); }
+  .tr-project-name { font-size: 14px; font-weight: 700; color: var(--t-base); }
+  .tr-project-count {
+    font-size: 11px; font-weight: 600; color: var(--t-muted);
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 2px 8px;
+  }
+  .tr-project-header-right { display: flex; align-items: center; gap: 8px; }
+  .tr-project-hours {
+    font-size: 13px; font-weight: 700; color: var(--primary);
+  }
+
+  /* Project table */
+  .tr-project-table-wrap { overflow-x: auto; }
   .tr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .tr-table thead tr { border-bottom: 2px solid var(--border); }
   .tr-table th {
     padding: 10px 14px; font-size: 10.5px; font-weight: 700;
-    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
-    text-align: left; white-space: nowrap; background: var(--surface);
+    color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.06em;
+    text-align: left; white-space: nowrap; background: var(--bg-card);
   }
   .tr-th-sm { width: 48px; text-align: center; }
-  .tr-th-sort { cursor: pointer; user-select: none; }
-  .tr-th-sort:hover { color: var(--primary); }
-  .tr-sort-icon { margin-left: 4px; font-size: 9px; }
-  .tr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .tr-th-right { text-align: right; }
+  .tr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .tr-tr { transition: background 0.1s; }
-  .tr-tr:hover td { background: #fafbff; }
+  .tr-tr:hover td { background: var(--bg-hover); }
   .tr-tr:last-child td { border-bottom: none; }
-  .tr-td-muted { color: var(--text-secondary); font-size: 12.5px; }
+  .tr-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .tr-center { text-align: center; }
-  .tr-task-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font-weight: 500; }
-
-  /* Chips */
-  .tr-project-pill {
-    display: inline-block; font-size: 11.5px; font-weight: 700;
+  .tr-td-right { text-align: right; }
+  .tr-date-cell {
+    font-size: 12.5px; color: var(--t-base); white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tr-date-icon { font-size: 11px; color: var(--t-light); }
+  .tr-task-cell { max-width: 200px; }
+  .tr-desc-cell {
+    max-width: 280px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; color: var(--t-muted); font-size: 12.5px;
+  }
+  .tr-module-pill {
+    display: inline-block; font-size: 11.5px; font-weight: 600;
     padding: 3px 10px; border-radius: 20px;
-    background: #EEF2FF; color: #5048E5; white-space: nowrap;
+    background: var(--primary-soft); color: var(--primary); white-space: nowrap;
   }
-  .tr-assignees { display: flex; flex-wrap: wrap; gap: 4px; }
-  .tr-assignee-chip {
-    font-size: 11px; font-weight: 600; padding: 2px 8px;
-    background: #ECFEFF; color: #0891B2; border-radius: 20px; white-space: nowrap;
-  }
-  .tr-assignee-more {
-    font-size: 11px; font-weight: 700; padding: 2px 7px;
-    background: var(--bg); color: var(--text-muted); border-radius: 20px;
-    border: 1px solid var(--border);
+  .tr-hours-badge {
+    font-size: 12px; font-weight: 700; color: var(--success);
+    background: var(--success-soft); padding: 3px 10px;
+    border-radius: 20px; white-space: nowrap;
   }
   .tr-status-pill {
     display: inline-block; font-size: 11px; font-weight: 700;
@@ -486,37 +508,18 @@ const styles = `
   }
 
   /* States */
-  .tr-state-cell { padding: 0 !important; border: none !important; }
   .tr-loading, .tr-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 8px; padding: 56px 20px; color: var(--text-muted); font-size: 13px;
+    gap: 8px; padding: 56px 20px; color: var(--t-muted); font-size: 13px;
   }
   .tr-empty i { font-size: 28px; opacity: 0.35; }
   .tr-empty-reset {
     margin-top: 4px; font-size: 12px; font-weight: 600;
-    color: var(--primary); background: #EEF2FF; border: 1px solid #c7d2fe;
+    color: var(--primary); background: var(--primary-soft); border: 1px solid var(--primary-ring);
     border-radius: var(--radius); padding: 5px 14px; cursor: pointer;
-    font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.15s;
+    font-family: var(--font); transition: all 0.15s;
   }
   .tr-empty-reset:hover { background: var(--primary); color: #fff; }
   .tr-spin { animation: tr-spin 0.7s linear infinite; display: inline-block; }
   @keyframes tr-spin { to { transform: rotate(360deg); } }
-
-  /* Pagination */
-  .tr-pagination {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px;
-  }
-  .tr-page-info { font-size: 12px; color: var(--text-muted); }
-  .tr-page-btns { display: flex; gap: 4px; }
-  .tr-page-btn {
-    width: 30px; height: 30px; border-radius: var(--radius); border: 1px solid var(--border);
-    background: var(--surface); color: var(--text-secondary);
-    font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-  }
-  .tr-page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
-  .tr-page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-  .tr-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 `;

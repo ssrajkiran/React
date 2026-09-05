@@ -145,6 +145,44 @@ router.get("/profile", verifyToken, (req, res) => {
   );
 });
 
+/* ==============================
+   GET CURRENT USER PERMISSIONS
+=============================== */
+router.get("/permissions", verifyToken, (req, res) => {
+  db.query(
+    `SELECT rp.menu_key, rp.can_view, rp.can_create, rp.can_edit, rp.can_delete 
+     FROM role_permissions rp 
+     JOIN roles r ON rp.role_id = r.id 
+     WHERE r.name = ?`,
+    [req.user.role],
+    (err, dbPermissions) => {
+      if (err) return res.status(500).json({ message: "Database query failed" });
+
+      const ALL_MENU_KEYS = [
+        "dashboard", "leave_dashboard", "timesheet_dashboard",
+        "attendance", "attendance_report",
+        "task", "task_report",
+        "timesheet", "ai_summary", "summary_history",
+        "users", "holidays", "roles", "todo", "profile"
+      ];
+      const permMap = {};
+      (dbPermissions || []).forEach((p) => { permMap[p.menu_key] = p; });
+      const permissions = ALL_MENU_KEYS.map((key) => {
+        const existing = permMap[key];
+        return {
+          menu_key: key,
+          can_view: existing ? !!existing.can_view : false,
+          can_create: existing ? !!existing.can_create : false,
+          can_edit: existing ? !!existing.can_edit : false,
+          can_delete: existing ? !!existing.can_delete : false,
+        };
+      });
+
+      res.json(permissions);
+    }
+  );
+});
+
 router.put("/profile", verifyToken, (req, res) => {
   const { name, email } = req.body;
 
@@ -200,17 +238,38 @@ router.post("/login", (req, res) => {
        JOIN roles r ON rp.role_id = r.id 
        WHERE r.name = ?`,
       [result[0].role],
-      (err2, permissions) => {
+      (err2, dbPermissions) => {
         const token = jwt.sign(
           { id: result[0].id, role: result[0].role },
           "secret",
           { expiresIn: "1d" }
         );
 
+        // Merge with full menu key list to ensure all keys are present
+        const ALL_MENU_KEYS = [
+          "dashboard", "leave_dashboard", "timesheet_dashboard",
+          "attendance", "attendance_report",
+          "task", "task_report",
+          "timesheet", "ai_summary", "summary_history",
+          "users", "holidays", "roles", "todo", "profile"
+        ];
+        const permMap = {};
+        (dbPermissions || []).forEach((p) => { permMap[p.menu_key] = p; });
+        const permissions = ALL_MENU_KEYS.map((key) => {
+          const existing = permMap[key];
+          return {
+            menu_key: key,
+            can_view: existing ? !!existing.can_view : false,
+            can_create: existing ? !!existing.can_create : false,
+            can_edit: existing ? !!existing.can_edit : false,
+            can_delete: existing ? !!existing.can_delete : false,
+          };
+        });
+
         res.json({
           token,
           role: result[0].role,
-          permissions: permissions || [],
+          permissions,
         });
       }
     );

@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import SharedDatePicker from "../../components/SharedDatePicker";
 import SharedSelect from "../../components/SharedSelect";
+import TimesheetDetailModal from "../../components/modals/TimesheetDetailModal";
 
 // ── Helper: normalize any date value to "YYYY-MM-DD" (IST-safe) ──
 const toDateStr = (d) => {
@@ -80,7 +81,7 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
           <option key={n} value={n}>{n}</option>
         ))}
       </select>
-      <span style={{ fontWeight: 700, color: "var(--text-muted)" }}>:</span>
+      <span style={{ fontWeight: 700, color: "var(--t-muted)" }}>:</span>
       <select
         value={m}
         onChange={(e) => set(h, e.target.value, ap)}
@@ -101,7 +102,7 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
           background: ap === "AM" ? "#EEF2FF" : "#FFF7ED",
           color: ap === "AM" ? "#5048E5" : "#C2410C",
           fontSize: 12, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
-          fontFamily: "'Plus Jakarta Sans', sans-serif", opacity: disabled ? 0.5 : 1,
+          fontFamily: "var(--font)", opacity: disabled ? 0.5 : 1,
         }}
       >
         {ap}
@@ -111,6 +112,9 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
 }
 
 export default function AdminTimesheetList() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefillTaskId = searchParams.get("task");
   const [data, setData]               = useState([]);
   const [loading, setLoading]         = useState(false);
   const [searchText, setSearchText]   = useState("");
@@ -118,6 +122,7 @@ export default function AdminTimesheetList() {
   const [sortOrder, setSortOrder]     = useState("desc");
   const [page, setPage]               = useState(1);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [detailTimesheetId, setDetailTimesheetId] = useState(null);
   const [toast, setToast]             = useState(null);
 
   // Modal
@@ -237,8 +242,8 @@ export default function AdminTimesheetList() {
   };
 
   // ================= FORM HANDLERS =================
-  const openModal = () => {
-    setForm({ user: "", date: "", entry_type: "project", project: "", task: "", start_time: "", end_time: "", work_description: "" });
+  const openModal = (prefillTaskIdFromUrl) => {
+    setForm({ user: "", date: "", entry_type: "project", project: "", task: prefillTaskIdFromUrl || "", start_time: "", end_time: "", work_description: "" });
     setProjects([]); setTasks([]);
     setUserDayHrs(0); setFormError("");
     setShowModal(true);
@@ -284,7 +289,7 @@ export default function AdminTimesheetList() {
       return;
     }
     if (!isPermission && !form.task) {
-      setFormError("Please select a task.");
+      setFormError("Please select a module.");
       return;
     }
     if (!form.start_time || !form.end_time) {
@@ -424,7 +429,7 @@ export default function AdminTimesheetList() {
             <span>Timesheets</span>
           </nav>
         </div>
-        <button className="ts-add-btn" onClick={openModal}>
+        <button className="ts-add-btn" onClick={() => openModal(prefillTaskId)}>
           <i className="bi bi-plus-lg" /> Add Timesheet
         </button>
       </div>
@@ -438,7 +443,7 @@ export default function AdminTimesheetList() {
             <input
               className="ts-search"
               type="text"
-              placeholder="Search by task, project, or user…"
+              placeholder="Search by module, project, or user…"
               value={searchText}
               onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
             />
@@ -461,7 +466,7 @@ export default function AdminTimesheetList() {
                   { key: "timesheet_date",  label: "Date" },
                   { key: "created_by_name", label: "User" },
                   { key: "project_name",    label: "Project" },
-                  { key: "task_name",       label: "Task" },
+                  { key: "task_name",       label: "Module" },
                   { key: "work_description", label: "Work Description" },
                   { key: "man_hrs",         label: "Time" },
                   { key: "man_hrs",         label: "Hours" },
@@ -488,7 +493,7 @@ export default function AdminTimesheetList() {
                 const startTime = row.start_time ? formatAMPM(row.start_time) : null;
                 const endTime = row.end_time ? formatAMPM(row.end_time) : null;
                 return (
-                  <tr key={row.timesheet_id} className="ts-tr">
+                  <tr key={row.timesheet_id} className="ts-tr" style={{ cursor: "pointer" }} onClick={() => setDetailTimesheetId(row.timesheet_id)}>
                     <td className="ts-td-muted ts-center">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                     <td className="ts-td-muted ts-nowrap">
                       {row.timesheet_date
@@ -561,19 +566,22 @@ export default function AdminTimesheetList() {
 
       {/* ── ADD TIMESHEET MODAL ── */}
       {showModal && (
-        <>
-          <div className="modal-overlay" onClick={() => setShowModal(false)} />
-          <div className="modal-wrap">
-            <div className="modal-box">
-              <div className="modal-header">
-                <div className="modal-header-left">
-                  <span className="modal-badge"><i className="bi bi-plus-circle" /> New</span>
-                  <h6 className="modal-title">Add Timesheet</h6>
+        <div className="ul-overlay" onClick={() => setShowModal(false)}>
+          <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-header">
+              <div className="ul-modal-header-left">
+                <div className="ul-modal-icon ul-modal-icon-success"><i className="bi bi-plus-circle" /></div>
+                <div>
+                  <h6 className="ul-modal-title">Add Timesheet</h6>
+                  <p className="ul-modal-sub">Log work hours for a user</p>
                 </div>
-                <button className="modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
+              <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+            </div>
 
-              <div className="modal-body">
+            <div className="ul-modal-divider" />
+
+              <div className="ul-modal-body">
 
                 {/* Hours meter — show once user + date both selected */}
                 {form.user && form.date && (
@@ -699,18 +707,18 @@ export default function AdminTimesheetList() {
                     </div>
                   )}
 
-                  {/* Task */}
+                  {/* Module */}
                   {form.entry_type === "project" && (
                     <div className="ts-field">
-                      <label className="ts-label">Task <span className="ts-required">*</span></label>
+                      <label className="ts-label">Module <span className="ts-required">*</span></label>
                       <SharedSelect
                         value={form.task}
                         onChange={(val) => setForm({ ...form, task: val })}
                         options={tasks.map((t) => ({ value: t.id, label: t.task }))}
-                        placeholder="— Select Task —"
+                        placeholder="— Select Module —"
                         isDisabled={!form.project}
                       />
-                      {form.user && !form.project && <p className="ts-field-hint">Select a project first to load tasks.</p>}
+                      {form.user && !form.project && <p className="ts-field-hint">Select a project first to load modules.</p>}
                     </div>
                   )}
 
@@ -785,46 +793,52 @@ export default function AdminTimesheetList() {
                 )}
               </div>
 
-              <div className="modal-footer">
-                <button className="modal-btn modal-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="modal-btn modal-btn-primary" onClick={handleSave}>
+              <div className="ul-modal-footer">
+                <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="ul-btn ul-btn-primary" onClick={handleSave}>
                   <i className="bi bi-send" /> Save Timesheet
                 </button>
               </div>
             </div>
           </div>
-        </>
       )}
 
       {/* ── DELETE CONFIRM MODAL ── */}
       {deleteConfirm && (
-        <>
-          <div className="modal-overlay" onClick={() => setDeleteConfirm(null)} />
-          <div className="modal-wrap">
-            <div className="modal-box modal-box-sm">
-              <div className="modal-header">
-                <h6 className="modal-title">Delete Timesheet</h6>
-                <button className="modal-close" onClick={() => setDeleteConfirm(null)}><i className="bi bi-x-lg" /></button>
-              </div>
-              <div className="modal-body">
-                <div className="ts-delete-warn">
-                  <div className="ts-delete-icon"><i className="bi bi-exclamation-triangle" /></div>
-                  <p className="ts-delete-msg">Are you sure you want to delete this timesheet?</p>
-                  <p className="ts-delete-detail">
-                    <strong>{deleteConfirm.task_name}</strong>
-                    {deleteConfirm.project_name && <> — {deleteConfirm.project_name}</>}
-                  </p>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button className="modal-btn modal-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                <button className="modal-btn modal-btn-danger" onClick={() => handleDelete(deleteConfirm.timesheet_id)}>
-                  <i className="bi bi-trash" /> Delete
-                </button>
-              </div>
+        <div className="ul-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="ul-modal ul-modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-icon ul-modal-icon-danger">
+              <i className="bi bi-trash" />
+            </div>
+            <h6 className="ul-modal-title">Delete Timesheet</h6>
+            <p className="ul-modal-sub">Are you sure you want to delete this timesheet?</p>
+            <p className="ul-modal-sub" style={{ marginTop: 4 }}>
+              <strong>{deleteConfirm.task_name}</strong>
+              {deleteConfirm.project_name && <> — {deleteConfirm.project_name}</>}
+            </p>
+            <div className="ul-modal-divider" />
+            <div className="ul-modal-footer">
+              <button className="ul-btn ul-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              <button className="ul-btn ul-btn-danger" onClick={() => handleDelete(deleteConfirm.timesheet_id)}>
+                <i className="bi bi-trash" /> Delete
+              </button>
             </div>
           </div>
-        </>
+        </div>
+      )}
+
+      {/* Timesheet Detail Modal */}
+      {detailTimesheetId && (
+        <TimesheetDetailModal
+          timesheetId={detailTimesheetId}
+          onClose={() => setDetailTimesheetId(null)}
+          onNavigate={(type, id) => {
+            setDetailTimesheetId(null);
+            if (type === "project") navigate(`/admin/projects/${id}`);
+            else if (type === "module") navigate(`/admin/modules/${id}`);
+            else if (type === "user") navigate(`/admin/users/${id}`);
+          }}
+        />
       )}
     </AppLayout>
   );
@@ -837,7 +851,7 @@ const styles = `
     position: fixed; top: 20px; right: 20px; z-index: 999;
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-lg);
-    font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: ts-fade-in 0.2s ease;
   }
   .ts-toast-success { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
@@ -849,8 +863,8 @@ const styles = `
     display: flex; align-items: flex-start; justify-content: space-between;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
-  .ts-page-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; letter-spacing: -0.01em; }
-  .ts-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .ts-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; letter-spacing: -0.01em; }
+  .ts-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
   .ts-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
   .ts-breadcrumb a:hover { text-decoration: underline; }
   .ts-breadcrumb i { font-size: 10px; opacity: 0.5; }
@@ -859,34 +873,34 @@ const styles = `
     padding: 9px 18px; background: var(--primary); color: #fff;
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .ts-add-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
   /* Card */
-  .ts-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+  .ts-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
 
   /* Toolbar */
   .ts-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); gap: 12px; }
   .ts-search-wrap { position: relative; display: flex; align-items: center; flex: 1; max-width: 360px; }
-  .ts-search-icon { position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none; }
+  .ts-search-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; }
   .ts-search {
     width: 100%; padding: 8px 32px 8px 34px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 13px; color: var(--text-primary); background: var(--bg);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    font-size: 13px; color: var(--t-base); background: var(--bg);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .ts-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); background: var(--surface); }
-  .ts-search-clear { position: absolute; right: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 2px; display: flex; align-items: center; }
-  .ts-search-clear:hover { color: var(--text-primary); }
-  .ts-count { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+  .ts-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); background: var(--bg-card); }
+  .ts-search-clear { position: absolute; right: 8px; background: none; border: none; color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px; display: flex; align-items: center; }
+  .ts-search-clear:hover { color: var(--t-base); }
+  .ts-count { font-size: 12px; font-weight: 600; color: var(--t-muted); background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
 
   /* Table */
   .ts-table-wrap { overflow-x: auto; }
   .ts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .ts-table thead tr { border-bottom: 2px solid var(--border); }
-  .ts-table th { padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left; white-space: nowrap; background: var(--surface); }
+  .ts-table th { padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left; white-space: nowrap; background: var(--bg-card); }
   .ts-th-sm { width: 48px; text-align: center; }
   .ts-th-sort { cursor: pointer; user-select: none; }
   .ts-th-sort:hover { color: var(--primary); }
@@ -895,10 +909,10 @@ const styles = `
   .ts-tr { transition: background 0.1s; }
   .ts-tr:hover td { background: #fafbff; }
   .ts-tr:last-child td { border-bottom: none; }
-  .ts-td-muted { color: var(--text-secondary); font-size: 12.5px; }
+  .ts-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .ts-center { text-align: center; }
   .ts-nowrap { white-space: nowrap; }
-  .ts-task-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font-weight: 500; }
+  .ts-task-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-base); font-weight: 500; }
 
   /* Chips */
   .ts-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #EEF2FF; color: #5048E5; white-space: nowrap; }
@@ -914,16 +928,16 @@ const styles = `
 
   /* States */
   .ts-state-cell { padding: 0 !important; border: none !important; }
-  .ts-loading, .ts-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 56px 20px; color: var(--text-muted); font-size: 13px; }
+  .ts-loading, .ts-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 56px 20px; color: var(--t-muted); font-size: 13px; }
   .ts-empty i { font-size: 28px; opacity: 0.35; }
   .ts-spin { animation: ts-spin 0.7s linear infinite; display: inline-block; }
   @keyframes ts-spin { to { transform: rotate(360deg); } }
 
   /* Pagination */
   .ts-pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
-  .ts-page-info { font-size: 12px; color: var(--text-muted); }
+  .ts-page-info { font-size: 12px; color: var(--t-muted); }
   .ts-page-btns { display: flex; gap: 4px; }
-  .ts-page-btn { width: 30px; height: 30px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .ts-page-btn { width: 30px; height: 30px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-card); color: var(--t-muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-family: var(--font); }
   .ts-page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
   .ts-page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .ts-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -933,22 +947,22 @@ const styles = `
   .ts-field { display: flex; flex-direction: column; gap: 6px; }
   .ts-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 20px; }
   @media (max-width: 560px) { .ts-form-grid { grid-template-columns: 1fr; } }
-  .ts-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .ts-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .ts-required { color: #DC2626; }
   .ts-input, .ts-select {
     width: 100%; padding: 9px 12px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .ts-input:focus, .ts-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
-  .ts-input:disabled, .ts-select:disabled { background: var(--bg); color: var(--text-muted); cursor: not-allowed; opacity: 0.6; }
+  .ts-input:disabled, .ts-select:disabled { background: var(--bg); color: var(--t-muted); cursor: not-allowed; opacity: 0.6; }
   .ts-textarea {
     width: 100%; padding: 9px 12px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s; resize: none; line-height: 1.5;
   }
   .ts-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
@@ -958,9 +972,9 @@ const styles = `
     background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
   }
   .ts-select-wrap { position: relative; display: flex; align-items: center; }
-  .ts-select-icon { position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none; z-index: 1; }
+  .ts-select-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .ts-select-wrap .ts-select { padding-left: 32px; }
-  .ts-field-hint { font-size: 11.5px; color: var(--text-muted); margin: 0; }
+  .ts-field-hint { font-size: 11.5px; color: var(--t-muted); margin: 0; }
   .ts-form-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #FEF2F2; color: #DC2626; border: 1px solid #fca5a5; border-radius: var(--radius); font-size: 12.5px; font-weight: 600; }
 
   /* Hours picker */
@@ -968,8 +982,8 @@ const styles = `
   .ts-hrs-btn {
     width: 44px; height: 36px; border-radius: var(--radius);
     border: 1px solid var(--border); background: var(--bg);
-    color: var(--text-secondary); font-size: 12.5px; font-weight: 600;
-    cursor: pointer; transition: all 0.15s; font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--t-muted); font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; font-family: var(--font);
   }
   .ts-hrs-btn:hover:not(.disabled) { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
   .ts-hrs-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -978,19 +992,19 @@ const styles = `
   /* Hours meter */
   .ts-hrs-meter { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; }
   .ts-hrs-meter-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .ts-hrs-meter-label { font-size: 11.5px; color: var(--text-secondary); font-weight: 500; }
+  .ts-hrs-meter-label { font-size: 11.5px; color: var(--t-muted); font-weight: 500; }
   .ts-hrs-meter-val { font-size: 12px; font-weight: 700; white-space: nowrap; }
   .ts-hrs-bar-bg { width: 100%; height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
   .ts-hrs-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background 0.3s ease; }
-  .ts-hrs-hint { font-size: 11px; color: var(--text-muted); margin: 0; }
+  .ts-hrs-hint { font-size: 11px; color: var(--t-muted); margin: 0; }
   .ts-hrs-warning { font-size: 11px; color: #DC2626; font-weight: 600; margin: 0; }
 
 
   /* Delete confirm */
   .ts-delete-warn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; text-align: center; }
   .ts-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: #FEF2F2; color: #DC2626; font-size: 22px; display: flex; align-items: center; justify-content: center; }
-  .ts-delete-msg { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; }
-  .ts-delete-detail { font-size: 12.5px; color: var(--text-muted); margin: 0; max-width: 280px; }
+  .ts-delete-msg { font-size: 14px; font-weight: 600; color: var(--t-base); margin: 0; }
+  .ts-delete-detail { font-size: 12.5px; color: var(--t-muted); margin: 0; max-width: 280px; }
 
   @keyframes ts-fade-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 `;

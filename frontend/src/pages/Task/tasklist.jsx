@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
 import AppLayoutImport from "../../components/layout/AppLayout";
 import api from "../../api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import SelectImport from "react-select";
 import SharedSelect from "../../components/SharedSelect";
+import ModuleDetailModal from "../../components/modals/ModuleDetailModal";
 
 const AppLayout = AppLayoutImport?.default || AppLayoutImport;
 const Select = SelectImport?.default || SelectImport;
@@ -19,6 +20,7 @@ const fmtHrs = (hrs) => {
 };
 
 export default function TaskList() {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -34,6 +36,7 @@ export default function TaskList() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [detailModuleId, setDetailModuleId] = useState(null);
   const PAGE_SIZE = 10;
 
   // Auth
@@ -111,12 +114,12 @@ export default function TaskList() {
       });
       await loadTasks();
       setShowEditModal(false);
-    } catch (err) { alert("Failed to update task."); }
+    } catch (err) { alert("Failed to update module."); }
   };
 
   // ================= CREATE =================
   const handleAddTaskRow = () =>
-    setCreateFormData({ ...createFormData, tasks: [...createFormData.tasks, { task: "", assigned_to: [] }] });
+    setCreateFormData({ ...createFormData, tasks: [...createFormData.tasks, { task: "", assigned_to: isAdmin ? [] : [{ value: loggedInUserId, label: users.find(u => u.id === loggedInUserId)?.name || "You" }] }] });
 
   const handleRemoveTaskRow = (idx) =>
     setCreateFormData({ ...createFormData, tasks: createFormData.tasks.filter((_, i) => i !== idx) });
@@ -134,14 +137,16 @@ export default function TaskList() {
         project_id: !isAddingProject ? createFormData.project_id : undefined,
         tasks: createFormData.tasks.map((t) => ({
           task: t.task,
-          assigned_to: t.assigned_to.map((u) => u.value),
+          assigned_to: isAdmin
+            ? t.assigned_to.map((u) => u.value)
+            : [loggedInUserId],
         })),
       });
       await loadTasks();
       setShowCreateModal(false);
       setCreateFormData({ project_id: null, newProjectName: "", tasks: [{ task: "", assigned_to: [] }] });
       setIsAddingProject(false);
-    } catch (err) { alert("Failed to create tasks."); }
+    } catch (err) { alert("Failed to create modules."); }
   };
 
   // ================= DELETE =================
@@ -150,7 +155,7 @@ export default function TaskList() {
       await api.delete(`/tasks-project/${id}`);
       setTasks(tasks.filter((t) => t.id !== id));
       setDeleteConfirm(null);
-    } catch (err) { alert("Failed to delete task."); }
+    } catch (err) { alert("Failed to delete module."); }
   };
 
   const filtered = useMemo(() => {
@@ -195,15 +200,20 @@ export default function TaskList() {
       {/* ── PAGE HEADER ── */}
       <div className="tl-page-header">
         <div>
-          <h5 className="tl-page-title">Task List</h5>
+          <h5 className="tl-page-title">Module List</h5>
           <nav className="tl-breadcrumb">
-            <Link to="/admin/dashboard">Dashboard</Link>
+            <Link to="/admin">Dashboard</Link>
             <i className="bi bi-chevron-right" />
-            <span>Tasks</span>
+            <span>Modules</span>
           </nav>
         </div>
-        <button className="tl-add-btn" onClick={() => { setCreateFormData({ project_id: null, newProjectName: "", tasks: [{ task: "", assigned_to: [] }] }); setIsAddingProject(false); setShowCreateModal(true); }}>
-          <i className="bi bi-plus-lg" /> Add Task
+        <button className="tl-add-btn" onClick={() => {
+          const currentUserOption = isAdmin ? [] : [{ value: loggedInUserId, label: users.find(u => u.id === loggedInUserId)?.name || "You" }];
+          setCreateFormData({ project_id: null, newProjectName: "", tasks: [{ task: "", assigned_to: currentUserOption }] });
+          setIsAddingProject(false);
+          setShowCreateModal(true);
+        }}>
+          <i className="bi bi-plus-lg" /> Add Module
         </button>
       </div>
 
@@ -216,7 +226,7 @@ export default function TaskList() {
             <input
               className="tl-search"
               type="text"
-              placeholder="Search tasks, projects, assignees…"
+              placeholder="Search modules, projects, assignees…"
               value={searchText}
               onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
             />
@@ -226,7 +236,7 @@ export default function TaskList() {
               </button>
             )}
           </div>
-          <span className="tl-count">{filtered.length} tasks</span>
+          <span className="tl-count">{filtered.length} modules</span>
         </div>
 
         {/* Table */}
@@ -238,7 +248,7 @@ export default function TaskList() {
                 {[
                   { key: "created_at", label: "Date" },
                   { key: "project_name", label: "Project" },
-                  { key: "task", label: "Task" },
+                  { key: "task", label: "Module" },
                   { key: null, label: "Assigned To" },
                   { key: "created_by_name", label: "Created By" },
                   { key: "total_man_hrs", label: "Man Hrs" },
@@ -261,11 +271,11 @@ export default function TaskList() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={9} className="tl-state-cell">
-                  <div className="tl-loading"><i className="bi bi-arrow-repeat tl-spin" /> Loading tasks…</div>
+                  <div className="tl-loading"><i className="bi bi-arrow-repeat tl-spin" /> Loading modules…</div>
                 </td></tr>
               ) : paginated.length === 0 ? (
                 <tr><td colSpan={9} className="tl-state-cell">
-                  <div className="tl-empty"><i className="bi bi-inbox" /><span>No tasks found</span></div>
+                  <div className="tl-empty"><i className="bi bi-inbox" /><span>No modules found</span></div>
                 </td></tr>
               ) : paginated.map((task, idx) => {
                 const assignees = task.assigned_to_names ? task.assigned_to_names.split(",").map((u) => u.trim()) : [];
@@ -278,7 +288,7 @@ export default function TaskList() {
                     <td>
                       <span className="tl-project-pill">{task.project_name || "—"}</span>
                     </td>
-                    <td className="tl-task-cell" title={task.task}>{task.task}</td>
+                    <td className="tl-task-cell" title={task.task} style={{ cursor: "pointer", color: "var(--primary)", fontWeight: 500 }} onClick={() => setDetailModuleId(task.id)}>{task.task}</td>
                     <td>
                       <div className="tl-assignees">
                         {assignees.slice(0, 3).map((name, i) => (
@@ -320,16 +330,25 @@ export default function TaskList() {
                       </span>
                     </td>
                     <td>
-                      {canEdit && (
-                        <div className="tl-actions">
-                          <button className="tl-action-btn tl-action-edit" onClick={() => openEditModal(task)} title="Edit">
-                            <i className="bi bi-pencil" />
-                          </button>
-                          <button className="tl-action-btn tl-action-delete" onClick={() => setDeleteConfirm(task)} title="Delete">
-                            <i className="bi bi-trash" />
-                          </button>
-                        </div>
-                      )}
+                      <div className="tl-actions">
+                        <button
+                          className="tl-action-btn tl-action-timesheet"
+                          onClick={() => navigate(isAdmin ? `/admin/timesheet?task=${task.id}` : `/employee/timesheet?task=${task.id}`)}
+                          title="Add Timesheet"
+                        >
+                          <i className="bi bi-clock-history" />
+                        </button>
+                        {canEdit && (
+                          <>
+                            <button className="tl-action-btn tl-action-edit" onClick={() => openEditModal(task)} title="Edit">
+                              <i className="bi bi-pencil" />
+                            </button>
+                            <button className="tl-action-btn tl-action-delete" onClick={() => setDeleteConfirm(task)} title="Delete">
+                              <i className="bi bi-trash" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -363,26 +382,16 @@ export default function TaskList() {
       {/* ── DELETE CONFIRM MODAL ── */}
       {deleteConfirm && (
         <>
-          <div className="tl-modal-overlay" onClick={() => setDeleteConfirm(null)} />
-          <div className="tl-modal-wrap">
-            <div className="tl-modal tl-modal-sm">
-              <div className="tl-modal-header">
-                <div className="tl-modal-header-left">
-                  <h6 className="tl-modal-title">Delete Task</h6>
-                </div>
-                <button className="tl-modal-close" onClick={() => setDeleteConfirm(null)}><i className="bi bi-x-lg" /></button>
-              </div>
-              <div className="tl-modal-body">
-                <div className="tl-delete-warn">
-                  <div className="tl-delete-icon"><i className="bi bi-exclamation-triangle" /></div>
-                  <p className="tl-delete-msg">Are you sure you want to delete this task?</p>
-                  <p className="tl-delete-task">"{deleteConfirm.task}"</p>
-                </div>
-              </div>
-              <div className="tl-modal-footer">
-                <button className="tl-btn tl-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                <div className="tl-footer-right">
-                  <button className="tl-btn tl-btn-danger" onClick={() => handleDelete(deleteConfirm.id)}>
+          <div className="ul-overlay" onClick={() => setDeleteConfirm(null)} />
+          <div style={{ position:"fixed", inset:0, zIndex:1001, display:"flex", alignItems:"center", justifyContent:"center", padding:16, pointerEvents:"none" }}>
+            <div className="ul-modal ul-modal-sm" style={{ pointerEvents:"all" }}>
+              <div className="ul-modal-body" style={{ padding: "28px 24px", textAlign: "center" }}>
+                <div className="ul-delete-icon"><i className="bi bi-exclamation-triangle" /></div>
+                <p className="ul-delete-title">Delete Module?</p>
+                <p className="ul-delete-sub">Are you sure you want to delete <strong>"{deleteConfirm.task}"</strong>? This action cannot be undone.</p>
+                <div className="ul-delete-actions">
+                  <button className="ul-btn ul-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                  <button className="ul-btn ul-btn-danger" onClick={() => handleDelete(deleteConfirm.id)}>
                     <i className="bi bi-trash" /> Delete
                   </button>
                 </div>
@@ -395,79 +404,83 @@ export default function TaskList() {
       {/* ── EDIT MODAL ── */}
       {showEditModal && selectedTask && (
         <>
-          <div className="tl-modal-overlay" onClick={() => setShowEditModal(false)} />
-          <div className="tl-modal-wrap">
-            <div className="tl-modal">
-              <div className="tl-modal-header">
-                <div className="tl-modal-header-left">
-                  <span className="tl-modal-badge" style={{ background: "#EEF2FF", color: "#5048E5" }}>
-                    <i className="bi bi-pencil-square" /> Edit
-                  </span>
-                  <h6 className="tl-modal-title">Edit Task</h6>
+          <div className="ul-overlay" onClick={() => setShowEditModal(false)} />
+          <div style={{ position:"fixed", inset:0, zIndex:1001, display:"flex", alignItems:"center", justifyContent:"center", padding:16, pointerEvents:"none" }}>
+            <div className="ul-modal ul-modal-lg" style={{ pointerEvents:"all" }}>
+              <div className="ul-modal-header">
+                <div className="ul-modal-header-left">
+                  <div className="ul-modal-icon ul-modal-icon-primary"><i className="bi bi-pencil-square" /></div>
+                  <div>
+                    <h6 className="ul-modal-title">Edit Module</h6>
+                    <p className="ul-modal-sub">Update module details below</p>
+                  </div>
                 </div>
-                <button className="tl-modal-close" onClick={() => setShowEditModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="ul-modal-close" onClick={() => setShowEditModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
-              <div className="tl-modal-body">
-                <div className="tl-field">
-                  <label className="tl-label">Date</label>
-                  <input className="tl-input" value={new Date(selectedTask.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} disabled />
-                </div>
-                <div className="tl-row-2">
-                  <div className="tl-field">
-                    <label className="tl-label">Project</label>
-                    <input className="tl-input" value={selectedTask.project_name} disabled />
+              <div className="ul-modal-body">
+                <div className="ul-form-grid">
+                  <div className="ul-field">
+                    <label className="ul-label">Date</label>
+                    <input className="ul-input" value={new Date(selectedTask.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} disabled />
                   </div>
-                  <div className="tl-field">
-                    <label className="tl-label">Created By</label>
-                    <input className="tl-input" value={selectedTask.created_by_name} disabled />
+                  <div className="ul-field">
+                    <label className="ul-label">Project</label>
+                    <input className="ul-input" value={selectedTask.project_name} disabled />
+                  </div>
+                  <div className="ul-field">
+                    <label className="ul-label">Created By</label>
+                    <input className="ul-input" value={selectedTask.created_by_name} disabled />
                   </div>
                 </div>
-                <div className="tl-field">
-                  <label className="tl-label">Task Description</label>
+                <div className="ul-field">
+                  <label className="ul-label">Module Description</label>
                   <textarea
-                    className="tl-textarea"
-                    rows={4}
+                    className="ul-textarea"
+                    rows={3}
                     value={editFormData.task}
                     onChange={(e) => setEditFormData({ ...editFormData, task: e.target.value })}
+                    placeholder="Describe the module…"
                   />
                 </div>
-                <div className="tl-field">
-                  <label className="tl-label">Assigned To</label>
-                  <Select
-                    isMulti
-                    options={userOptions}
-                    value={editFormData.assigned_to}
-                    onChange={(sel) => setEditFormData({ ...editFormData, assigned_to: resolveAssignee(sel) })}
-                    placeholder="Select users…"
-                    styles={selectStyles}
-                  />
-                </div>
-                <div className="tl-field">
-                  <label className="tl-label">Status</label>
-                  <div className="tl-radio-group">
-                    {["In Progress", "Completed"].map((val) => {
-                      const sc = statusConfig[val];
-                      return (
-                        <label
-                          key={val}
-                          className={`tl-radio-btn ${editFormData.status === val ? "active" : ""}`}
-                          style={editFormData.status === val ? { background: sc.bg, color: sc.color, borderColor: sc.border } : {}}
-                        >
-                          <input type="radio" name="edit_status" value={val} checked={editFormData.status === val}
-                            onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })} />
-                          {val}
-                        </label>
-                      );
-                    })}
+                <div className="ul-form-grid">
+                  <div className="ul-field" style={{ gridColumn: "span 2" }}>
+                    <label className="ul-label">Assigned To</label>
+                    <Select
+                      isMulti
+                      options={userOptions}
+                      value={editFormData.assigned_to}
+                      onChange={(sel) => setEditFormData({ ...editFormData, assigned_to: resolveAssignee(sel) })}
+                      placeholder="Select users…"
+                      styles={selectStyles}
+                    />
+                  </div>
+                  <div className="ul-field">
+                    <label className="ul-label">Status</label>
+                    <div className="tl-radio-group">
+                      {["In Progress", "Completed"].map((val) => {
+                        const sc = statusConfig[val];
+                        return (
+                          <label
+                            key={val}
+                            className={`tl-radio-btn ${editFormData.status === val ? "active" : ""}`}
+                            style={editFormData.status === val ? { background: sc.bg, color: sc.color, borderColor: sc.border } : {}}
+                          >
+                            <input type="radio" name="edit_status" value={val} checked={editFormData.status === val}
+                              onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })} />
+                            {val}
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="tl-modal-footer">
-                <button className="tl-btn tl-btn-ghost" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <div className="tl-footer-right">
-                  <button className="tl-btn tl-btn-primary" onClick={handleEditSave}>
+              <div className="ul-modal-footer">
+                <button className="ul-btn ul-btn-ghost" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <div className="ul-modal-footer-right">
+                  <button className="ul-btn ul-btn-primary" onClick={handleEditSave}>
                     <i className="bi bi-check-lg" /> Save Changes
                   </button>
                 </div>
@@ -480,108 +493,138 @@ export default function TaskList() {
       {/* ── CREATE MODAL ── */}
       {showCreateModal && (
         <>
-          <div className="tl-modal-overlay" onClick={() => setShowCreateModal(false)} />
-          <div className="tl-modal-wrap">
-            <div className="tl-modal tl-modal-wide">
-              <div className="tl-modal-header">
-                <div className="tl-modal-header-left">
-                  <span className="tl-modal-badge" style={{ background: "#ECFDF5", color: "#059669" }}>
-                    <i className="bi bi-plus-circle" /> New
-                  </span>
-                  <h6 className="tl-modal-title">Create Tasks</h6>
+          <div className="ul-overlay" onClick={() => setShowCreateModal(false)} />
+          <div style={{ position:"fixed", inset:0, zIndex:1001, display:"flex", alignItems:"center", justifyContent:"center", padding:16, pointerEvents:"none" }}>
+            <div className="ul-modal ul-modal-lg" style={{ pointerEvents:"all" }}>
+              <div className="ul-modal-header">
+                <div className="ul-modal-header-left">
+                  <div className="ul-modal-icon ul-modal-icon-success"><i className="bi bi-plus-circle" /></div>
+                  <div>
+                    <h6 className="ul-modal-title">Create Modules</h6>
+                    <p className="ul-modal-sub">Add new modules to a project</p>
+                  </div>
                 </div>
-                <button className="tl-modal-close" onClick={() => setShowCreateModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="ul-modal-close" onClick={() => setShowCreateModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
-              <div className="tl-modal-body">
-                <div className="tl-row-2">
-                  <div className="tl-field">
-                    <label className="tl-label">Date</label>
-                    <input className="tl-input" value={new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} disabled />
+              <div className="ul-modal-body">
+                <div className="ul-form-grid">
+                  <div className="ul-field">
+                    <label className="ul-label">Date</label>
+                    <input className="ul-input" value={new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} disabled />
                   </div>
-                  <div className="tl-field">
-                    <label className="tl-label">Project</label>
-                    <div className="tl-project-row">
-                      <SharedSelect
-                        value={createFormData.project_id || ""}
-                        onChange={(val) => setCreateFormData({ ...createFormData, project_id: parseInt(val) })}
-                        options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
-                        placeholder="— Select Project —"
-                        isDisabled={isAddingProject}
-                      />
+                  <div className="ul-field" style={{ gridColumn: "span 2" }}>
+                    <label className="ul-label">Project</label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ flex: 1 }}>
+                        <SharedSelect
+                          value={createFormData.project_id || ""}
+                          onChange={(val) => setCreateFormData({ ...createFormData, project_id: parseInt(val) })}
+                          options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
+                          placeholder="— Select Project —"
+                          isDisabled={isAddingProject}
+                        />
+                      </div>
                       <button
-                        className={`tl-toggle-new-btn ${isAddingProject ? "cancel" : ""}`}
+                        className={`ul-btn ${isAddingProject ? "ul-btn-danger" : "ul-btn-ghost"}`}
                         onClick={() => setIsAddingProject(!isAddingProject)}
+                        style={{ flexShrink: 0 }}
                       >
                         {isAddingProject ? <i className="bi bi-x" /> : <i className="bi bi-plus" />}
                       </button>
                     </div>
                     {isAddingProject && (
                       <input
-                        className="tl-input tl-mt"
+                        className="ul-input"
                         type="text"
                         placeholder="Enter new project name…"
                         value={createFormData.newProjectName}
                         onChange={(e) => setCreateFormData({ ...createFormData, newProjectName: e.target.value })}
+                        style={{ marginTop: 8 }}
                       />
                     )}
                   </div>
                 </div>
 
-                <div className="tl-tasks-section">
-                  <div className="tl-tasks-header">
-                    <span className="tl-label">Tasks</span>
-                    <button className="tl-add-row-btn" onClick={handleAddTaskRow}>
-                      <i className="bi bi-plus" /> Add Task
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <span className="ul-label">Modules</span>
+                    <button className="ul-btn ul-btn-ghost" onClick={handleAddTaskRow} style={{ padding: "5px 12px", fontSize: 12 }}>
+                      <i className="bi bi-plus" /> Add Module
                     </button>
                   </div>
 
                   {createFormData.tasks.map((t, idx) => (
-                    <div key={idx} className="tl-task-block">
-                      <div className="tl-task-block-header">
-                        <span className="tl-task-num">Task {idx + 1}</span>
+                    <div key={idx} className="tl-task-block" style={{ marginBottom: 12, border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--t-muted)" }}>Module {idx + 1}</span>
                         {createFormData.tasks.length > 1 && (
-                          <button className="tl-remove-btn" onClick={() => handleRemoveTaskRow(idx)}>
+                          <button className="ul-btn ul-btn-ghost" onClick={() => handleRemoveTaskRow(idx)} style={{ padding: "3px 8px", fontSize: 12, color: "#DC2626" }}>
                             <i className="bi bi-x" />
                           </button>
                         )}
                       </div>
-                      <div className="tl-field">
-                        <textarea
-                          className="tl-textarea"
-                          rows={3}
-                          placeholder="Describe the task…"
-                          value={t.task}
-                          onChange={(e) => handleCreateTaskChange(idx, "task", e.target.value)}
-                        />
-                      </div>
-                      <div className="tl-field">
-                        <label className="tl-label tl-label-sm">Assigned To</label>
-                        <Select
-                          isMulti
-                          options={userOptions}
-                          value={t.assigned_to}
-                          onChange={(sel) => handleCreateTaskChange(idx, "assigned_to", resolveAssignee(sel))}
-                          placeholder="Select users…"
-                          styles={selectStyles}
-                        />
+                      <div className="ul-form-grid">
+                        <div className="ul-field" style={{ gridColumn: "span 2" }}>
+                          <label className="ul-label">Description</label>
+                          <textarea
+                            className="ul-textarea"
+                            rows={2}
+                            placeholder="Describe the module…"
+                            value={t.task}
+                            onChange={(e) => handleCreateTaskChange(idx, "task", e.target.value)}
+                          />
+                        </div>
+                        <div className="ul-field">
+                          <label className="ul-label">Assigned To</label>
+                          {isAdmin ? (
+                            <Select
+                              isMulti
+                              options={userOptions}
+                              value={t.assigned_to}
+                              onChange={(sel) => handleCreateTaskChange(idx, "assigned_to", resolveAssignee(sel))}
+                              placeholder="Select users..."
+                              styles={selectStyles}
+                            />
+                          ) : (
+                            <input
+                              className="ul-input"
+                              value={users.find(u => u.id === loggedInUserId)?.name || "You"}
+                              disabled
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="tl-modal-footer">
-                <button className="tl-btn tl-btn-ghost" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                <div className="tl-footer-right">
-                  <button className="tl-btn tl-btn-primary" onClick={handleCreateSave}>
-                    <i className="bi bi-send" /> Save Tasks
+              <div className="ul-modal-footer">
+                <button className="ul-btn ul-btn-ghost" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <div className="ul-modal-footer-right">
+                  <button className="ul-btn ul-btn-primary" onClick={handleCreateSave}>
+                    <i className="bi bi-send" /> Save Modules
                   </button>
                 </div>
               </div>
             </div>
           </div>
         </>
+      )}
+
+      {/* Module Detail Modal */}
+      {detailModuleId && (
+        <ModuleDetailModal
+          moduleId={detailModuleId}
+          onClose={() => setDetailModuleId(null)}
+          onNavigate={(type, id) => {
+            setDetailModuleId(null);
+            if (type === "project") navigate(`/admin/projects/${id}`);
+            else if (type === "module") setDetailModuleId(id);
+            else if (type === "user") navigate(`/admin/users/${id}`);
+          }}
+        />
       )}
     </AppLayout>
   );
@@ -595,7 +638,7 @@ const selectStyles = {
     boxShadow: state.isFocused ? "0 0 0 3px rgba(80,72,229,0.1)" : "none",
     borderRadius: "8px",
     fontSize: "13px",
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontFamily: "var(--font)",
     minHeight: "38px",
     "&:hover": { borderColor: "#5048E5" },
   }),
@@ -620,11 +663,11 @@ const styles = `
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
   .tl-page-title {
-    font-size: 15px; font-weight: 700; color: var(--text-primary);
+    font-size: 15px; font-weight: 700; color: var(--t-base);
     margin: 0 0 4px; letter-spacing: -0.01em;
   }
   .tl-breadcrumb {
-    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted);
   }
   .tl-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
   .tl-breadcrumb a:hover { text-decoration: underline; }
@@ -634,13 +677,13 @@ const styles = `
     padding: 9px 18px; background: var(--primary); color: #fff;
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .tl-add-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
   /* Card */
   .tl-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden;
   }
 
@@ -653,24 +696,24 @@ const styles = `
     position: relative; display: flex; align-items: center; flex: 1; max-width: 360px;
   }
   .tl-search-icon {
-    position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none;
+    position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none;
   }
   .tl-search {
     width: 100%; padding: 8px 32px 8px 34px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 13px; color: var(--text-primary); background: var(--bg);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    font-size: 13px; color: var(--t-base); background: var(--bg);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .tl-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); background: var(--surface); }
+  .tl-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); background: var(--bg-card); }
   .tl-search-clear {
     position: absolute; right: 8px; background: none; border: none;
-    color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 2px;
+    color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px;
     display: flex; align-items: center; justify-content: center;
   }
-  .tl-search-clear:hover { color: var(--text-primary); }
+  .tl-search-clear:hover { color: var(--t-base); }
   .tl-count {
-    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    font-size: 12px; font-weight: 600; color: var(--t-muted);
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 20px; padding: 3px 10px; white-space: nowrap;
   }
@@ -681,8 +724,8 @@ const styles = `
   .tl-table thead tr { border-bottom: 2px solid var(--border); }
   .tl-table th {
     padding: 10px 14px; font-size: 10.5px; font-weight: 700;
-    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
-    text-align: left; white-space: nowrap; background: var(--surface);
+    color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.06em;
+    text-align: left; white-space: nowrap; background: var(--bg-card);
   }
   .tl-th-sm { width: 48px; text-align: center; }
   .tl-th-sort { cursor: pointer; user-select: none; }
@@ -692,9 +735,9 @@ const styles = `
   .tl-tr { transition: background 0.1s; }
   .tl-tr:hover td { background: #fafbff; }
   .tl-tr:last-child td { border-bottom: none; }
-  .tl-td-muted { color: var(--text-secondary); font-size: 12.5px; }
+  .tl-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .tl-nowrap { white-space: nowrap; }
-  .tl-task-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font-weight: 500; }
+  .tl-task-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-base); font-weight: 500; }
 
   /* Chips */
   .tl-project-pill {
@@ -709,7 +752,7 @@ const styles = `
   }
   .tl-assignee-more {
     font-size: 11px; font-weight: 700; padding: 2px 7px;
-    background: var(--bg); color: var(--text-muted); border-radius: 20px;
+    background: var(--bg); color: var(--t-muted); border-radius: 20px;
     border: 1px solid var(--border);
   }
   .tl-status-pill {
@@ -733,16 +776,16 @@ const styles = `
     color: #fff; font-size: 9px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
-  .tl-hrs-user { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+  .tl-hrs-user { font-size: 11px; font-weight: 500; color: var(--t-muted); }
   .tl-hrs-card-right i { font-size: 9px; color: #5048E5; }
-  .tl-hrs-val { font-size: 11px; font-weight: 700; color: var(--text-primary); }
+  .tl-hrs-val { font-size: 11px; font-weight: 700; color: var(--t-base); }
   .tl-hrs-total-row {
     display: flex; align-items: center; gap: 5px;
     font-size: 10.5px; font-weight: 700; color: #5048E5;
     border-top: 1px solid #E5E7EB; padding-top: 4px; margin-top: 2px;
   }
   .tl-hrs-total-row i { font-size: 11px; }
-  .tl-hrs-empty { display: flex; align-items: center; gap: 4px; color: var(--text-muted); font-size: 12px; }
+  .tl-hrs-empty { display: flex; align-items: center; gap: 4px; color: var(--t-muted); font-size: 12px; }
   .tl-hrs-empty i { font-size: 12px; }
 
   /* Actions */
@@ -754,6 +797,8 @@ const styles = `
   }
   .tl-action-edit { background: #EEF2FF; color: #5048E5; border-color: #c7d2fe; }
   .tl-action-edit:hover { background: #5048E5; color: #fff; }
+  .tl-action-timesheet { background: var(--success-soft); color: var(--success); border-color: #6ee7b7; }
+  .tl-action-timesheet:hover { background: var(--success); color: #fff; }
   .tl-action-delete { background: #FEF2F2; color: #DC2626; border-color: #fca5a5; }
   .tl-action-delete:hover { background: #DC2626; color: #fff; }
 
@@ -761,7 +806,7 @@ const styles = `
   .tl-state-cell { padding: 0 !important; border: none !important; }
   .tl-loading, .tl-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 8px; padding: 56px 20px; color: var(--text-muted); font-size: 13px;
+    gap: 8px; padding: 56px 20px; color: var(--t-muted); font-size: 13px;
   }
   .tl-empty i { font-size: 28px; opacity: 0.35; }
   .tl-spin { animation: tl-spin 0.7s linear infinite; display: inline-block; }
@@ -772,14 +817,14 @@ const styles = `
     display: flex; align-items: center; justify-content: space-between;
     padding: 12px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px;
   }
-  .tl-page-info { font-size: 12px; color: var(--text-muted); }
+  .tl-page-info { font-size: 12px; color: var(--t-muted); }
   .tl-page-btns { display: flex; gap: 4px; }
   .tl-page-btn {
     width: 30px; height: 30px; border-radius: var(--radius); border: 1px solid var(--border);
-    background: var(--surface); color: var(--text-secondary);
+    background: var(--bg-card); color: var(--t-muted);
     font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .tl-page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
   .tl-page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -797,7 +842,7 @@ const styles = `
   }
   .tl-modal {
     width: 80%; max-width: 560px; max-height: calc(100vh - 32px);
-    background: var(--surface); border-radius: var(--radius-lg);
+    background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0,0,0,0.18);
     display: flex; flex-direction: column; overflow: hidden;
     pointer-events: all; animation: tl-modal-center-in 0.22s ease;
@@ -814,7 +859,7 @@ const styles = `
     padding: 18px 20px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
   .tl-modal-header-left { display: flex; flex-direction: column; gap: 5px; }
-  .tl-modal-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0; letter-spacing: -0.01em; }
+  .tl-modal-title { font-size: 14px; font-weight: 700; color: var(--t-base); margin: 0; letter-spacing: -0.01em; }
   .tl-modal-badge {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 10.5px; font-weight: 700; padding: 2px 9px;
@@ -823,7 +868,7 @@ const styles = `
   .tl-modal-close {
     width: 30px; height: 30px; border: 1px solid var(--border); border-radius: var(--radius);
     background: transparent; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all 0.15s; flex-shrink: 0;
+    cursor: pointer; color: var(--t-muted); font-size: 13px; transition: all 0.15s; flex-shrink: 0;
   }
   .tl-modal-close:hover { background: #FEF2F2; border-color: #fca5a5; color: #DC2626; }
 
@@ -844,28 +889,28 @@ const styles = `
   .tl-field { display: flex; flex-direction: column; gap: 6px; }
   .tl-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .tl-label {
-    font-size: 11px; font-weight: 700; color: var(--text-secondary);
+    font-size: 11px; font-weight: 700; color: var(--t-muted);
     text-transform: uppercase; letter-spacing: 0.05em;
   }
   .tl-label-sm { font-size: 10.5px; }
   .tl-input, .tl-textarea, .tl-select {
     width: 100%; padding: 9px 12px;
     border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .tl-input:focus, .tl-textarea:focus, .tl-select:focus {
     border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1);
   }
-  .tl-input:disabled { background: var(--bg); color: var(--text-muted); cursor: default; }
+  .tl-input:disabled { background: var(--bg); color: var(--t-muted); cursor: default; }
   .tl-textarea { resize: none; line-height: 1.5; }
   .tl-select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; cursor: pointer;
   }
-  .tl-select:disabled { background-color: var(--bg); color: var(--text-muted); cursor: default; }
+  .tl-select:disabled { background-color: var(--bg); color: var(--t-muted); cursor: default; }
   .tl-mt { margin-top: 8px; }
 
   /* Project row */
@@ -885,7 +930,7 @@ const styles = `
   .tl-radio-btn {
     display: flex; align-items: center; gap: 6px;
     padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 12.5px; font-weight: 500; color: var(--text-secondary);
+    font-size: 12.5px; font-weight: 500; color: var(--t-muted);
     cursor: pointer; transition: all 0.15s; user-select: none;
   }
   .tl-radio-btn input[type="radio"] { display: none; }
@@ -910,7 +955,7 @@ const styles = `
     padding: 5px 12px; border: 1px solid #6ee7b7;
     background: #ECFDF5; color: #059669; border-radius: var(--radius);
     font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .tl-add-row-btn:hover { background: #059669; color: #fff; }
   .tl-remove-btn {
@@ -924,8 +969,8 @@ const styles = `
   /* Delete confirm */
   .tl-delete-warn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; text-align: center; }
   .tl-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: #FEF2F2; color: #DC2626; font-size: 22px; display: flex; align-items: center; justify-content: center; }
-  .tl-delete-msg { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; }
-  .tl-delete-task { font-size: 12.5px; color: var(--text-muted); margin: 0; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+  .tl-delete-msg { font-size: 14px; font-weight: 600; color: var(--t-base); margin: 0; }
+  .tl-delete-task { font-size: 12.5px; color: var(--t-muted); margin: 0; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
 
   /* Buttons */
   .tl-btn {
@@ -933,12 +978,12 @@ const styles = `
     padding: 8px 16px; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; cursor: pointer;
     transition: all 0.15s; border: 1px solid transparent;
-    font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap;
+    font-family: var(--font); white-space: nowrap;
   }
   .tl-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .tl-btn-primary { background: var(--primary); color: #fff; }
   .tl-btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
-  .tl-btn-ghost { background: transparent; border-color: var(--border); color: var(--text-secondary); }
+  .tl-btn-ghost { background: transparent; border-color: var(--border); color: var(--t-muted); }
   .tl-btn-ghost:hover { background: var(--bg); }
   .tl-btn-danger { background: #FEF2F2; color: #DC2626; border-color: #fca5a5; }
   .tl-btn-danger:hover:not(:disabled) { background: #DC2626; color: #fff; }

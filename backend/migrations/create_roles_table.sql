@@ -26,6 +26,8 @@ INSERT INTO roles (name, description) VALUES
 -- Admin permissions (full access to everything)
 INSERT INTO role_permissions (role_id, menu_key, can_view, can_create, can_edit, can_delete) VALUES
   (1, 'dashboard', 1, 0, 0, 0),
+  (1, 'leave_dashboard', 1, 0, 0, 0),
+  (1, 'timesheet_dashboard', 1, 0, 0, 0),
   (1, 'attendance', 1, 1, 1, 1),
   (1, 'attendance_report', 1, 0, 0, 0),
   (1, 'task', 1, 1, 1, 1),
@@ -42,6 +44,8 @@ INSERT INTO role_permissions (role_id, menu_key, can_view, can_create, can_edit,
 -- Employee permissions (limited access)
 INSERT INTO role_permissions (role_id, menu_key, can_view, can_create, can_edit, can_delete) VALUES
   (2, 'dashboard', 1, 0, 0, 0),
+  (2, 'leave_dashboard', 1, 0, 0, 0),
+  (2, 'timesheet_dashboard', 1, 0, 0, 0),
   (2, 'attendance', 1, 1, 0, 0),
   (2, 'attendance_report', 0, 0, 0, 0),
   (2, 'task', 1, 0, 0, 0),

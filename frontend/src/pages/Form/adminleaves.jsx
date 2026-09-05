@@ -574,120 +574,129 @@ const generateSummary = () => {
         )}
       </div>
 
-      {/* VIEW / APPROVE MODAL */}
+      {/* ── VIEW / APPROVE MODAL ── */}
       {showModal && (
-        <>
-          <div className="al-modal-overlay" onClick={() => setShowModal(false)} />
-          <div className="al-modal-wrap">
-            <div className="al-modal">
-              <div className="al-modal-header">
-                <div className="al-modal-header-left">
-                  {formData.status && (
-                    <span className="al-status-pill" style={{ background: statusConfig[formData.status]?.bg, color: statusConfig[formData.status]?.color }}>
-                      {statusConfig[formData.status]?.label}
-                    </span>
-                  )}
-                  <h6 className="al-modal-title">Request Details</h6>
+        <div className="ul-overlay" onClick={() => setShowModal(false)}>
+          <div className="ul-modal ul-modal-md" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-header">
+              <div className="ul-modal-header-left">
+                {formData.status && (
+                  <span className={`ul-badge ${formData.status === "approved" ? "ul-badge-success" : formData.status === "rejected" ? "ul-badge-danger" : "ul-badge-warning"}`}>
+                    {statusConfig[formData.status]?.label}
+                  </span>
+                )}
+                <div>
+                  <h6 className="ul-modal-title">Request Details</h6>
+                  <p className="ul-modal-sub">View and manage leave request</p>
                 </div>
-                <button className="al-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
-              <div className="al-modal-body">
-                <div className="al-detail-grid">
-                  <div className="al-detail-row">
-                    <span className="al-detail-label">Employee</span>
-                    <div className="al-detail-emp">
-                      <div className="al-avatar al-avatar-lg">{formData.name?.charAt(0).toUpperCase()}</div>
-                      <span className="al-detail-value">{formData.name}</span>
-                    </div>
+              <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+            </div>
+
+            <div className="ul-modal-divider" />
+
+            <div className="ul-modal-body">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Employee</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13 }}>{formData.name?.charAt(0).toUpperCase()}</div>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{formData.name}</span>
                   </div>
-                  <div className="al-detail-row">
-                    <span className="al-detail-label">Type</span>
-                    <span className="al-type-pill" style={{ background: typeConfig[formData.type]?.bg, color: typeConfig[formData.type]?.color }}>
+                </div>
+                <div>
+                  <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Type</span>
+                  <div style={{ marginTop: 4 }}>
+                    <span className={`ul-badge ${formData.type === "leave" ? "ul-badge-danger" : formData.type === "permission" ? "ul-badge-warning" : formData.type === "compoff" ? "ul-badge-primary" : "ul-badge-success"}`}>
                       <i className={`bi ${formData.type === "permission" ? "bi-clock" : formData.type === "compoff" ? "bi-arrow-left-right" : formData.type === "present" ? "bi-person-check" : "bi-calendar-x"}`} />
                       {typeConfig[formData.type]?.label || formData.type}
                     </span>
                   </div>
-                  <div className="al-detail-row">
-                    <span className="al-detail-label">Date</span>
-                    <span className="al-detail-value">{formData.start_date}</span>
-                  </div>
-                  {formData.type === "leave" && (
-                    <>
-                      <div className="al-detail-row">
-                        <span className="al-detail-label">To</span>
-                        <span className="al-detail-value">{formData.end_date}</span>
-                      </div>
-                      <div className="al-detail-row">
-                        <span className="al-detail-label">Days</span>
-                        <div className="al-days-display">
-                          <i className="bi bi-calendar-check" />
-                          <span>{formData.days || 1} {(formData.days || 1) === 1 ? "day" : "days"}</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  {formData.type === "permission" && (
-                    <>
-                      <div className="al-detail-row">
-                        <span className="al-detail-label">Hours</span>
-                        <span className="al-detail-value">{formData.hours}</span>
-                      </div>
-                      <div className="al-detail-row">
-                        <span className="al-detail-label">Slot</span>
-                        <span className="al-detail-value" style={{ textTransform: "capitalize" }}>{formData.slot}</span>
-                      </div>
-                    </>
-                  )}
-                  {formData.type === "compoff" && (
-                    <div className="al-detail-row">
-                      <span className="al-detail-label">Holiday Worked</span>
-                      <span className="al-detail-value">{formData.compoff_date}</span>
-                    </div>
-                  )}
-                  {formData.type === "present" && formData.holiday_name && (
-                    <div className="al-detail-row">
-                      <span className="al-detail-label">Holiday</span>
-                      <span className="al-detail-value">{formData.holiday_name}</span>
-                    </div>
-                  )}
-                  <div className="al-detail-row">
-                    <span className="al-detail-label">Reason</span>
-                    <span className="al-detail-value">{formData.reason || <span className="al-muted">—</span>}</span>
-                  </div>
                 </div>
-              </div>
-              <div className="al-modal-footer">
-                <button className="al-btn al-btn-ghost" onClick={() => setShowModal(false)}>Close</button>
-                {formData.status === "pending" && (
-                  <div className="al-footer-right">
-                    <button className="al-btn al-btn-danger" onClick={() => handleUpdateStatus("rejected")} disabled={loading}>
-                      <i className="bi bi-x-circle" /> {loading ? "…" : "Reject"}
-                    </button>
-                    <button className="al-btn al-btn-success" onClick={() => handleUpdateStatus("approved")} disabled={loading}>
-                      <i className="bi bi-check-circle" /> {loading ? "…" : "Approve"}
-                    </button>
+                <div>
+                  <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Date</span>
+                  <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13 }}>{formData.start_date}</p>
+                </div>
+                {formData.type === "leave" && (
+                  <>
+                    <div>
+                      <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>To</span>
+                      <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13 }}>{formData.end_date}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Days</span>
+                      <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13 }}>{formData.days || 1} {(formData.days || 1) === 1 ? "day" : "days"}</p>
+                    </div>
+                  </>
+                )}
+                {formData.type === "permission" && (
+                  <>
+                    <div>
+                      <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Hours</span>
+                      <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13 }}>{formData.hours}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Slot</span>
+                      <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13, textTransform: "capitalize" }}>{formData.slot}</p>
+                    </div>
+                  </>
+                )}
+                {formData.type === "compoff" && (
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Holiday Worked</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13 }}>{formData.compoff_date}</p>
                   </div>
                 )}
+                {formData.type === "present" && formData.holiday_name && (
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Holiday</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13 }}>{formData.holiday_name}</p>
+                  </div>
+                )}
+                <div style={{ gridColumn: "span 2" }}>
+                  <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Reason</span>
+                  <p style={{ margin: "4px 0 0", fontSize: 13 }}>{formData.reason || <span style={{ color: "var(--t-muted)" }}>—</span>}</p>
+                </div>
               </div>
             </div>
+
+            <div className="ul-modal-divider" />
+
+            <div className="ul-modal-footer">
+              <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Close</button>
+              {formData.status === "pending" && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="ul-btn ul-btn-danger" onClick={() => handleUpdateStatus("rejected")} disabled={loading}>
+                    <i className="bi bi-x-circle" /> {loading ? "…" : "Reject"}
+                  </button>
+                  <button className="ul-btn ul-btn-success" onClick={() => handleUpdateStatus("approved")} disabled={loading}>
+                    <i className="bi bi-check-circle" /> {loading ? "…" : "Approve"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </>
+        </div>
       )}
 
-      {/* APPLY LEAVE MODAL */}
+      {/* ── APPLY LEAVE MODAL ── */}
       {showApplyModal && (
-        <>
-          <div className="al-modal-overlay" onClick={() => setShowApplyModal(false)} />
-          <div className="al-modal-wrap">
-            <div className="al-modal">
-              <div className="al-modal-header">
-                <div className="al-modal-header-left">
-                  <h6 className="al-modal-title">Apply Leave on Behalf</h6>
+        <div className="ul-overlay" onClick={() => setShowApplyModal(false)}>
+          <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-header">
+              <div className="ul-modal-header-left">
+                <div className="ul-modal-icon ul-modal-icon-primary"><i className="bi bi-calendar-plus" /></div>
+                <div>
+                  <h6 className="ul-modal-title">Apply Leave on Behalf</h6>
+                  <p className="ul-modal-sub">Submit a leave request for an employee</p>
                 </div>
-                <button className="al-modal-close" onClick={() => setShowApplyModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
+              <button className="ul-modal-close" onClick={() => setShowApplyModal(false)}><i className="bi bi-x-lg" /></button>
+            </div>
 
-              <div className="al-modal-body">
+            <div className="ul-modal-divider" />
+
+              <div className="ul-modal-body">
                 {/* Employee */}
                 <div className="al-field">
                   <label className="al-label">Employee</label>
@@ -861,77 +870,78 @@ const generateSummary = () => {
                 </div>
               </div>
 
-              <div className="al-modal-footer">
-                <button className="al-btn al-btn-ghost" onClick={() => setShowApplyModal(false)}>Cancel</button>
-                <div className="al-footer-right">
-                  <button className="al-btn al-btn-primary" onClick={handleApplyLeave} disabled={applyLoading}>
-                    {applyLoading
-                      ? <><i className="bi bi-arrow-repeat al-spin" /> Submitting…</>
-                      : <><i className="bi bi-send" /> Submit</>}
-                  </button>
-                </div>
+              <div className="ul-modal-footer">
+                <button className="ul-btn ul-btn-ghost" onClick={() => setShowApplyModal(false)}>Cancel</button>
+                <button className="ul-btn ul-btn-primary" onClick={handleApplyLeave} disabled={applyLoading}>
+                  {applyLoading
+                    ? <><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> Submitting…</>
+                    : <><i className="bi bi-send" /> Submit</>}
+                </button>
               </div>
             </div>
           </div>
-        </>
       )}
 
-      {/* SUMMARY MODAL */}
+      {/* ── SUMMARY MODAL ── */}
       {showSummaryModal && (
-        <>
-          <div className="al-modal-overlay" onClick={() => setShowSummaryModal(false)} />
-          <div className="al-modal-wrap">
-            <div className="al-modal al-modal-lg">
-              <div className="al-modal-header">
-                <div className="al-modal-header-left">
-                  <h6 className="al-modal-title">Employee Leave Summary</h6>
-                  <span className="al-label-hint">Current Financial Year</span>
+        <div className="ul-overlay" onClick={() => setShowSummaryModal(false)}>
+          <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-header">
+              <div className="ul-modal-header-left">
+                <div className="ul-modal-icon ul-modal-icon-primary"><i className="bi bi-bar-chart" /></div>
+                <div>
+                  <h6 className="ul-modal-title">Employee Leave Summary</h6>
+                  <p className="ul-modal-sub">Current Financial Year</p>
                 </div>
-                <button className="al-modal-close" onClick={() => setShowSummaryModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
-              <div className="al-modal-body">
-                <div className="al-table-wrap">
-                  <table className="al-table">
-                    <thead>
-                      <tr>
-                        <th>Employee</th><th>Leaves</th><th>Comp Off</th>
-                        <th>Permission</th><th>Total Used</th><th>Remaining</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {summaryData.length === 0 ? (
-                        <tr><td colSpan={6} className="al-empty">No data available</td></tr>
-                      ) : summaryData.map((row, idx) => (
-                        <tr key={idx} className="al-tr">
-                          <td>
-                            <div className="al-emp-cell">
-                              <div className="al-avatar">{row.name?.charAt(0).toUpperCase()}</div>
-                              <span>{row.name}</span>
-                            </div>
-                          </td>
-                          <td>{row.leaveTaken}</td>
-                          <td>{row.compOff}</td>
+              <button className="ul-modal-close" onClick={() => setShowSummaryModal(false)}><i className="bi bi-x-lg" /></button>
+            </div>
+
+            <div className="ul-modal-divider" />
+
+            <div className="ul-modal-body">
+              <div className="ul-table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th><th>Leaves</th><th>Comp Off</th>
+                      <th>Permission</th><th>Total Used</th><th>Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summaryData.length === 0 ? (
+                      <tr><td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--t-muted)" }}>No data available</td></tr>
+                    ) : summaryData.map((row, idx) => (
+                      <tr key={idx}>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11 }}>{row.name?.charAt(0).toUpperCase()}</div>
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>{row.name}</span>
+                          </div>
+                        </td>
+                        <td>{row.leaveTaken}</td>
+                        <td>{row.compOff}</td>
                         <td>{row.permUsed} / {row.permAllocated}h</td>
-                          <td><strong>{row.totalUsed}</strong></td>
-                          <td>
-                            <span style={{ color: Number(row.remaining) < 5 ? "#DC2626" : "#059669", fontWeight: 700 }}>
-                              {row.remaining}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div className="al-modal-footer">
-                <div className="al-footer-right">
-                  <button className="al-btn al-btn-ghost" onClick={() => setShowSummaryModal(false)}>Close</button>
-                </div>
+                        <td><strong>{row.totalUsed}</strong></td>
+                        <td>
+                          <span className={`ul-badge ${Number(row.remaining) < 5 ? "ul-badge-danger" : "ul-badge-success"}`}>
+                            {row.remaining}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
+
+            <div className="ul-modal-divider" />
+
+            <div className="ul-modal-footer">
+              <button className="ul-btn ul-btn-ghost" onClick={() => setShowSummaryModal(false)}>Close</button>
+            </div>
           </div>
-        </>
+        </div>
       )}
     </AppLayout>
   );
@@ -943,76 +953,76 @@ const generateSummary = () => {
 const styles = `
   /* ── page layout ── */
   .al-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
-  .al-page-title { font-size:15px; font-weight:700; color:var(--text-primary); margin:0 0 4px; letter-spacing:-0.01em; }
-  .al-breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); }
+  .al-page-title { font-size:15px; font-weight:700; color:var(--t-base); margin:0 0 4px; letter-spacing:-0.01em; }
+  .al-breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--t-muted); }
   .al-breadcrumb a { color:var(--primary); text-decoration:none; font-weight:500; }
   .al-breadcrumb a:hover { text-decoration:underline; }
   .al-breadcrumb i { font-size:10px; opacity:0.5; }
   .al-header-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .al-view-toggle { display:flex; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:3px; gap:2px; }
-  .al-toggle-btn { display:flex; align-items:center; gap:6px; padding:6px 14px; border:none; border-radius:calc(var(--radius) - 2px); font-size:12.5px; font-weight:600; color:var(--text-secondary); background:transparent; cursor:pointer; transition:all 0.15s; font-family:var(--font); }
-  .al-toggle-btn.active { background:var(--surface); color:var(--primary); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
-  .al-toggle-btn:hover:not(.active) { color:var(--text-primary); }
+  .al-toggle-btn { display:flex; align-items:center; gap:6px; padding:6px 14px; border:none; border-radius:calc(var(--radius) - 2px); font-size:12.5px; font-weight:600; color:var(--t-muted); background:transparent; cursor:pointer; transition:all 0.15s; font-family:var(--font); }
+  .al-toggle-btn.active { background:var(--bg-card); color:var(--primary); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+  .al-toggle-btn:hover:not(.active) { color:var(--t-base); }
   .al-apply-btn, .al-summary-btn { display:flex; align-items:center; gap:7px; padding:9px 18px; border:none; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s,transform 0.15s; letter-spacing:0.01em; font-family:var(--font); }
   .al-apply-btn { background:var(--primary); color:#fff; }
   .al-apply-btn:hover { background:var(--primary-dark); transform:translateY(-1px); }
-  .al-summary-btn { background:var(--surface); color:var(--text-secondary); border:1px solid var(--border); }
-  .al-summary-btn:hover { background:var(--bg); color:var(--text-primary); }
-  .al-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow); }
+  .al-summary-btn { background:var(--bg-card); color:var(--t-muted); border:1px solid var(--border); }
+  .al-summary-btn:hover { background:var(--bg); color:var(--t-base); }
+  .al-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow); }
   /* ── legend ── */
   .al-legend { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
-  .al-legend-item { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-secondary); font-weight:500; }
+  .al-legend-item { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--t-muted); font-weight:500; }
   .al-legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .al-legend-sep { flex:1; }
-  .al-legend-hint { font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+  .al-legend-hint { font-size:11.5px; color:var(--t-muted); display:flex; align-items:center; gap:5px; }
   /* ── calendar events ── */
   .al-cal-event { display:flex; align-items:center; gap:4px; padding:1px 2px; overflow:hidden; }
   .al-cal-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-  .al-cal-name { font-size:11.5px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
+  .al-cal-name { font-size:11.5px; font-weight:600; color:var(--t-base); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
   .al-cal-type { font-size:9px; font-weight:800; padding:1px 5px; border-radius:4px; flex-shrink:0; letter-spacing:0.04em; }
   /* ── rbc overrides ── */
   .rbc-calendar { font-family:var(--font) !important; }
-  .rbc-toolbar button { border-radius:var(--radius) !important; font-size:12.5px !important; font-weight:600 !important; color:var(--text-secondary) !important; border-color:var(--border) !important; }
+  .rbc-toolbar button { border-radius:var(--radius) !important; font-size:12.5px !important; font-weight:600 !important; color:var(--t-muted) !important; border-color:var(--border) !important; }
   .rbc-toolbar button.rbc-active, .rbc-toolbar button:hover { background:var(--primary-light) !important; color:var(--primary) !important; border-color:#c7d2fe !important; box-shadow:none !important; }
-  .rbc-toolbar-label { font-size:14px !important; font-weight:700 !important; color:var(--text-primary) !important; }
-  .rbc-header { font-size:11px !important; font-weight:700 !important; color:var(--text-muted) !important; text-transform:uppercase !important; letter-spacing:0.06em !important; padding:8px 0 !important; border-color:var(--border) !important; }
+  .rbc-toolbar-label { font-size:14px !important; font-weight:700 !important; color:var(--t-base) !important; }
+  .rbc-header { font-size:11px !important; font-weight:700 !important; color:var(--t-muted) !important; text-transform:uppercase !important; letter-spacing:0.06em !important; padding:8px 0 !important; border-color:var(--border) !important; }
   .rbc-today { background:var(--primary-light) !important; }
   .rbc-off-range-bg { background:#fafafa !important; }
-  .rbc-date-cell { font-size:12px !important; color:var(--text-secondary) !important; font-weight:500 !important; }
+  .rbc-date-cell { font-size:12px !important; color:var(--t-muted) !important; font-weight:500 !important; }
   .rbc-date-cell.rbc-now a { color:var(--primary) !important; font-weight:700 !important; }
   .rbc-month-row, .rbc-month-view, .rbc-day-bg, .rbc-header { border-color:var(--border) !important; }
   /* ── table ── */
   .al-table-wrap { overflow-x:auto; }
   .al-table { width:100%; border-collapse:collapse; font-size:13px; }
   .al-table thead tr { border-bottom:2px solid var(--border); }
-  .al-table th { padding:10px 14px; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; }
+  .al-table th { padding:10px 14px; font-size:11px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; }
   .al-th-sortable { cursor:pointer; user-select:none; }
   .al-th-sortable:hover { color:var(--primary); }
   .al-sort-icon { margin-left:4px; font-size:10px; }
-  .al-table td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text-primary); }
+  .al-table td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--t-base); }
   .al-tr { cursor:pointer; transition:background 0.12s; }
   .al-tr:hover td { background:var(--bg); }
   .al-tr:last-child td { border-bottom:none; }
-  .al-empty { text-align:center; color:var(--text-muted); padding:32px; }
+  .al-empty { text-align:center; color:var(--t-muted); padding:32px; }
   /* ── shared atoms ── */
   .al-emp-cell { display:flex; align-items:center; gap:9px; }
   .al-avatar { width:30px; height:30px; border-radius:50%; background:var(--primary-light); color:var(--primary); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .al-avatar-lg { width:36px; height:36px; font-size:14px; }
-  .al-date { font-size:12.5px; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
-  .al-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-secondary); }
-  .al-muted { color:var(--text-muted); }
+  .al-date { font-size:12.5px; color:var(--t-muted); font-variant-numeric:tabular-nums; }
+  .al-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--t-muted); }
+  .al-muted { color:var(--t-muted); }
   .al-type-pill { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:20px; white-space:nowrap; }
   .al-status-pill { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:20px; letter-spacing:0.04em; width:fit-content; }
   /* ── modal ── */
   .al-modal-overlay { position:fixed; inset:0; background:rgba(17,24,39,0.45); backdrop-filter:blur(2px); z-index:200; }
   .al-modal-wrap { position:fixed; inset:0; z-index:201; display:flex; align-items:center; justify-content:center; padding:16px; pointer-events:none; }
-  .al-modal { width:80%; max-width:720px; max-height:calc(100vh - 32px); background:var(--surface); border-radius:var(--radius-lg); box-shadow:0 20px 60px rgba(0,0,0,0.18); display:flex; flex-direction:column; overflow:hidden; pointer-events:all; animation:al-modal-center-in 0.22s ease; }
+  .al-modal { width:80%; max-width:720px; max-height:calc(100vh - 32px); background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:0 20px 60px rgba(0,0,0,0.18); display:flex; flex-direction:column; overflow:hidden; pointer-events:all; animation:al-modal-center-in 0.22s ease; }
   .al-modal-lg { max-width:720px; }
   @keyframes al-modal-center-in { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
   .al-modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 20px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
   .al-modal-header-left { display:flex; flex-direction:column; gap:5px; }
-  .al-modal-title { font-size:14px; font-weight:700; color:var(--text-primary); margin:0; letter-spacing:-0.01em; }
-  .al-modal-close { width:30px; height:30px; border:1px solid var(--border); border-radius:var(--radius); background:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-muted); font-size:13px; transition:all 0.15s; flex-shrink:0; }
+  .al-modal-title { font-size:14px; font-weight:700; color:var(--t-base); margin:0; letter-spacing:-0.01em; }
+  .al-modal-close { width:30px; height:30px; border:1px solid var(--border); border-radius:var(--radius); background:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--t-muted); font-size:13px; transition:all 0.15s; flex-shrink:0; }
   .al-modal-close:hover { background:#FEF2F2; border-color:#fca5a5; color:#DC2626; }
   .al-modal-body { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px; }
   .al-modal-body::-webkit-scrollbar { width:4px; }
@@ -1024,22 +1034,22 @@ const styles = `
   .al-detail-grid { display:flex; flex-direction:column; gap:0; }
   .al-detail-row { display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border); gap:12px; }
   .al-detail-row:last-child { border-bottom:none; }
-  .al-detail-label { font-size:11.5px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; flex-shrink:0; }
-  .al-detail-value { font-size:13px; font-weight:500; color:var(--text-primary); text-align:right; }
+  .al-detail-label { font-size:11.5px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.05em; flex-shrink:0; }
+  .al-detail-value { font-size:13px; font-weight:500; color:var(--t-base); text-align:right; }
   .al-detail-emp { display:flex; align-items:center; gap:9px; }
   /* ── form ── */
   .al-field { display:flex; flex-direction:column; gap:6px; }
   .al-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .al-label { font-size:11.5px; font-weight:700; color:var(--text-secondary); letter-spacing:0.04em; text-transform:uppercase; display:flex; align-items:center; gap:5px; }
-  .al-label-hint { font-size:10.5px; font-weight:500; color:var(--text-muted); text-transform:none; letter-spacing:0; }
-  .al-input, .al-textarea { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--surface); font-size:14px; color:var(--text-primary); font-family:var(--font); transition:border-color 0.15s,box-shadow 0.15s; outline:none; box-sizing:border-box; }
+  .al-label { font-size:11.5px; font-weight:700; color:var(--t-muted); letter-spacing:0.04em; text-transform:uppercase; display:flex; align-items:center; gap:5px; }
+  .al-label-hint { font-size:10.5px; font-weight:500; color:var(--t-muted); text-transform:none; letter-spacing:0; }
+  .al-input, .al-textarea { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--bg-card); font-size:14px; color:var(--t-base); font-family:var(--font); transition:border-color 0.15s,box-shadow 0.15s; outline:none; box-sizing:border-box; }
   .al-input:focus, .al-textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(80,72,229,0.1); }
   .al-textarea { resize:none; line-height:1.5; }
   .al-type-tabs { display:flex; gap:8px; flex-wrap:wrap; }
-  .al-type-tab { flex:1; min-width:80px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); font-size:12.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; font-family:var(--font); text-align:center; }
+  .al-type-tab { flex:1; min-width:80px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-card); font-size:12.5px; font-weight:600; color:var(--t-muted); cursor:pointer; transition:all 0.15s; font-family:var(--font); text-align:center; }
   .al-type-tab:hover { background:var(--primary-light); color:var(--primary); border-color:#c7d2fe; }
   .al-radio-group { display:flex; gap:8px; flex-wrap:wrap; }
-  .al-radio-btn { display:flex; align-items:center; gap:6px; padding:7px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:12.5px; font-weight:500; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; user-select:none; }
+  .al-radio-btn { display:flex; align-items:center; gap:6px; padding:7px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:12.5px; font-weight:500; color:var(--t-muted); cursor:pointer; transition:all 0.15s; user-select:none; }
   .al-radio-btn input[type="radio"] { display:none; }
   .al-radio-btn.active { background:var(--primary-light); color:var(--primary); border-color:#c7d2fe; font-weight:600; }
   .al-days-display { display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--primary-light); border:1px solid #c7d2fe; border-radius:var(--radius); font-size:13px; font-weight:700; color:var(--primary); }
@@ -1048,7 +1058,7 @@ const styles = `
   .al-btn:disabled { opacity:0.6; cursor:not-allowed; }
   .al-btn-primary { background:var(--primary); color:#fff; }
   .al-btn-primary:hover:not(:disabled) { background:var(--primary-dark); }
-  .al-btn-ghost { background:transparent; border-color:var(--border); color:var(--text-secondary); }
+  .al-btn-ghost { background:transparent; border-color:var(--border); color:var(--t-muted); }
   .al-btn-ghost:hover { background:var(--bg); }
   .al-btn-success { background:#ECFDF5; color:#059669; border-color:#6ee7b7; }
   .al-btn-success:hover:not(:disabled) { background:#059669; color:#fff; }
@@ -1057,7 +1067,7 @@ const styles = `
   /* ── misc ── */
   .al-spin { animation:al-spin 0.7s linear infinite; display:inline-block; }
   @keyframes al-spin { to { transform:rotate(360deg); } }
-  .al-info-text { font-size:12.5px; color:var(--text-muted); margin:0; display:flex; align-items:center; gap:6px; }
+  .al-info-text { font-size:12.5px; color:var(--t-muted); margin:0; display:flex; align-items:center; gap:6px; }
   .al-hint-text { font-size:11.5px; color:#0891B2; margin:0; display:flex; align-items:center; gap:5px; background:#ECFEFF; padding:8px 10px; border-radius:var(--radius); border:1px solid #a5f3fc; }
   .al-empty-compoff { display:flex; align-items:flex-start; gap:10px; padding:12px; background:#FFFBEB; border:1px solid #fcd34d; border-radius:var(--radius); font-size:12.5px; color:#92400E; line-height:1.5; }
   .al-empty-compoff i { font-size:16px; margin-top:1px; flex-shrink:0; color:#D97706; }
@@ -1068,15 +1078,15 @@ const styles = `
   .hcp-root { display:flex; flex-direction:column; gap:10px; border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px; background:var(--bg); }
   /* nav */
   .hcp-nav { display:flex; align-items:center; justify-content:space-between; }
-  .hcp-nav-btn { width:28px; height:28px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text-secondary); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0; }
+  .hcp-nav-btn { width:28px; height:28px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-card); color:var(--t-muted); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0; }
   .hcp-nav-btn:hover { background:var(--primary-light); color:var(--primary); border-color:#c7d2fe; }
-  .hcp-month-label { font-size:13px; font-weight:700; color:var(--text-primary); }
+  .hcp-month-label { font-size:13px; font-weight:700; color:var(--t-base); }
   /* grid */
   .hcp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-  .hcp-weekday { font-size:9.5px; font-weight:700; color:var(--text-muted); text-align:center; padding:5px 0 3px; text-transform:uppercase; letter-spacing:0.05em; }
+  .hcp-weekday { font-size:9.5px; font-weight:700; color:var(--t-muted); text-align:center; padding:5px 0 3px; text-transform:uppercase; letter-spacing:0.05em; }
   .hcp-day { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; height:34px; border-radius:var(--radius); font-size:12px; font-weight:500; transition:all 0.12s; user-select:none; }
   .hcp-blank { background:transparent !important; }
-  .hcp-normal { color:var(--text-secondary); }
+  .hcp-normal { color:var(--t-muted); }
   .hcp-regular-weekend { color:#d1d5db; }
   .hcp-selectable { cursor:pointer; }
   /* holiday = red tint */
@@ -1102,8 +1112,8 @@ const styles = `
   .hcp-clear { width:20px; height:20px; border:none; background:transparent; color:var(--primary); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:15px; opacity:0.65; padding:0; }
   .hcp-clear:hover { opacity:1; background:rgba(80,72,229,0.12); }
   /* selectable list */
-  .hcp-list { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--surface); }
-  .hcp-list-title { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; padding:7px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:5px; background:var(--bg); }
+  .hcp-list { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--bg-card); }
+  .hcp-list-title { font-size:10px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.07em; padding:7px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:5px; background:var(--bg); }
   .hcp-list-items { display:flex; flex-direction:column; max-height:150px; overflow-y:auto; }
   .hcp-list-items::-webkit-scrollbar { width:3px; }
   .hcp-list-items::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
@@ -1115,12 +1125,12 @@ const styles = `
   .hcp-list-date { font-weight:700; white-space:nowrap; min-width:88px; }
   .hcp-list-holiday .hcp-list-date { color:#DC2626; }
   .hcp-list-sw .hcp-list-date { color:#D97706; }
-  .hcp-list-name { flex:1; color:var(--text-secondary); font-size:11.5px; }
+  .hcp-list-name { flex:1; color:var(--t-muted); font-size:11.5px; }
   .hcp-list-check { color:var(--primary); font-size:13px; flex-shrink:0; }
   /* no dates */
-  .hcp-empty-month { font-size:12px; color:var(--text-muted); text-align:center; padding:10px; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .hcp-empty-month { font-size:12px; color:var(--t-muted); text-align:center; padding:10px; display:flex; align-items:center; justify-content:center; gap:6px; }
   /* legend */
   .hcp-legend { display:flex; gap:14px; flex-wrap:wrap; padding-top:2px; }
-  .hcp-legend-item { display:flex; align-items:center; gap:5px; font-size:10.5px; color:var(--text-muted); }
+  .hcp-legend-item { display:flex; align-items:center; gap:5px; font-size:10.5px; color:var(--t-muted); }
   .hcp-legend-item .hcp-dot { position:static; width:7px; height:7px; }
 `;

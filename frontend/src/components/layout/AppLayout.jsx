@@ -4,12 +4,11 @@ import Topbar from "./Topbar";
 
 export default function AppLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("hrms-theme") || "light");
 
-  // ✅ FIX 1: toggle instead of always open
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar  = () => setSidebarOpen(false);
 
-  // Close sidebar when resizing beyond mobile breakpoint
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) setSidebarOpen(false);
@@ -18,15 +17,20 @@ export default function AppLayout({ children }) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Lock body scroll when mobile sidebar is open
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("hrms-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+
   return (
     <div className="app-wrapper">
-      {/* Overlay — dims content on mobile when sidebar is open */}
       {sidebarOpen && (
         <div
           className="sidebar-overlay visible"
@@ -35,22 +39,17 @@ export default function AppLayout({ children }) {
         />
       )}
 
-      {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
-      {/* Main panel */}
       <div className="main-panel">
-        {/* ✅ FIX 2: pass both toggle handler AND sidebarOpen state */}
-        <Topbar onMenuClick={toggleSidebar} sidebarOpen={sidebarOpen} />
-
-        {/* Page content */}
+        <Topbar
+          onMenuClick={toggleSidebar}
+          sidebarOpen={sidebarOpen}
+        />
         <main className="page-content">{children}</main>
-
-        {/* Footer */}
         <footer className="app-footer">
-          <div className="footer-inner">
-            <span>&copy; {new Date().getFullYear()} Voltech. All rights reserved.</span>
-            <span className="footer-divider">·</span>
+          <span>&copy; {new Date().getFullYear()} Voltech. All rights reserved.</span>
+          <div className="footer-meta">
             <span>Developed by Software Development</span>
           </div>
         </footer>

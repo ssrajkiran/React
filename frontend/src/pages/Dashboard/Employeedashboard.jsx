@@ -113,10 +113,10 @@ export default function EmployeeDashboard() {
 
       {/* ── STAT CARDS ── */}
       <div className="db-stats-grid">
-        <StatCard title="Applied"  value={applied}  icon="bi-file-earmark-text" accent="#5048E5" bg="#EEF2FF" />
-        <StatCard title="Approved" value={approved}  icon="bi-check-circle"       accent="#059669" bg="#ECFDF5" />
-        <StatCard title="Pending"  value={pending}   icon="bi-hourglass-split"    accent="#D97706" bg="#FFFBEB" />
-        <StatCard title="Rejected" value={rejected}  icon="bi-x-circle"           accent="#DC2626" bg="#FEF2F2" />
+        <StatCard title="Applied"  value={applied}  icon="bi-file-earmark-text" accent="var(--primary)" bg="var(--primary-soft)" />
+        <StatCard title="Approved" value={approved}  icon="bi-check-circle"       accent="var(--success)" bg="var(--success-soft)" />
+        <StatCard title="Pending"  value={pending}   icon="bi-hourglass-split"    accent="var(--warning)" bg="var(--warning-soft)" />
+        <StatCard title="Rejected" value={rejected}  icon="bi-x-circle"           accent="var(--danger)" bg="var(--danger-soft)" />
       </div>
 
       {/* ── LEAVE BALANCE ── */}
@@ -149,9 +149,9 @@ export default function EmployeeDashboard() {
         {/* Leave / Permission History */}
         <div className="db-card">
           <div className="db-card-header">
-            <span className="db-card-dot" style={{ background: "#5048E5" }} />
+            <span className="db-card-dot" style={{ background: "var(--primary)" }} />
             <h6 className="db-card-title">Leave / Permission History</h6>
-            <span className="db-badge" style={{ background: "#EEF2FF", color: "#5048E5" }}>
+            <span className="db-badge" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
               {history.length}
             </span>
           </div>
@@ -194,9 +194,9 @@ export default function EmployeeDashboard() {
         {/* Upcoming Holidays */}
         <div className="db-card">
           <div className="db-card-header">
-            <span className="db-card-dot" style={{ background: "#059669" }} />
+            <span className="db-card-dot" style={{ background: "var(--success)" }} />
             <h6 className="db-card-title">Upcoming Holidays</h6>
-            <span className="db-badge" style={{ background: "#ECFDF5", color: "#059669" }}>
+            <span className="db-badge" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
               {upcomingHolidays.length}
             </span>
           </div>
@@ -266,11 +266,11 @@ function StatCard({ title, value, icon, accent, bg }) {
 // ================= STATUS BADGE =================
 function StatusBadge({ status }) {
   const map = {
-    approved: { bg: "#ECFDF5", color: "#059669", label: "Approved" },
-    pending:  { bg: "#FFFBEB", color: "#D97706", label: "Pending"  },
-    rejected: { bg: "#FEF2F2", color: "#DC2626", label: "Rejected" },
+    approved: { bg: "var(--success-soft)", color: "var(--success)", label: "Approved" },
+    pending:  { bg: "var(--warning-soft)", color: "var(--warning)", label: "Pending"  },
+    rejected: { bg: "var(--danger-soft)", color: "var(--danger)", label: "Rejected" },
   };
-  const s = map[status] || { bg: "#F3F4F6", color: "#6B7280", label: status };
+  const s = map[status] || { bg: "var(--bg-muted)", color: "var(--t-muted)", label: status };
   return (
     <span className="db-status-badge" style={{ background: s.bg, color: s.color }}>
       {s.label}
@@ -328,21 +328,21 @@ const styles = `
   .db-stat-label {
     font-size: 11px;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--t-muted);
     letter-spacing: 0.01em;
     white-space: nowrap;
   }
   .db-stat-value {
     font-size: 22px;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--t-base);
     line-height: 1;
     letter-spacing: -0.02em;
   }
 
   /* ── Card base ── */
   .db-card {
-    background: var(--surface);
+    background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 18px;
@@ -365,7 +365,7 @@ const styles = `
   .db-card-title {
     font-size: 13px;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--t-base);
     flex: 1;
     margin: 0;
     letter-spacing: -0.01em;
@@ -404,23 +404,23 @@ const styles = `
   }
   .db-balance-sub {
     font-size: 11.5px;
-    color: var(--text-muted);
+    color: var(--t-muted);
     font-weight: 500;
   }
   .db-balance-sub strong {
-    color: var(--text-primary);
+    color: var(--t-base);
     font-weight: 700;
   }
   .db-balance-accrual {
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--t-muted);
     opacity: 0.75;
   }
   .db-balance-pct {
     font-size: 12px;
     font-weight: 700;
     color: var(--primary);
-    background: var(--primary-light);
+    background: var(--primary-soft);
     padding: 3px 10px;
     border-radius: 20px;
     white-space: nowrap;
@@ -456,7 +456,7 @@ const styles = `
     padding: 7px 10px;
     font-size: 10.5px;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--t-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     text-align: left;
@@ -464,14 +464,14 @@ const styles = `
   }
   .db-table td {
     padding: 9px 10px;
-    color: var(--text-primary);
+    color: var(--t-base);
     border-bottom: 1px solid var(--border);
     vertical-align: middle;
     white-space: nowrap;
   }
   .db-table tbody tr:last-child td { border-bottom: none; }
   .db-table tbody tr { transition: background 0.12s ease; }
-  .db-table tbody tr:hover { background: var(--primary-light); }
+  .db-table tbody tr:hover { background: var(--primary-soft); }
 
   /* ── Type pill ── */
   .db-type-pill {
@@ -480,7 +480,7 @@ const styles = `
     font-weight: 600;
     padding: 3px 9px;
     border-radius: 20px;
-    background: var(--primary-light);
+    background: var(--primary-soft);
     color: var(--primary);
     white-space: nowrap;
   }
@@ -499,13 +499,13 @@ const styles = `
   /* ── Utility ── */
   .db-mono {
     font-variant-numeric: tabular-nums;
-    color: var(--text-secondary);
+    color: var(--t-muted);
     font-size: 12.5px;
   }
-  .db-text-muted { color: var(--text-muted); font-size: 12.5px; }
+  .db-text-muted { color: var(--t-muted); font-size: 12.5px; }
   .db-empty {
     text-align: center;
-    color: var(--text-muted);
+    color: var(--t-muted);
     padding: 24px 0;
     font-size: 13px;
   }

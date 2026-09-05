@@ -111,4 +111,89 @@ router.get("/users", verifyToken, (req, res) => {
   );
 });
 
+// ==============================
+// GET TIMESHEET-BASED REPORT (project-wise)
+// ==============================
+router.get("/report/timesheet", verifyToken, (req, res) => {
+  const { project_id, assigned_to, status } = req.query;
+
+  let sql = `
+    SELECT 
+      ts.id,
+      ts.date,
+      ts.man_hrs,
+      ts.work_description,
+      ts.start_time,
+      ts.end_time,
+      t.id AS task_id,
+      t.task AS module_name,
+      t.status AS module_status,
+      t.assigned_to,
+      p.id AS project_id,
+      p.project_name,
+      u.name AS user_name
+    FROM timesheet ts
+    LEFT JOIN task t ON t.id = ts.task
+    LEFT JOIN projects p ON p.id = t.project_id
+    LEFT JOIN users u ON u.id = ts.created_by
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (project_id) {
+    sql += ` AND t.project_id = ?`;
+    params.push(project_id);
+  }
+
+  if (assigned_to) {
+    sql += ` AND FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))`;
+    params.push(assigned_to);
+  }
+
+  if (status) {
+    sql += ` AND t.status = ?`;
+    params.push(status);
+  }
+
+  sql += ` ORDER BY p.project_name ASC, t.task ASC, ts.date DESC`;
+
+  db.query(sql, params, (err, rows) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Failed to fetch timesheet report" });
+    }
+
+    // Map assigned_to to names
+    db.query(`SELECT id, name FROM users`, (err2, users) => {
+      if (err2) return res.status(500).json({ error: "Failed to fetch users" });
+
+      const userMap = {};
+      users.forEach(u => userMap[u.id] = u.name);
+
+      const result = rows.map(row => ({
+        id: row.id,
+        date: row.date,
+        man_hrs: row.man_hrs,
+        work_description: row.work_description || "-",
+        start_time: row.start_time,
+        end_time: row.end_time,
+        module_name: row.module_name || "-",
+        module_status: row.module_status || "Pending",
+        project_name: row.project_name || "-",
+        project_id: row.project_id,
+        user_name: row.user_name || "-",
+        assigned_to_names: row.assigned_to
+          ? row.assigned_to
+              .split(",")
+              .map(id => userMap[parseInt(id.trim())] || `ID:${id.trim()}`)
+              .join(", ")
+          : ""
+      }));
+
+      res.json(result);
+    });
+  });
+});
+
 module.exports = router;

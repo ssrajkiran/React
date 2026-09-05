@@ -6,6 +6,8 @@ import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
 import Employee from "./pages/Dashboard/Employeedashboard";
 import Admin from "./pages/Dashboard/AdminDashboard";
+import MainDashboard from "./pages/Dashboard/MainDashboard";
+import TimesheetDashboard from "./pages/Dashboard/TimesheetDashboard";
 import Leaves from "./pages/Form/leaves.jsx";
 import AdminLeaves from "./pages/Form/adminleaves.jsx";
 import Profile from "./pages/profile.jsx";
@@ -17,12 +19,13 @@ import TaskList from "./pages/Task/tasklist.jsx";
 import TaskReport from "./pages/Task/taskreport.jsx";
 import AISummary from "./pages/AI/AISummary";
 import AIHistory from "./pages/AI/AIhistory.jsx";
+
 import Todo from "./pages/Todo/Todo.jsx";
 import EmployeeTimesheet from "./pages/Timesheet/EmployeeTimesheetList.jsx";
 import AdminTimesheet from "./pages/Timesheet/AdminTimesheetList.jsx";
 import Roles from "./pages/Roles/Roles.jsx";
 import DynamicPage from "./pages/Dynamic/DynamicPage.jsx";
-import ConfigManager from "./pages/Dynamic/ConfigManager.jsx";
+
 
 export default function App() {
   const location = useLocation(); // ✅ ADD THIS
@@ -44,8 +47,14 @@ export default function App() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/employee" element={<Employee />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/employee" element={<MainDashboard />} />
+        <Route path="/admin" element={<MainDashboard />} />
+        <Route path="/employee/main-dashboard" element={<MainDashboard />} />
+        <Route path="/admin/main-dashboard" element={<MainDashboard />} />
+        <Route path="/employee/leave-dashboard" element={<Employee />} />
+        <Route path="/admin/leave-dashboard" element={<Admin />} />
+        <Route path="/employee/timesheet-dashboard" element={<TimesheetDashboard />} />
+        <Route path="/admin/timesheet-dashboard" element={<TimesheetDashboard />} />
         <Route path="/employee/leaves" element={<Leaves />} />
         <Route path="/admin/leaves" element={<AdminLeaves />} />
         <Route path="/profile" element={<Profile />} />
@@ -56,11 +65,10 @@ export default function App() {
         <Route path="/admin/users/create" element={<CreateUser />} />
         <Route path="/holidays" element={<Holiday />} />
         <Route path="/tasks" element={<TaskList />} />
-        <Route path="/admin/ai-summary" element={<AISummary />} />
-        <Route path="/admin/ai-summary/history" element={<AIHistory />} />
+         <Route path="/admin/ai-summary" element={<AISummary />} />
+         <Route path="/admin/ai-history" element={<AIHistory />} />
          <Route path="/tasks/report" element={<TaskReport />} />
          <Route path="/admin/roles" element={<Roles />} />
-         <Route path="/admin/config-manager" element={<ConfigManager />} />
          <Route path="/admin/dynamic/:module" element={<DynamicPage />} />
          <Route path="/todo" element={<Todo />} />
       </Routes>

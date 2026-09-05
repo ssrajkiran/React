@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 
 const MENU_ITEMS = [
   { key: "dashboard",         label: "Dashboard" },
+  { key: "leave_dashboard",   label: "Leave Dashboard" },
+  { key: "timesheet_dashboard", label: "Timesheet Dashboard" },
   { key: "attendance",        label: "Attendance Form" },
   { key: "attendance_report", label: "Attendance Report" },
   { key: "task",              label: "Task Form" },
@@ -87,10 +89,18 @@ export default function Roles() {
     try {
       const res  = await api.get(`/roles/${role.id}`);
       const data = res.data?.data ?? res.data;
-      const perms = Array.isArray(data.permissions) && data.permissions.length > 0
-        ? data.permissions
-        : emptyPermissions();
-      setSelectedRole({ id: data.id, name: data.name, description: data.description, permissions: perms });
+      const rawPerms = Array.isArray(data.permissions) ? data.permissions : [];
+      const merged = MENU_ITEMS.map((item) => {
+        const existing = rawPerms.find((p) => p.menu_key === item.key);
+        return {
+          menu_key: item.key,
+          can_view: existing ? !!existing.can_view : false,
+          can_create: existing ? !!existing.can_create : false,
+          can_edit: existing ? !!existing.can_edit : false,
+          can_delete: existing ? !!existing.can_delete : false,
+        };
+      });
+      setSelectedRole({ id: data.id, name: data.name, description: data.description, permissions: merged });
       setShowModal(true);
     } catch (err) {
       console.error(err);
@@ -114,6 +124,23 @@ export default function Roles() {
         await api.post("/roles", { name, description, permissions });
         showToast("Role created successfully.", "success");
       }
+
+      // If editing the current user's own role, refresh permissions in localStorage
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          const currentRole = payload.role;
+          // Refresh if editing own role OR if editing admin role while being admin
+          if (id && (name === currentRole || currentRole === "admin")) {
+            const res = await api.get("/auth/permissions");
+            if (Array.isArray(res.data)) {
+              localStorage.setItem("permissions", JSON.stringify(res.data));
+            }
+          }
+        }
+      } catch (e) {}
+
       setShowModal(false);
       await loadRoles();
     } catch (err) {
@@ -346,11 +373,11 @@ export default function Roles() {
 
             {/* Modal header */}
             <div className="ul-modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div className="cu-form-icon"><i className="bi bi-shield-lock" /></div>
+              <div className="ul-modal-header-left">
+                <div className="ul-modal-icon ul-modal-icon-primary"><i className="bi bi-shield-lock" /></div>
                 <div>
-                  <p className="ul-modal-title" style={{ margin: 0 }}>{selectedRole.id ? "Edit Role" : "Create Role"}</p>
-                  <p className="ul-modal-sub" style={{ margin: 0 }}>{selectedRole.id ? "Update role details and permissions." : "Define a new role and its permissions."}</p>
+                  <h6 className="ul-modal-title">{selectedRole.id ? "Edit Role" : "Create Role"}</h6>
+                  <p className="ul-modal-sub">{selectedRole.id ? "Update role details and permissions" : "Define a new role and its permissions"}</p>
                 </div>
               </div>
               <button className="ul-modal-close" onClick={() => setShowModal(false)}>
@@ -358,94 +385,92 @@ export default function Roles() {
               </button>
             </div>
 
-            <div className="cu-divider" />
+            <div className="ul-modal-divider" />
 
             {/* Fields */}
-            <div className="cu-fields-grid" style={{ marginBottom: 20 }}>
-              <div className="cu-field-group">
-                <label className="sr-label">Role Name</label>
-                <div className="sr-input-wrap">
-                  <i className="bi bi-tag sr-input-icon" />
+            <div className="ul-modal-body">
+              <div className="ul-form-grid-2">
+                <div className="ul-field">
+                  <label className="ul-label">Role Name</label>
                   <input
-                    className="sr-input"
+                    className="ul-input"
                     value={selectedRole.name}
                     onChange={(e) => setSelectedRole((p) => ({ ...p, name: e.target.value }))}
                     placeholder="e.g. Manager"
                   />
                 </div>
-              </div>
-              <div className="cu-field-group">
-                <label className="sr-label">Description</label>
-                <div className="sr-input-wrap">
-                  <i className="bi bi-card-text sr-input-icon" />
+                <div className="ul-field">
+                  <label className="ul-label">Description</label>
                   <input
-                    className="sr-input"
+                    className="ul-input"
                     value={selectedRole.description}
                     onChange={(e) => setSelectedRole((p) => ({ ...p, description: e.target.value }))}
                     placeholder="Brief description of this role"
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Permissions Grid */}
-            <label className="sr-label" style={{ marginBottom: 8 }}>Permissions</label>
-            <div className="rl-perm-wrap">
-              <table className="rl-perm-table">
-                <thead>
-                  <tr>
-                    <th className="rl-perm-menu">Menu</th>
-                    <th className="rl-perm-col"><i className="bi bi-eye" /> View</th>
-                    <th className="rl-perm-col"><i className="bi bi-plus-circle" /> Create</th>
-                    <th className="rl-perm-col"><i className="bi bi-pencil" /> Edit</th>
-                    <th className="rl-perm-col"><i className="bi bi-trash" /> Delete</th>
-                    <th className="rl-perm-col rl-all-head">All</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MENU_ITEMS.map((item) => {
-                    const perm = selectedRole.permissions.find((p) => p.menu_key === item.key) || {};
-                    const allChecked = perm.can_view && perm.can_create && perm.can_edit && perm.can_delete;
-                    return (
-                      <tr key={item.key} className="sr-tr">
-                        <td className="rl-perm-label">{item.label}</td>
-                        {["can_view", "can_create", "can_edit", "can_delete"].map((field) => (
-                          <td key={field} className="rl-perm-cell">
-                            <label className="rl-toggle">
-                              <input
-                                type="checkbox"
-                                checked={!!perm[field]}
-                                onChange={() => handlePermChange(item.key, field)}
-                              />
-                              <span className="rl-toggle-track" />
-                            </label>
-                          </td>
-                        ))}
-                        <td className="rl-perm-cell">
-                          <label className="rl-toggle">
-                            <input
-                              type="checkbox"
-                              checked={!!allChecked}
-                              onChange={() => handlePermAll(item.key)}
-                            />
-                            <span className="rl-toggle-track" />
-                          </label>
-                        </td>
+              {/* Permissions Grid */}
+              <div>
+                <label className="ul-label" style={{ marginBottom: 8 }}>Permissions</label>
+                <div className="rl-perm-wrap">
+                  <table className="rl-perm-table">
+                    <thead>
+                      <tr>
+                        <th className="rl-perm-menu">Menu</th>
+                        <th className="rl-perm-col"><i className="bi bi-eye" /> View</th>
+                        <th className="rl-perm-col"><i className="bi bi-plus-circle" /> Create</th>
+                        <th className="rl-perm-col"><i className="bi bi-pencil" /> Edit</th>
+                        <th className="rl-perm-col"><i className="bi bi-trash" /> Delete</th>
+                        <th className="rl-perm-col rl-all-head">All</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {MENU_ITEMS.map((item) => {
+                        const perm = selectedRole.permissions.find((p) => p.menu_key === item.key) || {};
+                        const allChecked = perm.can_view && perm.can_create && perm.can_edit && perm.can_delete;
+                        return (
+                          <tr key={item.key} className="sr-tr">
+                            <td className="rl-perm-label">{item.label}</td>
+                            {["can_view", "can_create", "can_edit", "can_delete"].map((field) => (
+                              <td key={field} className="rl-perm-cell">
+                                <label className="rl-toggle">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!perm[field]}
+                                    onChange={() => handlePermChange(item.key, field)}
+                                  />
+                                  <span className="rl-toggle-track" />
+                                </label>
+                              </td>
+                            ))}
+                            <td className="rl-perm-cell">
+                              <label className="rl-toggle">
+                                <input
+                                  type="checkbox"
+                                  checked={!!allChecked}
+                                  onChange={() => handlePermAll(item.key)}
+                                />
+                                <span className="rl-toggle-track" />
+                              </label>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
-            <div className="cu-divider" />
+            <div className="ul-modal-divider" />
 
             {/* Modal actions */}
-            <div className="cu-actions">
-              <button className="cu-back-btn" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="cu-save-btn" onClick={handleSave} disabled={saving}>
+            <div className="ul-modal-footer">
+              <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="ul-btn ul-btn-primary" onClick={handleSave} disabled={saving}>
                 {saving
-                  ? <><i className="bi bi-arrow-repeat sr-spin" /> Saving…</>
+                  ? <><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> Saving…</>
                   : <><i className="bi bi-check-lg" /> {selectedRole.id ? "Save Changes" : "Create Role"}</>}
               </button>
             </div>
@@ -463,7 +488,7 @@ const styles = `
     position: fixed; top: 20px; right: 20px; z-index: 1100;
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-lg);
-    font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
   .sr-toast-success { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
@@ -475,41 +500,41 @@ const styles = `
     display: flex; align-items: flex-start; justify-content: space-between;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
-  .sr-page-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; letter-spacing: -0.01em; }
-  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .sr-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
   .sr-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
   .sr-breadcrumb a:hover { text-decoration: underline; }
   .sr-breadcrumb i { font-size: 10px; opacity: 0.5; }
 
   /* ── Filter card ── */
   .sr-filter-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-lg); box-shadow: var(--shadow);
     padding: 18px 20px; margin-bottom: 16px;
   }
   .sr-filter-inner { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
   .sr-filter-group { display: flex; flex-direction: column; gap: 6px; }
-  .sr-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .sr-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .sr-input-wrap { position: relative; display: flex; align-items: center; }
-  .sr-input-icon { position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none; z-index: 1; }
+  .sr-input-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .sr-input {
     width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .sr-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
 
   .ul-clear-btn {
     position: absolute; right: 9px; background: none; border: none;
-    cursor: pointer; color: var(--text-muted); font-size: 15px;
+    cursor: pointer; color: var(--t-muted); font-size: 15px;
     display: flex; align-items: center; padding: 0; transition: color 0.15s;
   }
-  .ul-clear-btn:hover { color: var(--text-primary); }
+  .ul-clear-btn:hover { color: var(--t-base); }
 
   .ul-count-pill {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    font-size: 12px; font-weight: 600; color: var(--t-muted);
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 20px; padding: 5px 12px; white-space: nowrap;
     align-self: flex-end;
@@ -517,7 +542,7 @@ const styles = `
 
   /* ── Table card ── */
   .ul-table-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-lg); box-shadow: var(--shadow);
     overflow: hidden;
   }
@@ -534,15 +559,15 @@ const styles = `
   }
   .sr-pulse { animation: sr-pulse 1.5s ease-in-out infinite; }
   @keyframes sr-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.95); } }
-  .sr-empty-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
-  .sr-empty-sub   { font-size: 12.5px; color: var(--text-muted); margin: 0; }
+  .sr-empty-title { font-size: 14px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; }
+  .sr-empty-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0; }
 
   /* ── Table ── */
   .sr-table-wrap { overflow-x: auto; }
   .sr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .sr-table thead tr { border-bottom: 2px solid var(--border); }
   .sr-table th {
-    padding: 11px 16px; font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+    padding: 11px 16px; font-size: 10.5px; font-weight: 700; color: var(--t-muted);
     text-transform: uppercase; letter-spacing: 0.06em; text-align: left;
     white-space: nowrap; background: var(--bg);
   }
@@ -551,7 +576,7 @@ const styles = `
   .sr-table tbody tr:last-child td { border-bottom: none; }
   .sr-tr { transition: background 0.1s; }
   .sr-tr:hover td { background: #fafbff; }
-  .sr-td-muted { color: var(--text-secondary); font-size: 12.5px; }
+  .sr-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .sr-center { text-align: center; }
 
   /* ── Name cell ── */
@@ -562,7 +587,7 @@ const styles = `
     font-size: 13px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
-  .ul-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .ul-name { font-size: 13px; font-weight: 600; color: var(--t-base); }
 
   /* ── Permission pill ── */
   .ul-perm-pill {
@@ -575,7 +600,7 @@ const styles = `
   /* ── Default badge ── */
   .ul-default-badge {
     display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    font-size: 11px; font-weight: 600; color: var(--t-muted);
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 20px; padding: 3px 10px; white-space: nowrap;
   }
@@ -589,7 +614,7 @@ const styles = `
     border: 1px solid #c7d2fe; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s, transform 0.12s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .ul-edit-btn:hover { background: #e0e7ff; transform: translateY(-1px); }
 
@@ -599,7 +624,7 @@ const styles = `
     border: 1px solid #fca5a5; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s, transform 0.12s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .ul-delete-btn:hover { background: #fee2e2; transform: translateY(-1px); }
 
@@ -608,21 +633,21 @@ const styles = `
   .sh-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .sh-page-btn {
     display: flex; align-items: center; gap: 6px;
-    padding: 8px 16px; background: var(--surface);
+    padding: 8px 16px; background: var(--bg-card);
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 12.5px; font-weight: 600; color: var(--text-primary);
+    font-size: 12.5px; font-weight: 600; color: var(--t-base);
     cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .sh-page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
   .sh-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .sh-page-numbers { display: flex; align-items: center; gap: 4px; }
   .sh-page-num {
     width: 32px; height: 32px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--surface);
-    font-size: 12.5px; font-weight: 600; color: var(--text-primary);
+    border: 1px solid var(--border); background: var(--bg-card);
+    font-size: 12.5px; font-weight: 600; color: var(--t-base);
     cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .sh-page-num:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
   .sh-page-num-active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -634,18 +659,18 @@ const styles = `
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; text-decoration: none;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap;
+    font-family: var(--font); white-space: nowrap;
   }
   .cu-save-btn:hover:not(:disabled) { background: #047857; transform: translateY(-1px); color: #fff; }
   .cu-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .cu-back-btn {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: var(--surface);
+    padding: 9px 18px; background: var(--bg-card);
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    font-size: 13px; font-weight: 600; color: var(--t-muted);
     cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .cu-back-btn:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
 
@@ -656,7 +681,7 @@ const styles = `
     animation: sr-fade-in 0.15s ease; padding: 16px;
   }
   .ul-modal {
-    background: var(--surface); border-radius: var(--radius-lg);
+    background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     padding: 28px; width: 80%; max-width: 420px; max-height: calc(100vh - 32px);
     animation: ul-modal-center-in 0.2s ease;
@@ -672,11 +697,11 @@ const styles = `
   }
   .ul-modal-close {
     background: none; border: none; cursor: pointer;
-    color: var(--text-muted); font-size: 16px; padding: 4px;
+    color: var(--t-muted); font-size: 16px; padding: 4px;
     border-radius: var(--radius); transition: color 0.15s, background 0.15s;
     display: flex; align-items: center; flex-shrink: 0;
   }
-  .ul-modal-close:hover { color: var(--text-primary); background: var(--bg); }
+  .ul-modal-close:hover { color: var(--t-base); background: var(--bg); }
 
   /* Delete confirm modal */
   .ul-modal-icon {
@@ -685,8 +710,8 @@ const styles = `
     font-size: 22px; margin: 0 auto 14px;
   }
   .ul-modal-icon-danger { background: #FEF2F2; color: #DC2626; }
-  .ul-modal-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px; }
-  .ul-modal-sub   { font-size: 12.5px; color: var(--text-muted); margin: 0 0 20px; }
+  .ul-modal-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 6px; }
+  .ul-modal-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0 0 20px; }
   .ul-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
 
   .ul-delete-confirm-btn {
@@ -694,7 +719,7 @@ const styles = `
     padding: 9px 20px; background: #DC2626; color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s; font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: background 0.15s; font-family: var(--font);
   }
   .ul-delete-confirm-btn:hover { background: #b91c1c; }
 
@@ -718,7 +743,7 @@ const styles = `
   .rl-perm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .rl-perm-table thead tr { border-bottom: 2px solid var(--border); }
   .rl-perm-table th {
-    padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+    padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--t-muted);
     text-transform: uppercase; letter-spacing: 0.06em; text-align: center;
     white-space: nowrap; background: var(--bg);
   }
@@ -728,7 +753,7 @@ const styles = `
   .rl-perm-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .rl-perm-table tbody tr:last-child td { border-bottom: none; }
   .rl-perm-table tbody tr:hover td { background: #fafbff; }
-  .rl-perm-label { font-weight: 600; color: var(--text-primary); font-size: 12.5px; }
+  .rl-perm-label { font-weight: 600; color: var(--t-base); font-size: 12.5px; }
   .rl-perm-cell { text-align: center; }
 
   /* ── Toggle switch ── */

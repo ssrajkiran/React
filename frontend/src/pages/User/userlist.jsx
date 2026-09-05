@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import SharedSelect from "../../components/SharedSelect";
+import UserDetailModal from "../../components/modals/UserDetailModal";
 
 export default function UsersPresent() {
+  const navigate = useNavigate();
   const [users, setUsers]             = useState([]);
   const [loading, setLoading]         = useState(false);
   const [showModal, setShowModal]     = useState(false);
@@ -16,6 +18,7 @@ export default function UsersPresent() {
   const [deleteConfirm, setDeleteConfirm] = useState(null); // id to delete
   const [currentPage, setCurrentPage] = useState(1);
   const [roles, setRoles]             = useState([]);
+  const [detailUserId, setDetailUserId] = useState(null);
   const ROWS_PER_PAGE = 10;
 
   useEffect(() => { loadUsers(); loadRoles(); }, []);
@@ -201,9 +204,9 @@ export default function UsersPresent() {
                     <tr key={user.id} className="sr-tr">
                       <td className="sr-td-muted sr-center">{(currentPage - 1) * ROWS_PER_PAGE + i + 1}</td>
                       <td>
-                        <div className="ul-name-cell">
+                        <div className="ul-name-cell" style={{ cursor: "pointer" }} onClick={() => setDetailUserId(user.id)}>
                           <div className="ul-avatar">{user.name.charAt(0).toUpperCase()}</div>
-                          <span className="ul-name">{user.name}</span>
+                          <span className="ul-name" style={{ color: "var(--primary)" }}>{user.name}</span>
                         </div>
                       </td>
                       <td className="sr-td-muted">{user.email}</td>
@@ -281,11 +284,11 @@ export default function UsersPresent() {
 
             {/* Modal header */}
             <div className="ul-modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div className="cu-form-icon"><i className="bi bi-pencil-square" /></div>
+              <div className="ul-modal-header-left">
+                <div className="ul-modal-icon ul-modal-icon-primary"><i className="bi bi-pencil-square" /></div>
                 <div>
-                  <p className="ul-modal-title" style={{ margin: 0 }}>Edit User</p>
-                  <p className="ul-modal-sub" style={{ margin: 0 }}>Update the user's information below.</p>
+                  <h6 className="ul-modal-title">Edit User</h6>
+                  <p className="ul-modal-sub">Update the user's information below</p>
                 </div>
               </div>
               <button className="ul-modal-close" onClick={() => setShowModal(false)}>
@@ -293,70 +296,81 @@ export default function UsersPresent() {
               </button>
             </div>
 
-            <div className="cu-divider" />
+            <div className="ul-modal-divider" />
 
             {/* Fields */}
-            <div className="cu-fields-grid" style={{ marginBottom: 20 }}>
-
-              <div className="cu-field-group">
-                <label className="sr-label">Full Name</label>
-                <div className="sr-input-wrap">
-                  <i className="bi bi-person sr-input-icon" />
-                  <input className="sr-input" name="name" value={selectedUser.name} onChange={handleChange} placeholder="Full name" />
+            <div className="ul-modal-body">
+              <div className="ul-form-grid">
+                <div className="ul-field">
+                  <label className="ul-label">Full Name</label>
+                  <input className="ul-input" name="name" value={selectedUser.name} onChange={handleChange} placeholder="Full name" />
                 </div>
-              </div>
 
-              <div className="cu-field-group">
-                <label className="sr-label">Email Address</label>
-                <div className="sr-input-wrap">
-                  <i className="bi bi-envelope sr-input-icon" />
-                  <input className="sr-input" name="email" value={selectedUser.email} onChange={handleChange} placeholder="Email" />
+                <div className="ul-field">
+                  <label className="ul-label">Email Address</label>
+                  <input className="ul-input" name="email" value={selectedUser.email} onChange={handleChange} placeholder="Email" />
                 </div>
-              </div>
 
-              <div className="cu-field-group">
-                <label className="sr-label">Role</label>
-                <SharedSelect
-                  value={selectedUser.role}
-                  onChange={(val) => setSelectedUser({ ...selectedUser, role: val })}
-                  options={roles.map((r) => ({ value: r.name, label: r.name.charAt(0).toUpperCase() + r.name.slice(1) }))}
-                  placeholder="Select a role…"
-                />
-              </div>
-
-              <div className="cu-field-group">
-                <label className="sr-label">New Password <span className="ul-optional">(optional)</span></label>
-                <div className="sr-input-wrap">
-                  <i className="bi bi-lock sr-input-icon" />
-                  <input
-                    className="sr-input cu-input-password"
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={selectedUser.password}
-                    onChange={handleChange}
-                    placeholder="Leave blank to keep current"
+                <div className="ul-field">
+                  <label className="ul-label">Role</label>
+                  <SharedSelect
+                    value={selectedUser.role}
+                    onChange={(val) => setSelectedUser({ ...selectedUser, role: val })}
+                    options={roles.map((r) => ({ value: r.name, label: r.name.charAt(0).toUpperCase() + r.name.slice(1) }))}
+                    placeholder="Select a role…"
                   />
-                  <button type="button" className="cu-pw-toggle" onClick={() => setShowPassword((v) => !v)}>
-                    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
-                  </button>
                 </div>
               </div>
 
+              <div className="ul-form-grid">
+                <div className="ul-field" style={{ gridColumn: "span 2" }}>
+                  <label className="ul-label">New Password <span style={{ fontWeight: 400, color: "var(--t-muted)", textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      className="ul-input"
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={selectedUser.password}
+                      onChange={handleChange}
+                      placeholder="Leave blank to keep current"
+                      style={{ paddingRight: 36 }}
+                    />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)}
+                      style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--t-muted)", padding: 4 }}>
+                      <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="cu-divider" />
+            <div className="ul-modal-divider" />
 
             {/* Modal actions */}
-            <div className="cu-actions">
-              <button className="cu-back-btn" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="cu-save-btn" onClick={handleSave} disabled={saving}>
+            <div className="ul-modal-footer">
+              <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="ul-btn ul-btn-primary" onClick={handleSave} disabled={saving}>
                 {saving
-                  ? <><i className="bi bi-arrow-repeat sr-spin" /> Saving…</>
+                  ? <><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> Saving…</>
                   : <><i className="bi bi-check-lg" /> Save Changes</>}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* User Detail Modal */}
+      {detailUserId && (
+        <UserDetailModal
+          userId={detailUserId}
+          onClose={() => setDetailUserId(null)}
+          onNavigate={(type, id) => {
+            setDetailUserId(null);
+            if (type === "project") navigate(`/admin/projects/${id}`);
+            else if (type === "module") navigate(`/admin/modules/${id}`);
+            else if (type === "user") setDetailUserId(id);
+          }}
+        />
       )}
     </AppLayout>
   );
@@ -369,7 +383,7 @@ const styles = `
     position: fixed; top: 20px; right: 20px; z-index: 1100;
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-lg);
-    font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
   .sr-toast-success { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
@@ -381,41 +395,41 @@ const styles = `
     display: flex; align-items: flex-start; justify-content: space-between;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
-  .sr-page-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; letter-spacing: -0.01em; }
-  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .sr-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
   .sr-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
   .sr-breadcrumb a:hover { text-decoration: underline; }
   .sr-breadcrumb i { font-size: 10px; opacity: 0.5; }
 
   /* ── Filter card ── */
   .sr-filter-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-lg); box-shadow: var(--shadow);
     padding: 18px 20px; margin-bottom: 16px;
   }
   .sr-filter-inner { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
   .sr-filter-group { display: flex; flex-direction: column; gap: 6px; }
-  .sr-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .sr-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .sr-input-wrap { position: relative; display: flex; align-items: center; }
-  .sr-input-icon { position: absolute; left: 11px; color: var(--text-muted); font-size: 13px; pointer-events: none; z-index: 1; }
+  .sr-input-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .sr-input {
     width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); font-size: 13px; color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', sans-serif; outline: none;
+    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .sr-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
 
   .ul-clear-btn {
     position: absolute; right: 9px; background: none; border: none;
-    cursor: pointer; color: var(--text-muted); font-size: 15px;
+    cursor: pointer; color: var(--t-muted); font-size: 15px;
     display: flex; align-items: center; padding: 0; transition: color 0.15s;
   }
-  .ul-clear-btn:hover { color: var(--text-primary); }
+  .ul-clear-btn:hover { color: var(--t-base); }
 
   .ul-count-pill {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    font-size: 12px; font-weight: 600; color: var(--t-muted);
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 20px; padding: 5px 12px; white-space: nowrap;
     align-self: flex-end;
@@ -423,7 +437,7 @@ const styles = `
 
   /* ── Table card ── */
   .ul-table-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-lg); box-shadow: var(--shadow);
     overflow: hidden;
   }
@@ -440,15 +454,15 @@ const styles = `
   }
   .sr-pulse { animation: sr-pulse 1.5s ease-in-out infinite; }
   @keyframes sr-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.95); } }
-  .sr-empty-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
-  .sr-empty-sub   { font-size: 12.5px; color: var(--text-muted); margin: 0; }
+  .sr-empty-title { font-size: 14px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; }
+  .sr-empty-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0; }
 
   /* ── Table ── */
   .sr-table-wrap { overflow-x: auto; }
   .sr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .sr-table thead tr { border-bottom: 2px solid var(--border); }
   .sr-table th {
-    padding: 11px 16px; font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+    padding: 11px 16px; font-size: 10.5px; font-weight: 700; color: var(--t-muted);
     text-transform: uppercase; letter-spacing: 0.06em; text-align: left;
     white-space: nowrap; background: var(--bg);
   }
@@ -457,7 +471,7 @@ const styles = `
   .sr-table tbody tr:last-child td { border-bottom: none; }
   .sr-tr { transition: background 0.1s; }
   .sr-tr:hover td { background: #fafbff; }
-  .sr-td-muted { color: var(--text-secondary); font-size: 12.5px; }
+  .sr-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .sr-center { text-align: center; }
 
   /* ── Name cell ── */
@@ -468,7 +482,7 @@ const styles = `
     font-size: 13px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
-  .ul-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .ul-name { font-size: 13px; font-weight: 600; color: var(--t-base); }
 
   /* ── Role pill ── */
   .ul-role-pill {
@@ -488,7 +502,7 @@ const styles = `
     border: 1px solid #c7d2fe; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s, transform 0.12s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .ul-edit-btn:hover { background: #e0e7ff; transform: translateY(-1px); }
 
@@ -498,7 +512,7 @@ const styles = `
     border: 1px solid #fca5a5; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s, transform 0.12s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .ul-delete-btn:hover { background: #fee2e2; transform: translateY(-1px); }
 
@@ -507,21 +521,21 @@ const styles = `
   .sh-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .sh-page-btn {
     display: flex; align-items: center; gap: 6px;
-    padding: 8px 16px; background: var(--surface);
+    padding: 8px 16px; background: var(--bg-card);
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 12.5px; font-weight: 600; color: var(--text-primary);
+    font-size: 12.5px; font-weight: 600; color: var(--t-base);
     cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .sh-page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
   .sh-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .sh-page-numbers { display: flex; align-items: center; gap: 4px; }
   .sh-page-num {
     width: 32px; height: 32px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--surface);
-    font-size: 12.5px; font-weight: 600; color: var(--text-primary);
+    border: 1px solid var(--border); background: var(--bg-card);
+    font-size: 12.5px; font-weight: 600; color: var(--t-base);
     cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .sh-page-num:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
   .sh-page-num-active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -533,18 +547,18 @@ const styles = `
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; text-decoration: none;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap;
+    font-family: var(--font); white-space: nowrap;
   }
   .cu-save-btn:hover:not(:disabled) { background: #047857; transform: translateY(-1px); color: #fff; }
   .cu-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .cu-back-btn {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: var(--surface);
+    padding: 9px 18px; background: var(--bg-card);
     border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    font-size: 13px; font-weight: 600; color: var(--t-muted);
     cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font);
   }
   .cu-back-btn:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
 
@@ -555,7 +569,7 @@ const styles = `
     animation: sr-fade-in 0.15s ease; padding: 16px;
   }
   .ul-modal {
-    background: var(--surface); border-radius: var(--radius-lg);
+    background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     padding: 28px; width: 80%; max-width: 420px; max-height: calc(100vh - 32px);
     animation: ul-modal-center-in 0.2s ease;
@@ -571,11 +585,11 @@ const styles = `
   }
   .ul-modal-close {
     background: none; border: none; cursor: pointer;
-    color: var(--text-muted); font-size: 16px; padding: 4px;
+    color: var(--t-muted); font-size: 16px; padding: 4px;
     border-radius: var(--radius); transition: color 0.15s, background 0.15s;
     display: flex; align-items: center; flex-shrink: 0;
   }
-  .ul-modal-close:hover { color: var(--text-primary); background: var(--bg); }
+  .ul-modal-close:hover { color: var(--t-base); background: var(--bg); }
 
   /* Delete confirm modal */
   .ul-modal-icon {
@@ -584,8 +598,8 @@ const styles = `
     font-size: 22px; margin: 0 auto 14px;
   }
   .ul-modal-icon-danger { background: #FEF2F2; color: #DC2626; }
-  .ul-modal-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px; }
-  .ul-modal-sub   { font-size: 12.5px; color: var(--text-muted); margin: 0 0 20px; }
+  .ul-modal-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 6px; }
+  .ul-modal-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0 0 20px; }
   .ul-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
 
   .ul-delete-confirm-btn {
@@ -593,7 +607,7 @@ const styles = `
     padding: 9px 20px; background: #DC2626; color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s; font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: background 0.15s; font-family: var(--font);
   }
   .ul-delete-confirm-btn:hover { background: #b91c1c; }
 
@@ -610,14 +624,14 @@ const styles = `
   .cu-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .cu-input-password { padding-right: 38px; }
   .cu-select { appearance: none; padding-right: 34px; cursor: pointer; }
-  .cu-select-arrow { position: absolute; right: 11px; color: var(--text-muted); font-size: 11px; pointer-events: none; }
+  .cu-select-arrow { position: absolute; right: 11px; color: var(--t-muted); font-size: 11px; pointer-events: none; }
   .cu-pw-toggle {
     position: absolute; right: 10px; background: none; border: none;
-    cursor: pointer; color: var(--text-muted); font-size: 14px;
+    cursor: pointer; color: var(--t-muted); font-size: 14px;
     display: flex; align-items: center; padding: 0; transition: color 0.15s;
   }
   .cu-pw-toggle:hover { color: var(--primary); }
-  .ul-optional { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+  .ul-optional { font-size: 10px; font-weight: 500; color: var(--t-muted); text-transform: none; letter-spacing: 0; }
 
   /* ── Animations ── */
   .sr-spin { animation: sr-spin 0.7s linear infinite; display: inline-block; }
