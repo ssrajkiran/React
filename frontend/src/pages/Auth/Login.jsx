@@ -380,6 +380,8 @@ export default function Login() {
   const [intercomSearch, setIntercomSearch] = useState("");
   const [intercomResults, setIntercomResults] = useState([]);
   const [intercomLoading, setIntercomLoading] = useState(false);
+  const [intercomAll, setIntercomAll] = useState([]);
+  const [selectedDept, setSelectedDept] = useState("");
   const intercomTimer = useRef(null);
 
   useEffect(() => {
@@ -420,8 +422,18 @@ export default function Login() {
     return `${h}:${m} ${ampm}`;
   };
 
+  const loadIntercomAll = async () => {
+    try {
+      const res = await axios.get("/api/intercom/list");
+      setIntercomAll(res.data || []);
+    } catch {
+      setIntercomAll([]);
+    }
+  };
+
   const searchIntercom = (term) => {
     setIntercomSearch(term);
+    setSelectedDept("");
     if (intercomTimer.current) clearTimeout(intercomTimer.current);
     if (!term.trim()) {
       setIntercomResults([]);
@@ -438,6 +450,22 @@ export default function Login() {
         setIntercomLoading(false);
       }
     }, 300);
+  };
+
+  const intercomDeptMap = {};
+  intercomAll.forEach((row) => {
+    const dept = row.department || "Other";
+    if (!intercomDeptMap[dept]) intercomDeptMap[dept] = [];
+    intercomDeptMap[dept].push(row);
+  });
+  const intercomDepts = Object.entries(intercomDeptMap).sort((a, b) => b[1].length - a[1].length);
+
+  const openIntercomModal = () => {
+    setShowIntercom(true);
+    setIntercomSearch("");
+    setIntercomResults([]);
+    setSelectedDept("");
+    loadIntercomAll();
   };
 
   return (
@@ -598,7 +626,7 @@ export default function Login() {
 
             <button
               type="button"
-              onClick={() => setShowIntercom(true)}
+              onClick={openIntercomModal}
               style={{
                 width: "100%", marginTop: 16, padding: "12px 20px",
                 background: "#fff", border: "1.5px solid #E2E4ED", borderRadius: 10,
@@ -695,7 +723,7 @@ export default function Login() {
                 />
                 {intercomSearch && (
                   <button
-                    onClick={() => { setIntercomSearch(""); setIntercomResults([]); }}
+                    onClick={() => { setIntercomSearch(""); setIntercomResults([]); setSelectedDept(""); }}
                     style={{
                       background: "none", border: "none", cursor: "pointer",
                       color: "#A8AECA", padding: "0 14px", fontSize: 16,
@@ -723,66 +751,176 @@ export default function Login() {
                 </div>
               )}
 
-              {!intercomLoading && !intercomSearch && (
-                <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
-                  <i className="bi bi-telephone" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "#C0C6D8" }} />
-                  Type to search intercom directory
-                </div>
-              )}
-
-              {intercomResults.length > 0 && (
-                <div style={{ fontSize: 12, color: "#8B92B3", marginBottom: 10, fontWeight: 600 }}>
-                  {intercomResults.length} result{intercomResults.length !== 1 ? "s" : ""} found
-                </div>
-              )}
-
-              {intercomResults.length > 0 && (
-                <div style={{ border: "1px solid #E8ECF1", borderRadius: 10, overflow: "hidden" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ borderBottom: "2px solid #E8ECF1" }}>
-                        <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Name</th>
-                        <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Intercom</th>
-                        <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Department</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {intercomResults.slice(0, 50).map((row, idx) => (
-                        <tr
-                          key={row.id || idx}
-                          style={{ borderBottom: idx < Math.min(intercomResults.length, 50) - 1 ? "1px solid #F1F5F9" : "none" }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "#F8FAFC"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                        >
-                          <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0F1029" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {!intercomLoading && !intercomSearch && !selectedDept && (
+                <div>
+                  {intercomDepts.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
+                      <i className="bi bi-telephone" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "#C0C6D8" }} />
+                      No intercom data available
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 12, color: "#8B92B3", marginBottom: 12, fontWeight: 600 }}>
+                        {intercomAll.length} entries across {intercomDepts.length} departments
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+                        {intercomDepts.map(([dept, rows]) => (
+                          <div
+                            key={dept}
+                            onClick={() => setSelectedDept(dept)}
+                            style={{
+                              border: "1.5px solid #E2E4ED", borderRadius: 12, padding: "16px 14px",
+                              cursor: "pointer", transition: "all 0.2s", background: "#fff",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4338CA"; e.currentTarget.style.background = "#F5F3FF"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(67,56,202,0.1)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E2E4ED"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                               <div style={{
-                                width: 30, height: 30, borderRadius: 8,
-                                background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
-                                color: "#5048E5", fontSize: 12, fontWeight: 700,
-                                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                                width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
+                                color: "#4338CA", fontSize: 14, fontWeight: 700, display: "flex",
+                                alignItems: "center", justifyContent: "center", flexShrink: 0,
                               }}>
-                                {row.name?.charAt(0)?.toUpperCase() || "?"}
+                                <i className="bi bi-building" />
                               </div>
-                              {row.name}
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#0F1029", lineHeight: 1.2, wordBreak: "break-word" }}>
+                                {dept}
+                              </div>
                             </div>
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <span style={{
+                            <div style={{
                               display: "inline-block", padding: "3px 10px", borderRadius: 6,
-                              fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-                              background: "#EEF2FF", color: "#5048E5", border: "1px solid #c7d2fe",
+                              fontSize: 12, fontWeight: 700, background: "#EEF2FF", color: "#5048E5",
                             }}>
-                              {row.intercom}
-                            </span>
-                          </td>
-                          <td style={{ padding: "10px 14px", fontSize: 12, color: "#8B92B3" }}>
-                            {row.department}
-                          </td>
+                              {rows.length} intercom{rows.length !== 1 ? "s" : ""}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!intercomLoading && selectedDept && !intercomSearch && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <button
+                      onClick={() => setSelectedDept("")}
+                      style={{
+                        width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E2E4ED",
+                        background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", color: "#4338CA", fontSize: 14, transition: "all 0.15s", flexShrink: 0,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#F5F3FF"; e.currentTarget.style.borderColor = "#4338CA"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#E2E4ED"; }}
+                    >
+                      <i className="bi bi-arrow-left" />
+                    </button>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F1029" }}>{selectedDept}</div>
+                      <div style={{ fontSize: 11, color: "#8B92B3" }}>
+                        {intercomDeptMap[selectedDept]?.length || 0} intercom{intercomDeptMap[selectedDept]?.length !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ border: "1px solid #E8ECF1", borderRadius: 10, overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "2px solid #E8ECF1" }}>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Name</th>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Intercom</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {(intercomDeptMap[selectedDept] || []).map((row, idx) => (
+                          <tr
+                            key={row.id || idx}
+                            style={{ borderBottom: idx < (intercomDeptMap[selectedDept]?.length || 0) - 1 ? "1px solid #F1F5F9" : "none" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#F8FAFC"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                          >
+                            <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0F1029" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{
+                                  width: 30, height: 30, borderRadius: 8,
+                                  background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
+                                  color: "#5048E5", fontSize: 12, fontWeight: 700,
+                                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                                }}>
+                                  {row.name?.charAt(0)?.toUpperCase() || "?"}
+                                </div>
+                                {row.name}
+                              </div>
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>
+                              <span style={{
+                                display: "inline-block", padding: "3px 10px", borderRadius: 6,
+                                fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
+                                background: "#EEF2FF", color: "#5048E5", border: "1px solid #c7d2fe",
+                              }}>
+                                {row.intercom}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {!intercomLoading && intercomSearch && intercomResults.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, color: "#8B92B3", marginBottom: 10, fontWeight: 600 }}>
+                    {intercomResults.length} result{intercomResults.length !== 1 ? "s" : ""} found
+                  </div>
+                  <div style={{ border: "1px solid #E8ECF1", borderRadius: 10, overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "2px solid #E8ECF1" }}>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Name</th>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Intercom</th>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Department</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {intercomResults.slice(0, 50).map((row, idx) => (
+                          <tr
+                            key={row.id || idx}
+                            style={{ borderBottom: idx < Math.min(intercomResults.length, 50) - 1 ? "1px solid #F1F5F9" : "none" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#F8FAFC"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                          >
+                            <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0F1029" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{
+                                  width: 30, height: 30, borderRadius: 8,
+                                  background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
+                                  color: "#5048E5", fontSize: 12, fontWeight: 700,
+                                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                                }}>
+                                  {row.name?.charAt(0)?.toUpperCase() || "?"}
+                                </div>
+                                {row.name}
+                              </div>
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>
+                              <span style={{
+                                display: "inline-block", padding: "3px 10px", borderRadius: 6,
+                                fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
+                                background: "#EEF2FF", color: "#5048E5", border: "1px solid #c7d2fe",
+                              }}>
+                                {row.intercom}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 14px", fontSize: 12, color: "#8B92B3" }}>
+                              {row.department}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
