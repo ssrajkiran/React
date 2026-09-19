@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "../../components/Logo";
+import axios from "axios";
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
@@ -375,6 +376,12 @@ export default function Login() {
   const [now, setNow] = useState(new Date());
   const navigate = useNavigate();
 
+  const [showIntercom, setShowIntercom] = useState(false);
+  const [intercomSearch, setIntercomSearch] = useState("");
+  const [intercomResults, setIntercomResults] = useState([]);
+  const [intercomLoading, setIntercomLoading] = useState(false);
+  const intercomTimer = useRef(null);
+
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
@@ -411,6 +418,26 @@ export default function Login() {
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
     return `${h}:${m} ${ampm}`;
+  };
+
+  const searchIntercom = (term) => {
+    setIntercomSearch(term);
+    if (intercomTimer.current) clearTimeout(intercomTimer.current);
+    if (!term.trim()) {
+      setIntercomResults([]);
+      return;
+    }
+    intercomTimer.current = setTimeout(async () => {
+      setIntercomLoading(true);
+      try {
+        const res = await axios.get(`/api/intercom/search?q=${encodeURIComponent(term)}`);
+        setIntercomResults(res.data || []);
+      } catch (err) {
+        setIntercomResults([]);
+      } finally {
+        setIntercomLoading(false);
+      }
+    }, 300);
   };
 
   return (
@@ -568,6 +595,22 @@ export default function Login() {
             <p className="vt-reg">
               New employee? <Link to="/register">Create an account</Link>
             </p>
+
+            <button
+              type="button"
+              onClick={() => setShowIntercom(true)}
+              style={{
+                width: "100%", marginTop: 16, padding: "12px 20px",
+                background: "#fff", border: "1.5px solid #E2E4ED", borderRadius: 10,
+                fontSize: 14, fontWeight: 600, color: "#4338CA", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                fontFamily: "'Poppins', sans-serif", transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4338CA"; e.currentTarget.style.background = "#F5F3FF"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E2E4ED"; e.currentTarget.style.background = "#fff"; }}
+            >
+              <i className="bi bi-telephone" /> Intercom Directory
+            </button>
           </div>
 
           <p className="vt-foot">
@@ -576,6 +619,176 @@ export default function Login() {
         </div>
 
       </div>
+
+      {/* Intercom Directory Modal */}
+      {showIntercom && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(17,24,39,0.45)",
+            backdropFilter: "blur(2px)", zIndex: 1100, display: "flex",
+            alignItems: "center", justifyContent: "center", padding: 16,
+          }}
+          onClick={() => setShowIntercom(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              width: "90%", maxWidth: 700, maxHeight: "85vh", display: "flex",
+              flexDirection: "column", overflow: "hidden", animation: "ic-modal-in 0.2s ease",
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "20px 24px 16px", borderBottom: "1px solid #E8ECF1",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, background: "#EEF2FF",
+                  color: "#4338CA", fontSize: 18, display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                }}>
+                  <i className="bi bi-telephone" />
+                </div>
+                <div>
+                  <h6 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0F1029" }}>
+                    Intercom Directory
+                  </h6>
+                  <p style={{ margin: 0, fontSize: 12, color: "#8B92B3" }}>
+                    Search by name, intercom number or department
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowIntercom(false)}
+                style={{
+                  width: 32, height: 32, borderRadius: 8, border: "1px solid #E8ECF1",
+                  background: "transparent", display: "flex", alignItems: "center",
+                  justifyContent: "center", cursor: "pointer", color: "#8B92B3",
+                  fontSize: 14, transition: "all 0.15s",
+                }}
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div style={{ padding: "16px 24px 12px" }}>
+              <div style={{
+                display: "flex", alignItems: "center",
+                border: "1.5px solid #E2E4ED", borderRadius: 10,
+                background: "#F9FAFC", transition: "all 0.2s",
+              }}>
+                <i className="bi bi-search" style={{ fontSize: 15, color: "#A8AECA", padding: "0 14px" }} />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search name, number or department..."
+                  value={intercomSearch}
+                  onChange={(e) => searchIntercom(e.target.value)}
+                  style={{
+                    flex: 1, border: "none", outline: "none", fontSize: 14,
+                    fontWeight: 500, color: "#0F1029", background: "transparent",
+                    padding: "13px 14px 13px 0", fontFamily: "'Poppins', sans-serif",
+                  }}
+                />
+                {intercomSearch && (
+                  <button
+                    onClick={() => { setIntercomSearch(""); setIntercomResults([]); }}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      color: "#A8AECA", padding: "0 14px", fontSize: 16,
+                    }}
+                  >
+                    <i className="bi bi-x" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Results */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 20px" }}>
+              {intercomLoading && (
+                <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
+                  <i className="bi bi-arrow-repeat" style={{ animation: "ic-spin 1s linear infinite", display: "inline-block", marginRight: 8 }} />
+                  Searching...
+                </div>
+              )}
+
+              {!intercomLoading && intercomSearch && intercomResults.length === 0 && (
+                <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
+                  <i className="bi bi-search" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "#C0C6D8" }} />
+                  No results found
+                </div>
+              )}
+
+              {!intercomLoading && !intercomSearch && (
+                <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
+                  <i className="bi bi-telephone" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "#C0C6D8" }} />
+                  Type to search intercom directory
+                </div>
+              )}
+
+              {intercomResults.length > 0 && (
+                <div style={{ fontSize: 12, color: "#8B92B3", marginBottom: 10, fontWeight: 600 }}>
+                  {intercomResults.length} result{intercomResults.length !== 1 ? "s" : ""} found
+                </div>
+              )}
+
+              {intercomResults.length > 0 && (
+                <div style={{ border: "1px solid #E8ECF1", borderRadius: 10, overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid #E8ECF1" }}>
+                        <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Name</th>
+                        <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Intercom</th>
+                        <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Department</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {intercomResults.slice(0, 50).map((row, idx) => (
+                        <tr
+                          key={row.id || idx}
+                          style={{ borderBottom: idx < Math.min(intercomResults.length, 50) - 1 ? "1px solid #F1F5F9" : "none" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#F8FAFC"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                        >
+                          <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0F1029" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{
+                                width: 30, height: 30, borderRadius: 8,
+                                background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
+                                color: "#5048E5", fontSize: 12, fontWeight: 700,
+                                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                              }}>
+                                {row.name?.charAt(0)?.toUpperCase() || "?"}
+                              </div>
+                              {row.name}
+                            </div>
+                          </td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <span style={{
+                              display: "inline-block", padding: "3px 10px", borderRadius: 6,
+                              fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
+                              background: "#EEF2FF", color: "#5048E5", border: "1px solid #c7d2fe",
+                            }}>
+                              {row.intercom}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "#8B92B3" }}>
+                            {row.department}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -41,5 +41,7 @@ app.use("/api/roles", require("./routes/roles"));
 
 app.use("/api/crud", require("./routes/crud"));
 
+app.use("/api/intercom", require("./routes/intercom"));
+
 app.listen(5000,()=>console.log("Backend running"));
 

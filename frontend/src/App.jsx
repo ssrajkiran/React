@@ -25,6 +25,7 @@ import EmployeeTimesheet from "./pages/Timesheet/EmployeeTimesheetList.jsx";
 import AdminTimesheet from "./pages/Timesheet/AdminTimesheetList.jsx";
 import Roles from "./pages/Roles/Roles.jsx";
 import DynamicPage from "./pages/Dynamic/DynamicPage.jsx";
+import IntercomList from "./pages/Intercom/IntercomList.jsx";
 
 
 export default function App() {
@@ -71,6 +72,9 @@ export default function App() {
          <Route path="/admin/roles" element={<Roles />} />
          <Route path="/admin/dynamic/:module" element={<DynamicPage />} />
          <Route path="/todo" element={<Todo />} />
+         <Route path="/intercom" element={<IntercomList />} />
+         <Route path="/employee/intercom" element={<IntercomList />} />
+         <Route path="/admin/intercom" element={<IntercomList />} />
       </Routes>
     </>
   );

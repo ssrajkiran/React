@@ -316,6 +316,16 @@ export default function Sidebar({ isOpen, onClose }) {
             Todo
           </Link>
         )}
+
+        {/* Intercom */}
+        <Link
+          to="/intercom"
+          className={`menu-item ${isActive("/intercom", true) ? "active" : ""}`}
+          onClick={handleNavClick}
+        >
+          <i className="bi bi-telephone menu-icon"></i>
+          Intercom List
+        </Link>
       </div>
 
       {/* Admin Setup */}
