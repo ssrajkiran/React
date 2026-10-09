@@ -289,17 +289,8 @@ export default function Sidebar({ isOpen, onClose }) {
                     className={`submenu-item ${isActive("/admin/ai-summary", true) ? "active" : ""}`}
                     onClick={handleNavClick}
                   >
-                    Generate Summary
+                    Timesheet Report
                   </Link>
-              )}
-              {can("summary_history") && (
-                <Link
-                  to="/admin/ai-history"
-                  className={`submenu-item ${isActive("/admin/ai-history", true) ? "active" : ""}`}
-                  onClick={handleNavClick}
-                >
-                  Summary History
-                </Link>
               )}
             </div>
           </>
@@ -314,6 +305,18 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             <i className="bi bi-check2-square menu-icon"></i>
             Todo
+          </Link>
+        )}
+
+        {/* Report */}
+        {can("report") && (
+          <Link
+            to="/reports"
+            className={`menu-item ${isActive("/reports", true) ? "active" : ""}`}
+            onClick={handleNavClick}
+          >
+            <i className="bi bi-bar-chart-line menu-icon"></i>
+            Report
           </Link>
         )}
 

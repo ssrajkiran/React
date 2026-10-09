@@ -35,6 +35,8 @@ app.use("/api/tasks-project", require("./routes/tasksWithProject"));
 
 app.use("/api/ai-summary", require("./routes/aiReport"));
 
+app.use("/api/reports", require("./routes/reports"));
+
 app.use("/api/tasks_report", require("./routes/taskreports"));
 
 app.use("/api/roles", require("./routes/roles"));
@@ -42,6 +44,8 @@ app.use("/api/roles", require("./routes/roles"));
 app.use("/api/crud", require("./routes/crud"));
 
 app.use("/api/intercom", require("./routes/intercom"));
+
+app.use("/api/notifications", require("./routes/notifications"));
 
 app.listen(5000,()=>console.log("Backend running"));
 

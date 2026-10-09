@@ -6,7 +6,7 @@ import SharedSelect from "../../components/SharedSelect";
 
 export default function CreateUser() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "", dob: "" });
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast]     = useState(null);
@@ -179,6 +179,22 @@ export default function CreateUser() {
               />
             </div>
 
+            {/* Date of Birth */}
+            <div className="cu-field-group">
+              <label className="sr-label">Date of Birth</label>
+              <div className="sr-input-wrap">
+                <i className="bi bi-calendar3 sr-input-icon" />
+                <input
+                  className="sr-input cu-input"
+                  type="date"
+                  name="dob"
+                  value={form.dob}
+                  onChange={handleChange}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+              </div>
+            </div>
+
           </div>
 
           <div className="cu-divider" />
@@ -218,8 +234,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
-  .sr-toast-success { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
-  .sr-toast-error   { background: #FEF2F2; color: #DC2626; border: 1px solid #fca5a5; }
+  .sr-toast-success { background: #ECFDF5; color: #059669; }
+  .sr-toast-error   { background: #FEF2F2; color: #DC2626; }
   .sr-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* ── Page header ── */
@@ -227,8 +243,8 @@ const styles = `
     display: flex; align-items: flex-start; justify-content: space-between;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
-  .sr-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; letter-spacing: -0.01em; }
-  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
+  .sr-page-title { font-size: 24px; font-weight: 800; color: var(--t-base); margin: 0; letter-spacing: -0.02em; }
+  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); margin-top: 6px; }
   .sr-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
   .sr-breadcrumb a:hover { text-decoration: underline; }
   .sr-breadcrumb i { font-size: 10px; opacity: 0.5; }
@@ -240,17 +256,18 @@ const styles = `
   .sr-input-wrap { position: relative; display: flex; align-items: center; }
   .sr-input-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .sr-input {
-    width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    width: 100%; padding: 9px 12px 9px 34px; border: none; border-radius: var(--radius);
+    background: var(--bg-muted); font-size: 13px; color: var(--t-base);
     font-family: var(--font); outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: box-shadow 0.15s;
   }
-  .sr-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
+  .sr-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
 
   /* ── Form card ── */
   .cu-form-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding: 24px 28px;
   }
 
@@ -264,7 +281,7 @@ const styles = `
   .cu-form-title { font-size: 14px; font-weight: 700; color: var(--t-base); margin: 0 0 3px; }
   .cu-form-sub   { font-size: 12px; color: var(--t-muted); margin: 0; }
 
-  .cu-divider { border: none; border-top: 1px solid var(--border); margin: 0 0 20px; }
+  .cu-divider { border: none; border-top: 1px solid var(--border-soft); margin: 0 0 20px; }
 
   /* ── Fields grid ── */
   .cu-fields-grid {
@@ -308,13 +325,13 @@ const styles = `
 
   .cu-back-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: var(--bg-card);
-    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 9px 18px; background: var(--bg-muted);
+    border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; color: var(--t-muted);
-    cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
+    cursor: pointer; transition: color 0.15s, background 0.15s;
     font-family: var(--font);
   }
-  .cu-back-btn:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
+  .cu-back-btn:hover { color: var(--primary); background: #EEF2FF; }
 
   .cu-save-btn {
     display: flex; align-items: center; gap: 7px;

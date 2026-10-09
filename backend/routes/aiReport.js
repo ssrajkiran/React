@@ -31,12 +31,13 @@ function generateRefinedSummary(data) {
     const projectName = item.project_name || "Permission";
     const taskName = item.task_name || item.work_description || "Permission";
     const taskStatus = item.task_status || "Permission";
+    const hours = Number(item.man_hrs) || 0;
 
     // Total hours per employee
-    employeeHours[item.employee_name] = (employeeHours[item.employee_name] || 0) + item.man_hrs;
+    employeeHours[item.employee_name] = (Number(employeeHours[item.employee_name]) || 0) + hours;
 
     // Total hours per project
-    projectHours[projectName] = (projectHours[projectName] || 0) + item.man_hrs;
+    projectHours[projectName] = (Number(projectHours[projectName]) || 0) + hours;
 
     // Total tasks per project
     if (!projectTaskCounts[projectName]) {
@@ -52,7 +53,7 @@ function generateRefinedSummary(data) {
       project: projectName,
       task: taskName,
       status: taskStatus,
-      hours: item.man_hrs,
+      hours: hours,
       start_time: item.start_time,
       end_time: item.end_time,
       date: item.timesheet_date,
@@ -70,7 +71,7 @@ router.post("/", verifyToken, (req, res) => {
   if (req.user.role !== "admin") 
     return res.status(403).json({ message: "Admins only" });
 
-  const { project_id, employee_id, from_date, to_date, report_name } = req.body;
+  const { project_id, employee_id, from_date, to_date } = req.body;
 
   let sql = `
     SELECT 
@@ -105,66 +106,13 @@ router.post("/", verifyToken, (req, res) => {
 
     const { tableData, employeeHours, projectHours, projectTaskCounts } = generateRefinedSummary(data);
 
-    const summaryText = JSON.stringify({ tableData, employeeHours, projectHours, projectTaskCounts }, null, 2);
-
-    // Format report name if not provided
-    let formattedReportName = report_name;
-    if (!formattedReportName) {
-      const formatDate = (iso) => {
-        const d = new Date(iso);
-        return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
-      };
-      formattedReportName = `Report From: ${from_date ? formatDate(from_date) : "-"} To: ${to_date ? formatDate(to_date) : "-"}`;
-    }
-
-    const insertSql = `
-      INSERT INTO ai_reports (report_name, content, generated_by, created_at)
-      VALUES (?, ?, ?, NOW())
-    `;
-    
-    db.query(insertSql, [formattedReportName, summaryText, req.user.id], (err2, result) => {
-      if (err2) {
-        console.error("Failed to save report:", err2);
-        return res.status(500).json({ message: "Failed to save report", error: err2 });
-      }
-      console.log("Report saved with ID:", result.insertId);
-
-      res.json({
-        message: "Report generated and saved successfully",
-        tableData,
-        employeeHours,
-        projectHours,
-        projectTaskCounts,
-        report_name: formattedReportName
-      });
+    res.json({
+      message: "Report generated",
+      tableData,
+      employeeHours,
+      projectHours,
+      projectTaskCounts
     });
-  });
-});
-
-// ==============================
-// GET /ai-summary/history
-// ==============================
-router.get("/history", verifyToken, (req, res) => {
-  if (req.user.role !== "admin") 
-    return res.status(403).json({ message: "Admins only" });
-
-  const sql = `
-    SELECT 
-      id, 
-      report_name, 
-      content AS summary_text, 
-      generated_by, 
-      created_at
-    FROM ai_reports
-    ORDER BY created_at DESC
-  `;
-
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error("Database error fetching AI reports:", err);
-      return res.status(500).json({ message: "Database error", error: err });
-    }
-    res.json(results);
   });
 });
 

@@ -19,6 +19,15 @@ export const fmtDateLong = (d) => {
   return new Date(d).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 };
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export const fmtDob = (d) => {
+  if (!d) return "—";
+  const [y, m, dd] = String(d).split("-");
+  if (!y || !m || !dd) return "—";
+  return `${dd} ${MONTHS[Number(m) - 1] || m} ${y}`;
+};
+
 export const getInitials = (name) => {
   return name?.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 2) || "U";
 };

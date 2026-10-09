@@ -160,9 +160,9 @@ router.get("/permissions", verifyToken, (req, res) => {
 
       const ALL_MENU_KEYS = [
         "dashboard", "leave_dashboard", "timesheet_dashboard",
-        "attendance", "attendance_report",
+          "attendance", "attendance_report", "report",
         "task", "task_report",
-        "timesheet", "ai_summary", "summary_history",
+        "timesheet", "ai_summary",
         "users", "holidays", "roles", "todo", "profile"
       ];
       const permMap = {};
@@ -179,6 +179,23 @@ router.get("/permissions", verifyToken, (req, res) => {
       });
 
       res.json(permissions);
+    }
+  );
+});
+
+/* ==============================
+   TODAY'S BIRTHDAYS
+=============================== */
+router.get("/birthdays/today", verifyToken, (req, res) => {
+  db.query(
+    `SELECT id, name FROM users
+     WHERE dob IS NOT NULL AND MONTH(dob) = MONTH(CURDATE()) AND DAY(dob) = DAY(CURDATE())`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: "Database query failed" });
+      res.json({
+        birthdays: rows || [],
+        mine: (rows || []).some((r) => r.id === req.user.id),
+      });
     }
   );
 });
@@ -240,7 +257,7 @@ router.post("/login", (req, res) => {
       [result[0].role],
       (err2, dbPermissions) => {
         const token = jwt.sign(
-          { id: result[0].id, role: result[0].role },
+          { id: result[0].id, name: result[0].name, role: result[0].role },
           "secret",
           { expiresIn: "1d" }
         );
@@ -248,10 +265,10 @@ router.post("/login", (req, res) => {
         // Merge with full menu key list to ensure all keys are present
         const ALL_MENU_KEYS = [
           "dashboard", "leave_dashboard", "timesheet_dashboard",
-          "attendance", "attendance_report",
+        "attendance", "attendance_report", "report",
           "task", "task_report",
-          "timesheet", "ai_summary", "summary_history",
-          "users", "holidays", "roles", "todo", "profile"
+           "timesheet", "ai_summary",
+           "users", "holidays", "roles", "todo", "profile"
         ];
         const permMap = {};
         (dbPermissions || []).forEach((p) => { permMap[p.menu_key] = p; });
@@ -280,12 +297,13 @@ router.post("/login", (req, res) => {
    REGISTER (+ Welcome Email)
 =============================== */
 router.post("/register", (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, dob } = req.body;
   const hash = bcrypt.hashSync(password, 10);
+  const dobValue = dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : null;
 
   db.query(
-    "INSERT INTO users(name,email,password,plain_password,role) VALUES(?,?,?,?,?)",
-    [name, email, hash, password, role],
+    "INSERT INTO users(name,email,password,plain_password,role,dob) VALUES(?,?,?,?,?,?)",
+    [name, email, hash, password, role, dobValue],
     async (err) => {
       if (err) return res.status(500).json({ message: "User already exists" });
 
@@ -329,7 +347,7 @@ router.get("/users", verifyToken, (req, res) => {
   }
 
   db.query(
-    "SELECT id, name, email, role FROM users",
+    "SELECT id, name, email, role, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users",
     (err, result) => {
       if (err) {
         return res.status(500).json({ message: "Database query failed" });
@@ -395,7 +413,7 @@ router.put("/:id", verifyToken, (req, res) => {
   }
 
   const userId = req.params.id;
-  const { name, email, role, password } = req.body;
+  const { name, email, role, password, dob } = req.body;
 
   const updates = [];
   const params = [];
@@ -413,6 +431,11 @@ router.put("/:id", verifyToken, (req, res) => {
   if (role) {
     updates.push("role=?");
     params.push(role);
+  }
+
+  if (dob !== undefined) {
+    updates.push("dob=?");
+    params.push(dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : null);
   }
 
   if (password) {

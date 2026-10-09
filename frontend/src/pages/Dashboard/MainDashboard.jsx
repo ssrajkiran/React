@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
@@ -42,8 +42,25 @@ export default function MainDashboard() {
   const [role, setRole] = useState("employee");
   const [summary, setSummary] = useState(null);
   const [todos, setTodos] = useState([]);
+  const [birthdays, setBirthdays] = useState([]);
+  const [myBirthday, setMyBirthday] = useState(false);
+  const [showBdayModal, setShowBdayModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
   const navigate = useNavigate();
+
+  const confetti = useMemo(() => {
+    const colors = ["#EC4899", "#8B5CF6", "#22D3EE", "#FBBF24", "#34D399", "#F472B6"];
+    return Array.from({ length: 48 }, (_, i) => ({
+      left: `${(i * 37 + 11) % 100}%`,
+      width: `${6 + (i % 4) * 3}px`,
+      height: `${10 + (i % 3) * 5}px`,
+      background: colors[i % colors.length],
+      borderRadius: i % 3 === 0 ? "50%" : "2px",
+      animationDelay: `-${((i * 0.37) % 4).toFixed(2)}s`,
+      animationDuration: `${2.6 + (i % 5) * 0.7}s`,
+    }));
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -52,10 +69,31 @@ export default function MainDashboard() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setRole(payload.role || "employee");
         if (payload.name) setUserName(payload.name);
+        else {
+          api.get("/auth/profile")
+            .then((r) => { if (r.data?.name) setUserName(r.data.name); })
+            .catch(() => {});
+        }
       } catch (_) {}
     }
     loadDashboard();
     loadTodos();
+    api.get("/auth/birthdays/today")
+      .then((res) => {
+        setBirthdays(res.data.birthdays || []);
+        const mine = !!res.data.mine;
+        setMyBirthday(mine);
+        if (mine && !sessionStorage.getItem("bdayModalSeen")) {
+          sessionStorage.setItem("bdayModalSeen", "1");
+          setShowBdayModal(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   const loadDashboard = async () => {
@@ -102,76 +140,151 @@ export default function MainDashboard() {
   const teamWeek = summary?.teamWeekHours || {};
   const totalEmployees = summary?.totalEmployees?.count || 0;
   const pendingApprovals = summary?.pendingApprovals?.count || 0;
+  const todayPct = Math.min(((Number(todayHours) || 0) / 8) * 100, 100);
 
   return (
     <AppLayout>
       <style>{styles}</style>
 
-      {/* ── GREETING ── */}
-      <div className="md-greeting-card">
-        <div className="md-greeting-text">
-          <h2 className="md-greeting-title">{getGreeting()}, {userName.split(" ")[0]}!</h2>
-          <p className="md-greeting-date">{dateStr}</p>
+      {/* ── HEADER ── */}
+      <div className="md-head">
+        <div className="md-head-left">
+          <span className="md-eyebrow">{dateStr}</span>
+          <h2 className="md-head-title">{getGreeting()}, {userName.split(" ")[0]}!</h2>
+          <p className="md-head-sub">Here is your work snapshot for the day.</p>
         </div>
-        <div className="md-greeting-icon">
-          <i className="bi bi-speedometer2" />
+        <div className="md-head-clock">
+          <span className="md-head-clock-time">
+            {now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}
+          </span>
+          <span className="md-head-clock-label">Local time</span>
         </div>
       </div>
 
-      {/* ── KPI CARDS ── */}
-      <div className="md-kpi-grid">
-        <div className="md-kpi-card md-kpi-primary">
-          <div className="md-kpi-icon-wrap"><i className="bi bi-clock" /></div>
-          <div className="md-kpi-body">
-            <span className="md-kpi-val">{fmtHrs(todayHours)}</span>
-            <span className="md-kpi-label">Today's Hours</span>
-            <span className="md-kpi-sub">{todayEntries} entries</span>
-          </div>
+      {/* ── BIRTHDAY STRIP ── */}
+      {birthdays.length > 0 && (
+        <div className="md-bday-strip">
+          <span className="md-bday-strip-icon"><i className="bi bi-gift" /></span>
+          <span className="md-bday-strip-label">
+            {myBirthday ? "Your birthday today" : "Today's birthdays"}
+          </span>
+          <span className="md-bday-strip-people">
+            {birthdays.map((b) => (
+              <span className="md-bday-chip" key={b.id}>
+                <span className="md-bday-avatar">
+                  {b.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
+                </span>
+                {b.name}
+              </span>
+            ))}
+          </span>
+          {myBirthday && userName !== "User" && (
+            <span className="md-bday-strip-wish">Happy birthday, {userName.split(" ")[0]}!</span>
+          )}
         </div>
-        <div className="md-kpi-card md-kpi-info">
-          <div className="md-kpi-icon-wrap"><i className="bi bi-calendar-week" /></div>
-          <div className="md-kpi-body">
-            <span className="md-kpi-val">{fmtHrs(weekHours)}</span>
-            <span className="md-kpi-label">This Week</span>
-            <span className="md-kpi-sub">{weekEntries} entries</span>
+      )}
+
+      {/* ── BIRTHDAY MODAL ── */}
+      {showBdayModal && userName !== "User" && (
+        <div className="bday-overlay" onClick={() => setShowBdayModal(false)}>
+          <div className="bday-confetti" aria-hidden="true">
+            {confetti.map((c, i) => (
+              <span key={i} className="bday-confetti-piece" style={c} />
+            ))}
           </div>
-        </div>
-        <div className="md-kpi-card md-kpi-warning">
-          <div className="md-kpi-icon-wrap"><i className="bi bi-list-task" /></div>
-          <div className="md-kpi-body">
-            <span className="md-kpi-val">{pendingModules}</span>
-            <span className="md-kpi-label">Active Modules</span>
-            <span className="md-kpi-sub">in progress</span>
-          </div>
-        </div>
-        <div className="md-kpi-card md-kpi-danger">
-          <div className="md-kpi-icon-wrap"><i className="bi bi-calendar-x" /></div>
-          <div className="md-kpi-body">
-            <span className="md-kpi-val">{pendingLeaves}</span>
-            <span className="md-kpi-label">Pending Leaves</span>
-            <span className="md-kpi-sub">awaiting approval</span>
-          </div>
-        </div>
-        {isAdmin && (
-          <>
-            <div className="md-kpi-card md-kpi-success">
-              <div className="md-kpi-icon-wrap"><i className="bi bi-people" /></div>
-              <div className="md-kpi-body">
-                <span className="md-kpi-val">{teamToday.active_employees || 0}</span>
-                <span className="md-kpi-label">Team Active Today</span>
-                <span className="md-kpi-sub">{fmtHrs(teamToday.total_hours || 0)} logged</span>
-              </div>
+          <div className="bday-orb bday-orb-1" aria-hidden="true" />
+          <div className="bday-orb bday-orb-2" aria-hidden="true" />
+          <div className="bday-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="bday-art">
+              <div className="bday-art-ring" />
+              <div className="bday-art-ring bday-art-ring-2" />
+              <span className="bday-art-badge"><i className="bi bi-gift" /></span>
+              <span className="bday-art-date">
+                {today.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }).toUpperCase()}
+              </span>
+              <span className="bday-art-year">{today.getFullYear()}</span>
             </div>
-            <div className="md-kpi-card md-kpi-purple">
-              <div className="md-kpi-icon-wrap"><i className="bi bi-bar-chart" /></div>
-              <div className="md-kpi-body">
-                <span className="md-kpi-val">{fmtHrs(teamWeek.total_hours || 0)}</span>
-                <span className="md-kpi-label">Team This Week</span>
-                <span className="md-kpi-sub">{teamWeek.active_employees || 0} active</span>
-              </div>
+            <div className="bday-body">
+              <span className="bday-kicker">Today is your day</span>
+              <h2 className="bday-heading">
+                Happy Birthday, <span className="bday-name">{userName}</span>!
+              </h2>
+              <div className="bday-divider" />
+              <p className="bday-wish">
+                Wishing you a wonderful year ahead — full of success, good health
+                and great memories. Cheers to you!
+              </p>
+              <button className="bday-cta" onClick={() => setShowBdayModal(false)}>
+                Cheers! <i className="bi bi-arrow-right" />
+              </button>
+              <div className="bday-meta">From your team at Voltech</div>
             </div>
-          </>
-        )}
+          </div>
+        </div>
+      )}
+
+      {/* ── SNAPSHOT: hero + rail ── */}
+      <div className="md-hero-grid">
+        <div className="md-hero">
+          <div className="md-hero-top">
+            <span className="md-hero-label">Today's Hours</span>
+            <span className="md-hero-chip">{todayEntries} {todayEntries === 1 ? "entry" : "entries"}</span>
+          </div>
+          <div className="md-hero-val">{fmtHrs(todayHours)}</div>
+          <div className="md-hero-progress">
+            <div className="md-hero-bar">
+              <span style={{ width: `${todayPct}%` }} />
+            </div>
+            <span className="md-hero-progress-label">{Math.round(todayPct)}% of 8h target</span>
+          </div>
+        </div>
+
+        <div className="md-rail">
+          <div className="md-rail-tile md-tint-info">
+            <span className="md-rail-icon">
+              <i className="bi bi-calendar-week" />
+            </span>
+            <span className="md-rail-val">{fmtHrs(weekHours)}</span>
+            <span className="md-rail-label">This week</span>
+            <span className="md-rail-sub">{weekEntries} entries</span>
+          </div>
+          <div className="md-rail-tile md-tint-warning">
+            <span className="md-rail-icon">
+              <i className="bi bi-list-task" />
+            </span>
+            <span className="md-rail-val">{pendingModules}</span>
+            <span className="md-rail-label">Active modules</span>
+            <span className="md-rail-sub">in progress</span>
+          </div>
+          <div className="md-rail-tile md-tint-danger">
+            <span className="md-rail-icon">
+              <i className="bi bi-calendar-x" />
+            </span>
+            <span className="md-rail-val">{pendingLeaves}</span>
+            <span className="md-rail-label">Pending leaves</span>
+            <span className="md-rail-sub">awaiting approval</span>
+          </div>
+          {isAdmin && (
+            <>
+              <div className="md-rail-tile md-tint-success">
+                <span className="md-rail-icon">
+                  <i className="bi bi-people" />
+                </span>
+                <span className="md-rail-val">{teamToday.active_employees || 0}</span>
+                <span className="md-rail-label">Team active today</span>
+                <span className="md-rail-sub">{fmtHrs(teamToday.total_hours || 0)} logged</span>
+              </div>
+              <div className="md-rail-tile md-tint-purple">
+                <span className="md-rail-icon">
+                  <i className="bi bi-bar-chart" />
+                </span>
+                <span className="md-rail-val">{fmtHrs(teamWeek.total_hours || 0)}</span>
+                <span className="md-rail-label">Team this week</span>
+                <span className="md-rail-sub">{teamWeek.active_employees || 0} active</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── MAIN CONTENT ── */}
@@ -179,11 +292,8 @@ export default function MainDashboard() {
 
         {/* Left: Recent Activity */}
         <div className="md-card md-card-main">
-          <div className="md-card-header">
-            <div className="md-card-header-left">
-              <span className="md-card-dot" style={{ background: "var(--primary)" }} />
-              <h6 className="md-card-title">Recent Activity</h6>
-            </div>
+          <div className="md-section">
+            <span className="md-section-label">Recent Activity</span>
             <span className="md-badge" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
               Latest {recentEntries.length}
             </span>
@@ -276,30 +386,34 @@ export default function MainDashboard() {
               <i className="bi bi-lightning-charge" style={{ color: "var(--primary)" }} />
               <span>Quick Actions</span>
             </div>
-            <div className="md-actions-grid">
-              <button className="md-action-btn" onClick={() => navigate(isAdmin ? "/admin/timesheet" : "/employee/timesheet")}>
-                <div className="md-action-icon" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
+            <div className="md-action-rows">
+              <button className="md-action-row" onClick={() => navigate(isAdmin ? "/admin/timesheet" : "/employee/timesheet")}>
+                <span className="md-action-row-icon" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
                   <i className="bi bi-plus-circle" />
-                </div>
-                <span>Add Timesheet</span>
+                </span>
+                <span className="md-action-row-label">Add Timesheet</span>
+                <i className="bi bi-chevron-right md-action-row-chev" />
               </button>
-              <button className="md-action-btn" onClick={() => navigate(isAdmin ? "/admin/leaves" : "/employee/leaves")}>
-                <div className="md-action-icon" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
+              <button className="md-action-row" onClick={() => navigate(isAdmin ? "/admin/leaves" : "/employee/leaves")}>
+                <span className="md-action-row-icon" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
                   <i className="bi bi-calendar-plus" />
-                </div>
-                <span>Apply Leave</span>
+                </span>
+                <span className="md-action-row-label">Apply Leave</span>
+                <i className="bi bi-chevron-right md-action-row-chev" />
               </button>
-              <button className="md-action-btn" onClick={() => navigate("/tasks")}>
-                <div className="md-action-icon" style={{ background: "var(--warning-soft)", color: "var(--warning)" }}>
+              <button className="md-action-row" onClick={() => navigate("/tasks")}>
+                <span className="md-action-row-icon" style={{ background: "var(--warning-soft)", color: "var(--warning)" }}>
                   <i className="bi bi-list-task" />
-                </div>
-                <span>Modules</span>
+                </span>
+                <span className="md-action-row-label">Modules</span>
+                <i className="bi bi-chevron-right md-action-row-chev" />
               </button>
-              <button className="md-action-btn" onClick={() => navigate("/todo")}>
-                <div className="md-action-icon" style={{ background: "var(--info-soft)", color: "var(--info)" }}>
+              <button className="md-action-row" onClick={() => navigate("/todo")}>
+                <span className="md-action-row-icon" style={{ background: "var(--info-soft)", color: "var(--info)" }}>
                   <i className="bi bi-check2-square" />
-                </div>
-                <span>Todo</span>
+                </span>
+                <span className="md-action-row-label">Todo</span>
+                <i className="bi bi-chevron-right md-action-row-chev" />
               </button>
             </div>
           </div>
@@ -336,41 +450,260 @@ export default function MainDashboard() {
 }
 
 const styles = `
-  /* ── Greeting ── */
-  .md-greeting-card {
-    display: flex; align-items: center; justify-content: space-between;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
-    border-radius: var(--radius-lg); padding: 28px 24px;
-    margin-bottom: 20px; color: #fff;
-  }
-  .md-greeting-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: #fff; }
-  .md-greeting-date { font-size: 13px; opacity: 0.85; margin: 0; color: #fff; }
-  .md-greeting-icon { font-size: 42px; opacity: 0.2; }
+  /* ── Borderless canvas ── */
+  .page-content { background: var(--bg); }
 
-  /* ── KPI Grid ── */
-  .md-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .md-kpi-card {
-    display: flex; align-items: center; gap: 14px;
-    padding: 18px 16px; border-radius: var(--radius-lg);
-    background: var(--bg-card); border: 1px solid var(--border);
-    box-shadow: var(--shadow); transition: transform 0.2s, box-shadow 0.2s;
+  /* ── Header ── */
+  .md-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; margin-bottom: 20px;
   }
-  .md-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-  .md-kpi-icon-wrap {
-    width: 46px; height: 46px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; flex-shrink: 0;
+  .md-eyebrow {
+    display: block; font-size: 11px; font-weight: 700; letter-spacing: 1.6px;
+    text-transform: uppercase; color: var(--primary); margin-bottom: 6px;
   }
-  .md-kpi-primary .md-kpi-icon-wrap { background: var(--primary-soft); color: var(--primary); }
-  .md-kpi-info .md-kpi-icon-wrap { background: var(--info-soft); color: var(--info); }
-  .md-kpi-warning .md-kpi-icon-wrap { background: var(--warning-soft); color: var(--warning); }
-  .md-kpi-danger .md-kpi-icon-wrap { background: var(--danger-soft); color: var(--danger); }
-  .md-kpi-success .md-kpi-icon-wrap { background: var(--success-soft); color: var(--success); }
-  .md-kpi-purple .md-kpi-icon-wrap { background: var(--purple-soft); color: var(--purple); }
-  .md-kpi-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-  .md-kpi-val { font-size: 22px; font-weight: 800; color: var(--t-base); line-height: 1; letter-spacing: -0.02em; }
-  .md-kpi-label { font-size: 11px; font-weight: 600; color: var(--t-muted); white-space: nowrap; }
-  .md-kpi-sub { font-size: 10.5px; color: var(--t-muted); opacity: 0.7; white-space: nowrap; }
+  .md-head-title { font-size: 24px; font-weight: 800; margin: 0; color: var(--t-base); letter-spacing: -0.02em; }
+  .md-head-sub { font-size: 13px; color: var(--t-muted); margin: 5px 0 0; }
+  .md-head-clock {
+    text-align: right; flex-shrink: 0;
+    padding: 10px 16px; border-radius: var(--radius);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card), 0 18px 44px -20px rgba(15, 23, 42, 0.18);
+  }
+  .md-head-clock-time {
+    display: block; font-size: 20px; font-weight: 700; color: var(--t-base);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.02em; line-height: 1.1;
+  }
+  .md-head-clock-label {
+    display: block; font-size: 9.5px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--t-muted); margin-top: 2px;
+  }
+
+  /* ── Birthday strip (corporate) ── */
+  .md-bday-strip {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: linear-gradient(90deg, rgba(236, 72, 153, 0.10), var(--bg-card) 55%);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card), 0 18px 44px -22px rgba(236, 72, 153, 0.30);
+    padding: 13px 18px; margin-bottom: 20px;
+  }
+  .md-bday-strip-icon {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 16px;
+    background: var(--pink-soft); color: var(--pink);
+  }
+  .md-bday-strip-label {
+    font-size: 12px; font-weight: 700; color: var(--t-muted);
+    text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap;
+  }
+  .md-bday-strip-people { display: flex; gap: 8px; flex-wrap: wrap; }
+  .md-bday-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 600; color: var(--t-base);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+    padding: 4px 12px 4px 5px; border-radius: 999px;
+  }
+  .md-bday-avatar {
+    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--primary), #EC4899);
+  }
+  .md-bday-strip-wish {
+    margin-left: auto; font-size: 13px; font-weight: 700; color: var(--pink);
+    white-space: nowrap;
+  }
+
+  /* ── Birthday modal (split panel) ── */
+  .bday-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    display: grid; place-items: center; padding: 24px;
+    background:
+      radial-gradient(1100px 550px at 50% -10%, rgba(139, 92, 246, 0.18), transparent 60%),
+      radial-gradient(900px 500px at 85% 110%, rgba(236, 72, 153, 0.14), transparent 55%),
+      rgba(2, 6, 23, 0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: bdayFadeIn 0.3s ease;
+  }
+  .bday-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .bday-confetti-piece {
+    position: absolute; top: -24px; opacity: 0.9;
+    animation-name: bdayFall; animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  .bday-orb { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.35; pointer-events: none; }
+  .bday-orb-1 { width: 320px; height: 320px; background: #8B5CF6; top: -90px; left: -70px; animation: bdayOrb 9s ease-in-out infinite alternate; }
+  .bday-orb-2 { width: 280px; height: 280px; background: #EC4899; bottom: -80px; right: -60px; animation: bdayOrb 11s ease-in-out infinite alternate-reverse; }
+  .bday-modal {
+    position: relative; z-index: 2; overflow: hidden;
+    display: grid; grid-template-columns: 172px 1fr;
+    width: min(640px, 100%);
+    background: var(--bg-card);
+    border-radius: 20px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), var(--shadow-lg);
+    animation: bdayPop 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.15);
+  }
+  .bday-art {
+    position: relative; overflow: hidden;
+    background: linear-gradient(165deg, #EC4899 0%, #8B5CF6 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    padding: 24px 12px;
+  }
+  .bday-art::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.2px, transparent 1.3px);
+    background-size: 16px 16px; opacity: 0.5;
+  }
+  .bday-art-ring {
+    position: absolute; width: 130px; height: 130px; border-radius: 50%;
+    border: 1.5px dashed rgba(255, 255, 255, 0.35); top: -34px; right: -40px;
+    animation: bdaySpin 22s linear infinite;
+  }
+  .bday-art-ring-2 { width: 90px; height: 90px; top: auto; right: auto; bottom: -26px; left: -30px; animation-direction: reverse; animation-duration: 16s; }
+  .bday-art-badge {
+    position: relative; z-index: 1;
+    width: 72px; height: 72px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 30px; color: #fff;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: bdayFloat 3s ease-in-out infinite;
+  }
+  .bday-art-date {
+    position: relative; z-index: 1;
+    font-size: 13px; font-weight: 800; letter-spacing: 2.5px; color: #fff;
+  }
+  .bday-art-year {
+    position: relative; z-index: 1;
+    font-size: 10px; font-weight: 700; letter-spacing: 3px; color: rgba(255, 255, 255, 0.7);
+  }
+  .bday-body { padding: 32px 34px 28px; display: flex; flex-direction: column; align-items: flex-start; }
+  .bday-kicker {
+    font-size: 11px; font-weight: 700; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--pink); margin-bottom: 10px;
+  }
+  .bday-heading { margin: 0; font-size: 25px; font-weight: 800; line-height: 1.3; color: var(--t-base); letter-spacing: -0.02em; }
+  .bday-name {
+    background: linear-gradient(90deg, #EC4899, #8B5CF6);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; -webkit-text-fill-color: transparent;
+  }
+  .bday-divider {
+    width: 64px; height: 3px; margin: 16px 0; border-radius: 3px;
+    background: linear-gradient(90deg, #EC4899, #8B5CF6);
+  }
+  .bday-wish { margin: 0 0 22px; font-size: 13.5px; line-height: 1.7; color: var(--t-muted); }
+  .bday-cta {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    border: 0; padding: 12px 28px; border-radius: 999px;
+    font-size: 13.5px; font-weight: 700; color: #fff;
+    background: linear-gradient(90deg, #EC4899, #8B5CF6);
+    box-shadow: 0 10px 26px rgba(139, 92, 246, 0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .bday-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(236, 72, 153, 0.4); }
+  .bday-meta {
+    margin-top: 18px; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--t-muted);
+  }
+  @keyframes bdayFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes bdayPop { from { opacity: 0; transform: scale(0.92) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  @keyframes bdayFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes bdayOrb { from { transform: translate(0, 0); } to { transform: translate(40px, 30px); } }
+  @keyframes bdaySpin { to { transform: rotate(360deg); } }
+  @keyframes bdayFall {
+    0% { transform: translateY(-6vh) rotate(0deg); opacity: 1; }
+    85% { opacity: 0.9; }
+    100% { transform: translateY(112vh) rotate(720deg); opacity: 0; }
+  }
+  @media (max-width: 560px) {
+    .bday-modal { grid-template-columns: 1fr; }
+    .bday-art { flex-direction: row; gap: 12px; padding: 18px; }
+    .bday-art-badge { width: 52px; height: 52px; font-size: 22px; }
+    .bday-art-ring { display: none; }
+    .bday-body { padding: 26px 22px 24px; }
+    .bday-heading { font-size: 21px; }
+    .md-head-clock { display: none; }
+    .md-bday-strip-wish { margin-left: 0; }
+  }
+
+  /* ── Hero + rail ── */
+  .md-hero-grid {
+    display: grid; grid-template-columns: minmax(250px, 320px) 1fr;
+    gap: 16px; margin-bottom: 20px;
+  }
+  .md-hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(155deg, #0C0B2E 0%, #161452 55%, #2D28A0 140%);
+    border-radius: var(--radius-lg); padding: 22px 24px;
+    color: #fff; display: flex; flex-direction: column; gap: 14px;
+    box-shadow: 0 12px 32px rgba(12, 11, 46, 0.35);
+  }
+  .md-hero::after {
+    content: ""; position: absolute; top: -50px; right: -50px;
+    width: 170px; height: 170px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 70%);
+    pointer-events: none;
+  }
+  .md-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .md-hero-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.6px;
+    text-transform: uppercase; color: rgba(255, 255, 255, 0.72);
+  }
+  .md-hero-chip {
+    font-size: 10.5px; font-weight: 700; color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+    padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .md-hero-val {
+    font-size: 44px; font-weight: 800; line-height: 1;
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  }
+  .md-hero-progress { display: flex; flex-direction: column; gap: 7px; }
+  .md-hero-bar { height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
+  .md-hero-bar span {
+    display: block; height: 100%; border-radius: 6px;
+    background: linear-gradient(90deg, #22D3EE, #8B5CF6, #EC4899);
+    transition: width 0.6s ease;
+  }
+  .md-hero-progress-label { font-size: 11px; color: rgba(255, 255, 255, 0.65); font-variant-numeric: tabular-nums; }
+
+  .md-rail {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .md-rail-tile {
+    padding: 16px 18px; border-radius: var(--radius-lg);
+    display: flex; flex-direction: column; gap: 3px; min-width: 0;
+    position: relative; box-shadow: var(--shadow-sm);
+    transition: transform 0.15s;
+  }
+  .md-rail-tile:hover { transform: translateY(-2px); }
+  .md-rail-tile.md-tint-info { background: var(--info-soft); }
+  .md-rail-tile.md-tint-warning { background: var(--warning-soft); }
+  .md-rail-tile.md-tint-danger { background: var(--danger-soft); }
+  .md-rail-tile.md-tint-success { background: var(--success-soft); }
+  .md-rail-tile.md-tint-purple { background: var(--purple-soft); }
+  .md-tint-info .md-rail-val, .md-tint-info .md-rail-icon { color: var(--info); }
+  .md-tint-warning .md-rail-val, .md-tint-warning .md-rail-icon { color: var(--warning); }
+  .md-tint-danger .md-rail-val, .md-tint-danger .md-rail-icon { color: var(--danger); }
+  .md-tint-success .md-rail-val, .md-tint-success .md-rail-icon { color: var(--success); }
+  .md-tint-purple .md-rail-val, .md-tint-purple .md-rail-icon { color: var(--purple); }
+  .md-rail-icon {
+    position: absolute; top: 14px; right: 14px;
+    width: 28px; height: 28px; border-radius: 8px;
+    display: grid; place-items: center; font-size: 13px;
+    background: var(--bg-card); box-shadow: var(--shadow-sm);
+  }
+  .md-rail-val {
+    font-size: 22px; font-weight: 800;
+    line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+    padding-right: 32px;
+  }
+  .md-rail-label { font-size: 11.5px; font-weight: 700; color: var(--t-base); opacity: 0.75; }
+  .md-rail-sub { font-size: 10.5px; color: var(--t-muted); }
 
   /* ── Content Grid ── */
   .md-content-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
@@ -378,13 +711,17 @@ const styles = `
 
   /* ── Cards ── */
   .md-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow); min-width: 0;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg); padding: 20px; min-width: 0;
+    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
   }
-  .md-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
-  .md-card-header-left { display: flex; align-items: center; gap: 8px; }
-  .md-card-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .md-card-title { font-size: 14px; font-weight: 700; color: var(--t-base); margin: 0; }
+  .md-section { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .md-section-label {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--t-muted);
+  }
+  .md-section-label::before { content: ""; width: 3px; height: 13px; border-radius: 2px; background: var(--primary); }
   .md-badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
 
   /* ── Activity List ── */
@@ -414,16 +751,17 @@ const styles = `
   .md-side-card { padding: 18px; }
   .md-side-header {
     display: flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 700; color: var(--t-base); margin-bottom: 14px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--t-muted); margin-bottom: 14px;
   }
-  .md-side-header i { font-size: 16px; }
+  .md-side-header i { font-size: 14px; }
 
   /* ── Todos ── */
   .md-todo-list { display: flex; flex-direction: column; gap: 6px; }
   .md-todo-item {
     display: flex; align-items: center; gap: 10px;
     padding: 8px 10px; border-radius: var(--radius);
-    border: 1px solid var(--border); transition: background 0.12s;
+    background: var(--bg-muted); transition: background 0.12s;
   }
   .md-todo-item:hover { background: var(--primary-soft); }
   .md-todo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -438,26 +776,29 @@ const styles = `
   .md-view-all-btn {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     width: 100%; padding: 8px; margin-top: 10px;
-    background: transparent; border: 1px solid var(--border); border-radius: var(--radius);
+    background: transparent; border: none; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; color: var(--primary); cursor: pointer;
     transition: all 0.15s; font-family: var(--font);
   }
-  .md-view-all-btn:hover { background: var(--primary-soft); border-color: var(--primary); }
+  .md-view-all-btn:hover { background: var(--primary-soft); }
 
-  /* ── Quick Actions ── */
-  .md-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .md-action-btn {
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    padding: 14px 8px; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); cursor: pointer; transition: all 0.15s;
-    font-family: var(--font);
+  /* ── Quick actions (rows) ── */
+  .md-action-rows { display: flex; flex-direction: column; gap: 6px; }
+  .md-action-row {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    padding: 9px 12px; background: var(--bg-muted);
+    border: none; border-radius: var(--radius);
+    cursor: pointer; transition: all 0.15s;
+    font-family: var(--font); text-align: left;
   }
-  .md-action-btn:hover { border-color: var(--primary); background: var(--primary-soft); }
-  .md-action-btn span { font-size: 11.5px; font-weight: 600; color: var(--t-base); }
-  .md-action-icon {
-    width: 36px; height: 36px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  .md-action-row:hover { background: var(--primary-soft); }
+  .md-action-row:hover .md-action-row-chev { transform: translateX(2px); color: var(--primary); }
+  .md-action-row-icon {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
   }
+  .md-action-row-label { flex: 1; font-size: 12.5px; font-weight: 600; color: var(--t-base); }
+  .md-action-row-chev { font-size: 12px; color: var(--t-muted); transition: all 0.15s; }
 
   /* ── Admin stats ── */
   .md-admin-stats { display: flex; flex-direction: column; gap: 10px; }
@@ -476,11 +817,11 @@ const styles = `
   .md-spin { animation: md-spin 0.7s linear infinite; display: inline-block; }
   @keyframes md-spin { to { transform: rotate(360deg); } }
 
-  @media (max-width: 1024px) { .md-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 1200px) { .md-hero-grid { grid-template-columns: 1fr; } }
   @media (max-width: 600px) {
-    .md-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .md-greeting-card { padding: 20px 16px; }
-    .md-greeting-title { font-size: 17px; }
-    .md-actions-grid { grid-template-columns: 1fr 1fr; }
+    .md-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .md-head-title { font-size: 20px; }
+    .md-hero-val { font-size: 36px; }
+    .md-rail { grid-template-columns: repeat(2, 1fr); }
   }
 `;

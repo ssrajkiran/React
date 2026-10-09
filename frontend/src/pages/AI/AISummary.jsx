@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import jsPDF from "jspdf";
@@ -31,6 +30,7 @@ export default function AISummary() {
   });
   const [toast, setToast]                   = useState(null);
   const [generated, setGenerated]           = useState(false);
+  const [openEmps, setOpenEmps]             = useState({});
 
   useEffect(() => { generateReport(); }, []);
 
@@ -80,14 +80,33 @@ export default function AISummary() {
     return acc;
   }, {});
 
-  const totalHours = Object.values(employeeHours).reduce((s, h) => s + Number(h), 0);
+  const totalHours = Object.values(employeeHours).reduce((s, h) => s + (Number(h) || 0), 0);
   const totalTasks = tableData.length;
   const totalEmployees = Object.keys(groupedByEmployee).length;
+
+  const empNames = Object.keys(groupedByEmployee);
+  const allEmpsClosed =
+    empNames.length > 0 && empNames.every((e) => !openEmps[e]);
+
+  const toggleEmp = (name) =>
+    setOpenEmps((o) => {
+      const n = { ...o };
+      if (n[name]) delete n[name];
+      else n[name] = true;
+      return n;
+    });
+
+  const toggleAllEmps = () =>
+    setOpenEmps(
+      allEmpsClosed
+        ? Object.fromEntries(empNames.map((e) => [e, true]))
+        : {}
+    );
 
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text("Summary Report", 14, 18);
+    doc.text("Timesheet Report", 14, 18);
     doc.setFontSize(10);
     doc.setTextColor(120);
     doc.text(`Period: ${formatDate(fromDate)} → ${formatDate(toDate)}`, 14, 26);
@@ -102,8 +121,8 @@ export default function AISummary() {
       startY += 5;
 
       autoTable(doc, {
-        head: [["Date", "Project", "Task", "Status", "Hours"]],
-        body: tasks.map((t) => [formatDate(t.date), t.project, t.task, t.status, fmtHrs(t.hours)]),
+        head: [["Si.no", "Date", "Project", "Modules", "Work Description", "Status", "Hours"]],
+        body: tasks.map((t, i) => [i + 1, formatDate(t.date), t.project, t.task, t.work_description || "-", t.status, fmtHrs(t.hours)]),
         startY,
         styles: { fontSize: 9 },
         headStyles: { fillColor: [80, 72, 229] },
@@ -111,7 +130,7 @@ export default function AISummary() {
       startY = doc.lastAutoTable.finalY + 10;
     });
 
-    doc.save("summary-report.pdf");
+    doc.save("timesheet-report.pdf");
   };
 
   const statusConfig = {
@@ -134,14 +153,11 @@ export default function AISummary() {
       )}
 
       {/* ── PAGE HEADER ── */}
-      <div className="sr-page-header">
-        <div>
-          <h5 className="sr-page-title">Summary Report</h5>
-          <nav className="sr-breadcrumb">
-            <Link to="/">Home</Link>
-            <i className="bi bi-chevron-right" />
-            <span>Summary</span>
-          </nav>
+      <div className="sr-head-row">
+        <div className="sr-head">
+          <span className="sr-eyebrow">Reports</span>
+          <h2 className="sr-title">Timesheet Report</h2>
+          <p className="sr-sub">Employee-wise timesheet for a selected date range</p>
         </div>
         {generated && tableData.length > 0 && (
           <button className="sr-export-btn" onClick={exportPDF}>
@@ -240,22 +256,34 @@ export default function AISummary() {
           </div>
 
           {/* Per-employee tables */}
+          <div className="sr-acc-actions">
+            <button type="button" className="sr-acc-toggle" onClick={toggleAllEmps}>
+              <i className={`bi ${allEmpsClosed ? "bi-arrows-expand" : "bi-arrows-collapse"}`} />
+              {allEmpsClosed ? "Expand all" : "Collapse all"}
+            </button>
+          </div>
           {Object.entries(groupedByEmployee).map(([emp, tasks]) => {
-            const empHrs = employeeHours[emp] || 0;
+            const empHrs = Number(employeeHours[emp]) || 0;
             const completedCount = tasks.filter(t => (t.status || "").toLowerCase() === "completed").length;
             const inProgressCount = tasks.filter(t => (t.status || "").toLowerCase().includes("progress")).length;
+            const open = !!openEmps[emp];
 
             return (
-              <div key={emp} className="sr-emp-card">
+              <div key={emp} className={`sr-emp-card${open ? "" : " is-closed"}`}>
                 {/* Employee header */}
-                <div className="sr-emp-header">
-                  <div className="sr-emp-header-left">
-                    <div className="sr-emp-avatar">
+                <button
+                  type="button"
+                  className="sr-emp-header"
+                  onClick={() => toggleEmp(emp)}
+                  aria-expanded={open}
+                >
+                  <span className="sr-emp-header-left">
+                    <span className="sr-emp-avatar">
                       {emp.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="sr-emp-name">{emp}</p>
-                      <div className="sr-emp-meta">
+                    </span>
+                    <span>
+                      <span className="sr-emp-name">{emp}</span>
+                      <span className="sr-emp-meta">
                         <span className="sr-meta-pill sr-meta-blue">
                           <i className="bi bi-stopwatch" /> {fmtHrs(empHrs)}
                         </span>
@@ -267,21 +295,26 @@ export default function AISummary() {
                             <i className="bi bi-hourglass-split" /> {inProgressCount} in progress
                           </span>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="sr-emp-count">{tasks.length} entr{tasks.length !== 1 ? "ies" : "y"}</span>
-                </div>
+                      </span>
+                    </span>
+                  </span>
+                  <span className="sr-emp-right">
+                    <span className="sr-emp-count">{tasks.length} entr{tasks.length !== 1 ? "ies" : "y"}</span>
+                    <i className={`bi bi-chevron-down sr-emp-chev${open ? "" : " is-closed"}`} />
+                  </span>
+                </button>
 
                 {/* Task table */}
+                {open && (
                 <div className="sr-table-wrap">
                   <table className="sr-table">
                     <thead>
                       <tr>
-                        <th className="sr-th-sm">#</th>
+                        <th className="sr-th-sm">Si.no</th>
                         <th>Date</th>
                         <th>Project</th>
-                        <th>Task</th>
+                        <th>Modules</th>
+                        <th>Work Description</th>
                         <th>Status</th>
                         <th>Hours</th>
                       </tr>
@@ -299,12 +332,13 @@ export default function AISummary() {
                                 : <span className="sr-td-muted">—</span>}
                             </td>
                             <td className="sr-task-cell" title={t.task}>{t.task || "—"}</td>
+                            <td className="sr-desc-cell" title={t.work_description}>{t.work_description || "—"}</td>
                             <td>
                               <span
                                 className="sr-status-pill"
                                 style={sc
-                                  ? { background: sc.bg, color: sc.color, borderColor: sc.border }
-                                  : { background: "#F3F4F6", color: "#6B7280", borderColor: "#D1D5DB" }}
+                                  ? { background: sc.bg, color: sc.color }
+                                  : { background: "#F3F4F6", color: "#6B7280" }}
                               >
                                 {t.status || "Pending"}
                               </span>
@@ -320,7 +354,7 @@ export default function AISummary() {
                     </tbody>
                     <tfoot>
                       <tr className="sr-tfoot-row">
-                        <td colSpan={5} className="sr-tfoot-label">Total</td>
+                        <td colSpan={6} className="sr-tfoot-label">Total</td>
                         <td>
                           <span className="sr-hrs-pill sr-hrs-pill-total">
                             <i className="bi bi-stopwatch-fill" />{fmtHrs(empHrs)}
@@ -330,6 +364,7 @@ export default function AISummary() {
                     </tfoot>
                   </table>
                 </div>
+                )}
               </div>
             );
           })}
@@ -350,6 +385,9 @@ export default function AISummary() {
 
 // ================= STYLES =================
 const styles = `
+  /* ── Canvas ── */
+  .page-content { background: var(--bg); }
+
   /* Toast */
   .sr-toast {
     position: fixed; top: 20px; right: 20px; z-index: 999;
@@ -358,20 +396,21 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
-  .sr-toast-success { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
-  .sr-toast-error   { background: #FEF2F2; color: #DC2626; border: 1px solid #fca5a5; }
+  .sr-toast-success { background: #ECFDF5; color: #059669; }
+  .sr-toast-error   { background: #FEF2F2; color: #DC2626; }
   .sr-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* Page header */
-  .sr-page-header {
+  .sr-head-row {
     display: flex; align-items: flex-start; justify-content: space-between;
-    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 18px;
   }
-  .sr-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; letter-spacing: -0.01em; }
-  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
-  .sr-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
-  .sr-breadcrumb a:hover { text-decoration: underline; }
-  .sr-breadcrumb i { font-size: 10px; opacity: 0.5; }
+  .sr-eyebrow {
+    display: block; font-size: 11px; font-weight: 700; letter-spacing: 1.6px;
+    text-transform: uppercase; color: var(--primary); margin-bottom: 6px;
+  }
+  .sr-title { font-size: 24px; font-weight: 800; margin: 0; color: var(--t-base); letter-spacing: -0.02em; }
+  .sr-sub { font-size: 13px; color: var(--t-muted); margin: 5px 0 0; }
 
   /* Export btn */
   .sr-export-btn {
@@ -385,8 +424,8 @@ const styles = `
 
   /* Filter card */
   .sr-filter-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow);
+    background: var(--bg-card); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding: 18px 20px; margin-bottom: 20px;
   }
   .sr-filter-inner { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
@@ -396,12 +435,12 @@ const styles = `
   .sr-input-wrap { position: relative; display: flex; align-items: center; }
   .sr-input-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; }
   .sr-input {
-    padding: 9px 12px 9px 34px; border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--bg-card); font-size: 13px; color: var(--t-base);
+    padding: 9px 12px; border: none; border-radius: var(--radius);
+    background: var(--bg-muted); font-size: 13px; color: var(--t-base);
     font-family: var(--font); outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: box-shadow 0.15s;
   }
-  .sr-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
+  .sr-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
 
   /* Generate btn */
   .sr-generate-btn {
@@ -416,8 +455,8 @@ const styles = `
 
   /* Empty / loading state */
   .sr-empty-state {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow);
+    background: var(--bg-card); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 60px 20px; text-align: center; margin-bottom: 20px;
   }
@@ -437,8 +476,8 @@ const styles = `
     gap: 12px; margin-bottom: 20px;
   }
   .sr-stat-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow);
+    background: var(--bg-card); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding: 16px 18px; display: flex; align-items: center; gap: 14px;
   }
   .sr-stat-icon {
@@ -454,17 +493,33 @@ const styles = `
   .sr-stat-val-sm { font-size: 12px; font-weight: 700; color: var(--t-base); margin: 0 0 2px; line-height: 1.4; }
   .sr-stat-label { font-size: 11px; color: var(--t-muted); font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.04em; }
 
+  .sr-acc-actions { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .sr-acc-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    color: var(--t-muted); padding: 5px 9px; border-radius: 8px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .sr-acc-toggle:hover { background: var(--bg-card); color: var(--primary); }
+
   /* Employee card */
   .sr-emp-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow);
+    background: var(--bg-card); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     margin-bottom: 16px; overflow: hidden;
   }
   .sr-emp-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px; border-bottom: 1px solid var(--border);
-    background: var(--bg); flex-wrap: wrap; gap: 10px;
+    padding: 14px 20px; width: 100%; border: none;
+    background: var(--bg-muted); flex-wrap: wrap; gap: 10px;
+    font-family: inherit; text-align: left; cursor: pointer;
+    transition: background 0.12s;
   }
+  .sr-emp-header:hover { background: var(--bg-hover); }
+  .sr-emp-right { display: inline-flex; align-items: center; gap: 10px; }
+  .sr-emp-chev { font-size: 11px; color: var(--t-muted); transition: transform 0.18s; }
+  .sr-emp-chev.is-closed { transform: rotate(-90deg); }
   .sr-emp-header-left { display: flex; align-items: center; gap: 12px; }
   .sr-emp-avatar {
     width: 38px; height: 38px; border-radius: 50%;
@@ -472,7 +527,7 @@ const styles = `
     font-size: 15px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
-  .sr-emp-name { font-size: 13.5px; font-weight: 700; color: var(--t-base); margin: 0 0 5px; }
+  .sr-emp-name { display: block; font-size: 13.5px; font-weight: 700; color: var(--t-base); margin: 0 0 5px; }
   .sr-emp-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .sr-meta-pill {
     display: inline-flex; align-items: center; gap: 4px;
@@ -481,31 +536,32 @@ const styles = `
   .sr-meta-blue   { background: #EEF2FF; color: #5048E5; }
   .sr-meta-green  { background: #ECFDF5; color: #059669; }
   .sr-meta-orange { background: #FFF7ED; color: #C2410C; }
-  .sr-emp-count { font-size: 11.5px; font-weight: 600; color: var(--t-muted); background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+  .sr-emp-count { font-size: 11.5px; font-weight: 600; color: var(--t-muted); background: var(--bg-card); box-shadow: var(--shadow-sm); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
 
   /* Table */
   .sr-table-wrap { overflow-x: auto; }
   .sr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .sr-table thead tr { border-bottom: 2px solid var(--border); }
+  .sr-table thead tr { border-bottom: 1px solid var(--border-soft); }
   .sr-table th { padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.06em; text-align: left; white-space: nowrap; background: var(--bg-card); }
   .sr-th-sm { width: 48px; text-align: center; }
-  .sr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .sr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .sr-tr { transition: background 0.1s; }
   .sr-tr:hover td { background: #fafbff; }
   .sr-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .sr-center { text-align: center; }
   .sr-nowrap { white-space: nowrap; }
   .sr-task-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-base); font-weight: 500; }
+  .sr-desc-cell { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-muted); font-size: 12.5px; }
 
   /* tfoot */
-  .sr-tfoot-row td { border-top: 2px solid var(--border); border-bottom: none; background: var(--bg); padding: 10px 14px; }
+  .sr-tfoot-row td { border-top: 1px solid var(--border-soft); border-bottom: none; background: var(--bg); padding: 10px 14px; }
   .sr-tfoot-label { font-size: 11.5px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.04em; text-align: right; }
 
   /* Pills */
   .sr-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #EEF2FF; color: #5048E5; white-space: nowrap; }
-  .sr-status-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; border: 1px solid; white-space: nowrap; }
-  .sr-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: #FFF7ED; color: #C2410C; border-radius: 20px; border: 1px solid #FED7AA; white-space: nowrap; }
-  .sr-hrs-pill-total { background: #EEF2FF; color: #5048E5; border-color: #c7d2fe; }
+  .sr-status-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+  .sr-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: #FFF7ED; color: #C2410C; border-radius: 20px; white-space: nowrap; }
+  .sr-hrs-pill-total { background: #EEF2FF; color: #5048E5; }
   .sr-hrs-pill i { font-size: 11px; }
 
   /* Spin */

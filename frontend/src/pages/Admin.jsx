@@ -79,10 +79,10 @@ export default function AdminDashboard() {
 }
 
 /* Styles */
-const container = { minHeight: "100vh", background: "#f3f4f6" };
+const container = { minHeight: "100vh", background: "var(--bg)" };
 const header = { background: "#1f2937", color: "#fff", padding: 15, display: "flex", justifyContent: "space-between", alignItems: "center" };
 const main = { padding: 20 };
-const card = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 0 8px rgba(0,0,0,0.1)" };
+const card = { background: "#fff", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20)" };
 
 const table = {
   width: "100%",
@@ -93,13 +93,13 @@ const table = {
 };
 
 const thTd = {
-  border: "1px solid #ccc",
+  borderBottom: "1px solid var(--border-soft)",
   padding: "8px",
   textAlign: "center"
 };
 
 
-const rowEven = { background: "#f9fafb" };
+const rowEven = { background: "#EEF2FF" };
 const rowOdd = { background: "#ffffff" };
 
 const approveBtn = {

@@ -395,6 +395,7 @@ export default function Login() {
     try {
       const r = await api.post("/auth/login", { email, password });
       localStorage.setItem("token", r.data.token);
+      sessionStorage.removeItem("bdayModalSeen");
       if (r.data.permissions) {
         localStorage.setItem("permissions", JSON.stringify(r.data.permissions));
       }

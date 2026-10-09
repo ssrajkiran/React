@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const nodemailer = require("nodemailer");
+const { notify, notifyAdmins } = require("../utils/notify");
 
 // ================= Shared: HTML Email Builder =================
 function buildEmailHtml({ recipientName, title, statusLabel, statusColor, statusBg, rows, footerNote }) {
@@ -284,6 +285,23 @@ router.get("/compoff-eligible", auth, (req, res) => {
         WHERE l.user_id = p.user_id AND l.type = 'compoff'
           AND DATE(l.comp_off_date) = DATE(p.date)
           AND l.status IN ('approved', 'pending')
+          AND COALESCE(l.half_day_type, 'full') = 'full'
+      )
+      AND NOT (
+        EXISTS (
+          SELECT 1 FROM leaves l
+          WHERE l.user_id = p.user_id AND l.type = 'compoff'
+            AND DATE(l.comp_off_date) = DATE(p.date)
+            AND l.status IN ('approved', 'pending')
+            AND l.half_day_type = 'first_half'
+        )
+        AND EXISTS (
+          SELECT 1 FROM leaves l
+          WHERE l.user_id = p.user_id AND l.type = 'compoff'
+            AND DATE(l.comp_off_date) = DATE(p.date)
+            AND l.status IN ('approved', 'pending')
+            AND l.half_day_type = 'second_half'
+        )
       )
     ORDER BY p.date DESC
   `;
@@ -350,6 +368,12 @@ router.post("/admin", auth, async (req, res) => {
         `INSERT INTO permission (user_id, date, hours, slot, remarks, status, created_at) VALUES (?, ?, ?, ?, ?, 'approved', NOW())`,
         [user_id, from_date, hours, slot, remarks || null]
       );
+      await notify(user_id, {
+        title: "Permission approved",
+        message: `A ${hours} hr permission on ${from_date} (${slot}) was added for you by an admin.`,
+        type: "success",
+        link: "/employee/leaves",
+      });
       return res.json({ message: `Permission applied successfully for ${targetUser.name}` });
     }
 
@@ -368,6 +392,12 @@ router.post("/admin", auth, async (req, res) => {
         `INSERT INTO present_on_holiday (user_id, date, holiday_name, remarks, status, created_at) VALUES (?, ?, ?, ?, 'approved', NOW())`,
         [user_id, from_date, holiday_name, remarks || null]
       );
+      await notify(user_id, {
+        title: "Present on holiday approved",
+        message: `You are marked present on ${holiday_name || "holiday"} (${from_date}). You can apply a comp off for this day.`,
+        type: "success",
+        link: "/employee/leaves",
+      });
       return res.json({ message: `Marked present on holiday for ${targetUser.name}` });
     }
 
@@ -375,14 +405,20 @@ router.post("/admin", auth, async (req, res) => {
     if (type === "leave" && !to_date) return res.status(400).json({ error: "to_date is required for leave" });
 
     const leaveToDate      = type === "leave" ? to_date : from_date;
-    const finalDays        = type === "leave" && half_day_type !== "full" ? 0.5 : (days || 1);
+    const finalDays        = (type === "leave" || type === "compoff") && half_day_type && half_day_type !== "full" ? 0.5 : (days || 1);
     const compOffDateValue = type === "compoff" ? comp_off_date : null;
 
     await db.promise().query(
       `INSERT INTO leaves (user_id, from_date, to_date, days, type, remarks, half_day_type, status, created_at, comp_off_date)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', NOW(), ?)`,
-      [user_id, from_date, leaveToDate, finalDays, type, remarks || null, type === "leave" ? (half_day_type || "full") : null, compOffDateValue]
+      [user_id, from_date, leaveToDate, finalDays, type, remarks || null, (type === "leave" || type === "compoff") ? (half_day_type || "full") : null, compOffDateValue]
     );
+    await notify(user_id, {
+      title: `${type.charAt(0).toUpperCase() + type.slice(1)} approved`,
+      message: `Your ${type} for ${from_date}${type === "leave" ? ` to ${leaveToDate}` : ""} was added by an admin.`,
+      type: "success",
+      link: "/employee/leaves",
+    });
     return res.json({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} applied successfully for ${targetUser.name}` });
 
   } catch (err) {
@@ -453,6 +489,13 @@ router.post("/", auth, async (req, res) => {
         });
       } catch (err) { console.error("Failed to send email:", err); }
 
+      await notifyAdmins({
+        title: "New permission request",
+        message: `${userName} requested ${hours} hr (${slot}) on ${from_date}.`,
+        type: "warning",
+        link: "/admin/leaves",
+      });
+
       return res.json({ message });
     }
 
@@ -500,6 +543,13 @@ router.post("/", auth, async (req, res) => {
         });
       } catch (err) { console.error("Failed to send email:", err); }
 
+      await notifyAdmins({
+        title: "Present-on-holiday request",
+        message: `${userName} applied for ${holiday_name || "a holiday"} on ${from_date}.`,
+        type: "warning",
+        link: "/admin/leaves",
+      });
+
       return res.json({ message: "Present on holiday applied successfully" });
     }
 
@@ -508,7 +558,7 @@ router.post("/", auth, async (req, res) => {
       return res.status(400).json({ error: "Missing required fields for leave/compoff" });
 
     const leaveToDate      = type === "leave" ? to_date : from_date;
-    const finalDays        = type === "leave" && half_day_type !== "full" ? 0.5 : days;
+    const finalDays        = (type === "leave" || type === "compoff") && half_day_type && half_day_type !== "full" ? 0.5 : (days || 1);
     const compOffDateValue = type === "compoff" ? comp_off_date : null;
 
     const checkQuery =
@@ -524,12 +574,36 @@ router.post("/", auth, async (req, res) => {
 
     const [existing] = await db.promise().query(checkQuery, params);
 
+    // ── Comp-off slot guard: block full-day if day consumed, block re-taking same half ──
+    if (type === "compoff" && comp_off_date) {
+      const wantHalf = half_day_type && half_day_type !== "full" ? half_day_type : "full";
+      const slotQuery = `
+        SELECT id FROM leaves
+        WHERE user_id = ? AND type = 'compoff'
+          AND status IN ('approved', 'pending')
+          AND DATE(comp_off_date) = DATE(?)
+          ${id ? "AND id != ?" : ""}
+          AND (? = 'full' OR COALESCE(half_day_type, 'full') IN ('full', ?))
+      `;
+      const slotParams = id
+        ? [req.user.id, comp_off_date, id, wantHalf, wantHalf]
+        : [req.user.id, comp_off_date, wantHalf, wantHalf];
+      const [slotDupes] = await db.promise().query(slotQuery, slotParams);
+      if (slotDupes.length > 0) {
+        return res.status(400).json({
+          error: wantHalf === "full"
+            ? "Comp-off already availed for this date (full day or half already taken)."
+            : `This ${wantHalf === "first_half" ? "1st half" : "2nd half"} is already availed for this date.`,
+        });
+      }
+    }
+
     let message = "";
     if (existing.length > 0) {
       if ((id && existing[0].id === id && existing[0].status === "pending") || existing[0].status === "rejected") {
         await db.promise().query(
           `UPDATE leaves SET from_date=?, to_date=?, days=?, remarks=?, half_day_type=?, comp_off_date=?, status='pending' WHERE id=?`,
-          [from_date, leaveToDate, finalDays, remarks || null, type === "leave" ? half_day_type : null, compOffDateValue, id]
+          [from_date, leaveToDate, finalDays, remarks || null, (type === "leave" || type === "compoff") ? (half_day_type || "full") : null, compOffDateValue, id]
         );
         message = `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully`;
       } else {
@@ -539,7 +613,7 @@ router.post("/", auth, async (req, res) => {
       await db.promise().query(
         `INSERT INTO leaves (user_id, from_date, to_date, days, type, remarks, half_day_type, status, created_at, comp_off_date)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), ?)`,
-        [req.user.id, from_date, leaveToDate, finalDays, type, remarks || null, type === "leave" ? half_day_type : null, compOffDateValue]
+        [req.user.id, from_date, leaveToDate, finalDays, type, remarks || null, (type === "leave" || type === "compoff") ? (half_day_type || "full") : null, compOffDateValue]
       );
       message = `${type.charAt(0).toUpperCase() + type.slice(1)} applied successfully`;
     }
@@ -568,6 +642,13 @@ router.post("/", auth, async (req, res) => {
         }),
       });
     } catch (err) { console.error("Failed to send email:", err); }
+
+    await notifyAdmins({
+      title: `New ${typeLabel.toLowerCase()} request`,
+      message: `${userName} applied for ${typeLabel.toLowerCase()} (${from_date}${type === "leave" ? ` to ${leaveToDate}` : ""}).`,
+      type: "warning",
+      link: "/admin/leaves",
+    });
 
     return res.json({ message });
 
@@ -663,24 +744,35 @@ router.get("/my", auth, (req, res) => {
 });
 
 // ================= Delete leave or permission =================
-router.delete("/delete/:id", auth, (req, res) => {
+router.delete("/delete/:id", auth, async (req, res) => {
   const { id } = req.params;
   const type = req.query.type || "leave";
   const table = type === "permission" ? "permission" : type === "present" ? "present_on_holiday" : "leaves";
+  const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
 
-  db.query(`SELECT user_id, status FROM ${table} WHERE id=?`, [id], (err, result) => {
-    if (err) return res.status(500).json({ error: err });
-    if (!result.length) return res.status(404).json({ error: `${type} not found` });
+  try {
+    const [rows] = await db.promise().query(`SELECT user_id, status FROM ${table} WHERE id=?`, [id]);
+    if (!rows.length) return res.status(404).json({ error: `${type} not found` });
 
-    const entry = result[0];
+    const entry = rows[0];
     if (entry.user_id !== req.user.id) return res.status(403).json({ error: `You can only delete your own ${type}` });
     if (entry.status !== "pending") return res.status(400).json({ error: `Only pending ${type} can be deleted` });
 
-    db.query(`DELETE FROM ${table} WHERE id=?`, [id], (err) => {
-      if (err) return res.status(500).json({ error: err });
-      res.json({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully` });
+    await db.promise().query(`DELETE FROM ${table} WHERE id=?`, [id]);
+
+    const [uRows] = await db.promise().query("SELECT name FROM users WHERE id=?", [entry.user_id]);
+    await notifyAdmins({
+      title: `${typeLabel} request withdrawn`,
+      message: `${uRows[0]?.name || "An employee"} withdrew their pending ${type} request.`,
+      type: "info",
+      link: "/admin/leaves",
     });
-  });
+
+    res.json({ message: `${typeLabel} deleted successfully` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // ================= Admin: Approve / Reject Leave =================
@@ -727,6 +819,13 @@ router.put("/leave/:id", auth, async (req, res) => {
       } catch (mailErr) { console.error("Failed to send email:", mailErr); }
     }
 
+    await notify(leave.user_id, {
+      title: `Leave ${status}`,
+      message: `Your ${leave.type} request (${leave.from_date}${leave.to_date && leave.to_date !== leave.from_date ? ` to ${leave.to_date}` : ""}) was ${status}.`,
+      type: status === "approved" ? "success" : "danger",
+      link: "/employee/leaves",
+    });
+
     res.json({ message: "Leave status updated", status });
   } catch (err) {
     console.error(err);
@@ -735,16 +834,34 @@ router.put("/leave/:id", auth, async (req, res) => {
 });
 
 // ================= Admin: Approve / Reject Permission =================
-router.put("/permission/:id", auth, (req, res) => {
+router.put("/permission/:id", auth, async (req, res) => {
   if (req.user.role !== "admin") return res.status(403).json({ error: "Admin only" });
   const { status } = req.body;
   if (!["approved", "rejected"].includes(status)) return res.status(400).json({ error: "Invalid status" });
 
-  db.query("UPDATE permission SET status=? WHERE id=?", [status, req.params.id], (err, result) => {
-    if (err) return res.status(500).json({ error: err });
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT p.*, u.name AS user_name FROM permission p JOIN users u ON p.user_id = u.id WHERE p.id=?`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Permission not found" });
+
+    const permission = rows[0];
+    const [result] = await db.promise().query("UPDATE permission SET status=? WHERE id=?", [status, req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: "Permission not found" });
+
+    await notify(permission.user_id, {
+      title: `Permission ${status}`,
+      message: `Your ${permission.hours} hr permission on ${permission.date} (${permission.slot}) was ${status}.`,
+      type: status === "approved" ? "success" : "danger",
+      link: "/employee/leaves",
+    });
+
     res.json({ message: "Permission status updated", status });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // ================= Admin: Approve / Reject Present on Holiday =================
@@ -789,6 +906,13 @@ router.put("/present/:id", auth, async (req, res) => {
         });
       } catch (mailErr) { console.error("Failed to send email:", mailErr); }
     }
+
+    await notify(record.user_id, {
+      title: `Present on holiday ${status}`,
+      message: `Your request to work on ${record.holiday_name || "holiday"} (${record.date}) was ${status}.`,
+      type: status === "approved" ? "success" : "danger",
+      link: "/employee/leaves",
+    });
 
     res.json({ message: "Present status updated", status });
   } catch (err) {

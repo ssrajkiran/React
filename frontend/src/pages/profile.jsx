@@ -311,14 +311,14 @@ const styles = `
     font-size:13px;font-weight:600;font-family:var(--font);
     box-shadow:0 8px 24px rgba(0,0,0,.12);animation:sr-fade-in .2s ease;
   }
-  .sr-toast-success{background:#ECFDF5;color:#059669;border:1px solid #6ee7b7}
-  .sr-toast-error  {background:#FEF2F2;color:#DC2626;border:1px solid #fca5a5}
+  .sr-toast-success{background:#ECFDF5;color:#059669}
+  .sr-toast-error  {background:#FEF2F2;color:#DC2626}
   .sr-toast-close{margin-left:6px;background:none;border:none;cursor:pointer;color:inherit;font-size:15px;display:flex;align-items:center}
 
   /* ── Page header ── */
   .sr-page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
-  .sr-page-title{font-size:15px;font-weight:700;color:var(--t-base);margin:0 0 4px;letter-spacing:-0.01em}
-  .sr-breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t-muted)}
+  .sr-page-title{font-size:24px;font-weight:800;color:var(--t-base);margin:0;letter-spacing:-0.02em}
+  .sr-breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t-muted);margin-top:6px}
   .sr-breadcrumb a{color:var(--primary);text-decoration:none;font-weight:500}
   .sr-breadcrumb a:hover{text-decoration:underline}
   .sr-breadcrumb i{font-size:10px;opacity:.5}
@@ -328,12 +328,12 @@ const styles = `
   .sr-input-wrap{position:relative;display:flex;align-items:center}
   .sr-input-icon{position:absolute;left:11px;color:var(--t-muted);font-size:13px;pointer-events:none;z-index:1}
   .sr-input{
-    width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:var(--radius);
-    background:var(--bg-card);font-size:13px;color:var(--t-base);
+    width:100%;padding:9px 12px 9px 34px;border:none;border-radius:var(--radius);
+    background:var(--bg-muted);font-size:13px;color:var(--t-base);
     font-family:var(--font);outline:none;
-    transition:border-color .15s,box-shadow .15s;
+    transition:box-shadow .15s;
   }
-  .sr-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(80,72,229,.1)}
+  .sr-input:focus{box-shadow:0 0 0 3px rgba(80,72,229,0.18)}
   .cu-input{display:block}
   .cu-input-password{padding-right:38px}
   .cu-pw-toggle{
@@ -345,8 +345,9 @@ const styles = `
 
   /* ── Form card ── */
   .cu-form-card{
-    background:var(--bg-card);border:1px solid var(--border);
-    border-radius:var(--radius-lg);box-shadow:var(--shadow);
+    background:var(--bg-card);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding:24px 28px;
   }
   .cu-form-heading{display:flex;align-items:center;gap:14px;margin-bottom:20px}
@@ -357,7 +358,7 @@ const styles = `
   }
   .cu-form-title{font-size:14px;font-weight:700;color:var(--t-base);margin:0 0 3px}
   .cu-form-sub  {font-size:12px;color:var(--t-muted);margin:0}
-  .cu-divider{border:none;border-top:1px solid var(--border);margin:0 0 20px}
+  .cu-divider{border:none;border-top:1px solid var(--border-soft);margin:0 0 20px}
   .cu-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;margin-bottom:20px}
   .cu-field-group{display:flex;flex-direction:column;gap:6px}
   .cu-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -379,8 +380,9 @@ const styles = `
   .pf-sidebar{display:flex;flex-direction:column;gap:12px}
 
   .pf-avatar-card{
-    background:var(--bg-card);border:1px solid var(--border);
-    border-radius:var(--radius-lg);box-shadow:var(--shadow);
+    background:var(--bg-card);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding:20px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
   }
   .pf-avatar{
@@ -394,8 +396,9 @@ const styles = `
   .pf-avatar-email{font-size:11.5px;color:var(--t-muted);margin:0;word-break:break-all}
 
   .pf-nav{
-    background:var(--bg-card);border:1px solid var(--border);
-    border-radius:var(--radius-lg);box-shadow:var(--shadow);
+    background:var(--bg-card);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding:8px;display:flex;flex-direction:column;gap:3px;
   }
   .pf-nav-btn{

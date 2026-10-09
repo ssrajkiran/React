@@ -78,9 +78,9 @@ router.get("/:id", verifyToken, isAdmin, (req, res) => {
         // Merge with full menu key list to ensure all keys are present
         const ALL_MENU_KEYS = [
           "dashboard", "leave_dashboard", "timesheet_dashboard",
-          "attendance", "attendance_report",
+          "attendance", "attendance_report", "report",
           "task", "task_report",
-          "timesheet", "ai_summary", "summary_history",
+          "timesheet", "ai_summary",
           "users", "holidays", "roles", "todo", "profile"
         ];
         const permMap = {};

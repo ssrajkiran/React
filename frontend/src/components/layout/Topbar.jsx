@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api";
+import NotificationBell from "./NotificationBell";
 
 const PAGE_TITLES = {
   "/admin": "Dashboard",
@@ -16,8 +17,8 @@ const PAGE_TITLES = {
   "/tasks/report": "Module Report",
   "/admin/timesheet": "Timesheet",
   "/employee/timesheet": "Timesheet",
-  "/admin/ai-summary": "AI Summary",
-  "/admin/ai-summary/history": "Summary History",
+  "/admin/ai-summary": "Timesheet Report",
+  "/reports": "Report",
   "/employee/userslist": "Users",
   "/holidays": "Holidays",
   "/admin/roles": "Roles",
@@ -134,10 +135,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
       </div>
 
       <div className="topbar-actions">
-        <button className="topbar-icon-btn" title="Notifications">
-          <i className="bi bi-bell"></i>
-          <span className="topbar-notif-badge"></span>
-        </button>
+        <NotificationBell />
 
         <button
           className="topbar-icon-btn"

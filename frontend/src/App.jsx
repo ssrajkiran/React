@@ -18,7 +18,7 @@ import Holiday from "./pages/Holiday/holiday.jsx";
 import TaskList from "./pages/Task/tasklist.jsx";
 import TaskReport from "./pages/Task/taskreport.jsx";
 import AISummary from "./pages/AI/AISummary";
-import AIHistory from "./pages/AI/AIhistory.jsx";
+import ProjectReport from "./pages/Report/ProjectReport.jsx";
 
 import Todo from "./pages/Todo/Todo.jsx";
 import EmployeeTimesheet from "./pages/Timesheet/EmployeeTimesheetList.jsx";
@@ -61,13 +61,13 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/employee/timesheet" element={<EmployeeTimesheet />} />
         <Route path="/admin/timesheet" element={<AdminTimesheet />} />
-        <Route path="/employee/report" element={<Report />} />
+         <Route path="/employee/report" element={<Report />} />
+         <Route path="/reports" element={<ProjectReport />} />
         <Route path="/employee/userslist" element={<User />} />
         <Route path="/admin/users/create" element={<CreateUser />} />
         <Route path="/holidays" element={<Holiday />} />
         <Route path="/tasks" element={<TaskList />} />
          <Route path="/admin/ai-summary" element={<AISummary />} />
-         <Route path="/admin/ai-history" element={<AIHistory />} />
          <Route path="/tasks/report" element={<TaskReport />} />
          <Route path="/admin/roles" element={<Roles />} />
          <Route path="/admin/dynamic/:module" element={<DynamicPage />} />

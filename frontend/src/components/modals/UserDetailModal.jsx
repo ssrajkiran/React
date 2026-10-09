@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../api";
 import StatusBadge from "../ui/StatusBadge";
 import EmptyState from "../ui/EmptyState";
-import { fmtHrs, fmtDate, getInitials } from "../../utils";
+import { fmtHrs, fmtDate, fmtDob, getInitials } from "../../utils";
 
 export default function UserDetailModal({ userId, onClose, onNavigate }) {
   const [tab, setTab] = useState("overview");
@@ -38,7 +38,11 @@ export default function UserDetailModal({ userId, onClose, onNavigate }) {
 
   return (
     <div className="ul-overlay" onClick={onClose}>
-      <div className="ul-modal ul-modal-xl" onClick={(e) => e.stopPropagation()} style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+      <div
+        className="ul-modal ul-modal-xl"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 960, maxWidth: "calc(100vw - 32px)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+      >
         {/* Header */}
         <div className="ul-modal-header">
           <div className="ul-modal-header-left">
@@ -117,6 +121,7 @@ export default function UserDetailModal({ userId, onClose, onNavigate }) {
                     { label: "Name", value: user.name },
                     { label: "Email", value: user.email },
                     { label: "Role", value: user.role },
+                    { label: "Date of Birth", value: fmtDob(user.dob) },
                     { label: "Total Hours", value: fmtHrs(stats?.total_hours) },
                     { label: "Active Days", value: stats?.active_days || 0 },
                   ].map((item) => (

@@ -769,7 +769,7 @@ router.get("/detail/user/:id", verifyToken, (req, res) => {
 
   // 1. User info
   queries.user = new Promise((resolve, reject) => {
-    db.query("SELECT id, name, email, role FROM users WHERE id = ?", [userId], (err, rows) => {
+    db.query("SELECT id, name, email, role, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE id = ?", [userId], (err, rows) => {
       if (err) return reject(err);
       resolve(rows[0] || null);
     });
