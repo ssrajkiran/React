@@ -3,6 +3,7 @@ import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "../../components/Logo";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
@@ -387,6 +388,13 @@ export default function Login() {
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("sessionExpired")) {
+      sessionStorage.removeItem("sessionExpired");
+      toast.info("Session expired. Please log in again.");
+    }
   }, []);
 
   const login = async (e) => {

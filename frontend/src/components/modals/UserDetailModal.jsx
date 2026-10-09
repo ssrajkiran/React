@@ -75,7 +75,7 @@ export default function UserDetailModal({ userId, onClose, onNavigate }) {
         {!loading && user && (
           <>
             {/* Stats */}
-            <div className="ul-modal-body" style={{ paddingBottom: 0 }}>
+            <div className="ul-modal-body" style={{ paddingBottom: 0, flex: "0 0 auto", overflow: "visible" }}>
               <div className="modal-stat-grid">
                 {[
                   { label: "Total Hours", value: fmtHrs(stats?.total_hours), icon: "bi-clock" },
@@ -95,7 +95,7 @@ export default function UserDetailModal({ userId, onClose, onNavigate }) {
             </div>
 
             {/* Tabs */}
-            <div className="ul-modal-body" style={{ paddingTop: 12, paddingBottom: 0 }}>
+            <div className="ul-modal-body" style={{ paddingTop: 12, paddingBottom: 0, flex: "0 0 auto", overflow: "visible" }}>
               <div className="modal-tab-bar">
                 {tabs.map((t) => (
                   <button

@@ -1,6 +1,7 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Outlet } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
@@ -48,33 +49,35 @@ export default function App() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/employee" element={<MainDashboard />} />
-        <Route path="/admin" element={<MainDashboard />} />
-        <Route path="/employee/main-dashboard" element={<MainDashboard />} />
-        <Route path="/admin/main-dashboard" element={<MainDashboard />} />
-        <Route path="/employee/leave-dashboard" element={<Employee />} />
-        <Route path="/admin/leave-dashboard" element={<Admin />} />
-        <Route path="/employee/timesheet-dashboard" element={<TimesheetDashboard />} />
-        <Route path="/admin/timesheet-dashboard" element={<TimesheetDashboard />} />
-        <Route path="/employee/leaves" element={<Leaves />} />
-        <Route path="/admin/leaves" element={<AdminLeaves />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/employee/timesheet" element={<EmployeeTimesheet />} />
-        <Route path="/admin/timesheet" element={<AdminTimesheet />} />
-         <Route path="/employee/report" element={<Report />} />
-         <Route path="/reports" element={<ProjectReport />} />
-        <Route path="/employee/userslist" element={<User />} />
-        <Route path="/admin/users/create" element={<CreateUser />} />
-        <Route path="/holidays" element={<Holiday />} />
-        <Route path="/tasks" element={<TaskList />} />
-         <Route path="/admin/ai-summary" element={<AISummary />} />
-         <Route path="/tasks/report" element={<TaskReport />} />
-         <Route path="/admin/roles" element={<Roles />} />
-         <Route path="/admin/dynamic/:module" element={<DynamicPage />} />
-         <Route path="/todo" element={<Todo />} />
-         <Route path="/intercom" element={<IntercomList />} />
-         <Route path="/employee/intercom" element={<IntercomList />} />
-         <Route path="/admin/intercom" element={<IntercomList />} />
+        <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+          <Route path="/employee" element={<MainDashboard />} />
+          <Route path="/admin" element={<MainDashboard />} />
+          <Route path="/employee/main-dashboard" element={<MainDashboard />} />
+          <Route path="/admin/main-dashboard" element={<MainDashboard />} />
+          <Route path="/employee/leave-dashboard" element={<Employee />} />
+          <Route path="/admin/leave-dashboard" element={<Admin />} />
+          <Route path="/employee/timesheet-dashboard" element={<TimesheetDashboard />} />
+          <Route path="/admin/timesheet-dashboard" element={<TimesheetDashboard />} />
+          <Route path="/employee/leaves" element={<Leaves />} />
+          <Route path="/admin/leaves" element={<AdminLeaves />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/employee/timesheet" element={<EmployeeTimesheet />} />
+          <Route path="/admin/timesheet" element={<AdminTimesheet />} />
+          <Route path="/employee/report" element={<Report />} />
+          <Route path="/reports" element={<ProjectReport />} />
+          <Route path="/employee/userslist" element={<User />} />
+          <Route path="/admin/users/create" element={<CreateUser />} />
+          <Route path="/holidays" element={<Holiday />} />
+          <Route path="/tasks" element={<TaskList />} />
+          <Route path="/admin/ai-summary" element={<AISummary />} />
+          <Route path="/tasks/report" element={<TaskReport />} />
+          <Route path="/admin/roles" element={<Roles />} />
+          <Route path="/admin/dynamic/:module" element={<DynamicPage />} />
+          <Route path="/todo" element={<Todo />} />
+          <Route path="/intercom" element={<IntercomList />} />
+          <Route path="/employee/intercom" element={<IntercomList />} />
+          <Route path="/admin/intercom" element={<IntercomList />} />
+        </Route>
       </Routes>
     </>
   );

@@ -1015,6 +1015,16 @@ p { font-family: var(--font); line-height: 1.65; color: var(--t-muted); }
 .ul-modal-lg { max-width: 1200px; }
 .ul-modal-xl { max-width: 1400px; }
 
+/* Detail modals (xl) stay immune to page-scoped .ul-modal overrides */
+.ul-modal.ul-modal-xl { padding: 0; text-align: left; }
+.ul-modal.ul-modal-xl .ul-modal-header { margin-bottom: 0; }
+.ul-modal.ul-modal-xl .ul-modal-title { margin: 0; }
+.ul-modal.ul-modal-xl .ul-modal-sub { margin: 2px 0 0; }
+.ul-modal.ul-modal-xl .ul-modal-close {
+  width: 32px; height: 32px; border: 1px solid var(--border);
+  background: transparent; padding: 4px;
+}
+
 .ul-modal-header {
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: 18px 24px 16px; border-bottom: 1px solid var(--border);

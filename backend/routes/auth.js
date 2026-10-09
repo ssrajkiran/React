@@ -259,7 +259,7 @@ router.post("/login", (req, res) => {
         const token = jwt.sign(
           { id: result[0].id, name: result[0].name, role: result[0].role },
           "secret",
-          { expiresIn: "1d" }
+          { expiresIn: "30d" }
         );
 
         // Merge with full menu key list to ensure all keys are present
