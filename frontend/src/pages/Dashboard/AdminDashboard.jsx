@@ -331,7 +331,7 @@ export default function AdminDashboard() {
           </div>
 
           {summaryLoading ? (
-            <div className="db-loading"><i className="bi bi-arrow-repeat db-spin" /> Loading summary…</div>
+            <div className="db-loading"><i className="bi bi-arrow-repeat db-spin" /> Counting today’s minutes…</div>
           ) : (
             <div className="db-table-scroll">
               <table className="db-table">
@@ -694,5 +694,11 @@ const styles = `
     .db-tab { flex: 1; justify-content: center; font-size: 11.5px; padding: 8px 10px; }
     .db-search-input { width: 100%; }
     .db-header-right { width: 100%; flex-wrap: wrap; }
+  }
+
+  /* ===== CARD GLOSS (subtle top sheen, theme-aware) ===== */
+  .db-kpi-card, .db-card {
+    background: var(--gloss-sheen), var(--bg-card);
+    box-shadow: inset 0 1px 0 var(--gloss-hi), var(--shadow-card);
   }
 `;

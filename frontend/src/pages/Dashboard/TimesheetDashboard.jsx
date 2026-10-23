@@ -285,7 +285,7 @@ export default function TimesheetDashboard() {
             </div>
 
             {loading ? (
-              <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Loading…</div>
+              <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Stacking your time slots…</div>
             ) : entriesByDate.length > 0 ? (
               <div className="td-daily-list">
                 {entriesByDate.map(([dayKey, dayData]) => {
@@ -519,7 +519,7 @@ export default function TimesheetDashboard() {
           </div>
 
           {loading ? (
-            <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Loading…</div>
+            <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Stacking your time slots…</div>
           ) : hierarchy.length > 0 ? (
             <div className="td-hierarchy">
               {hierarchy.map((project) => {
@@ -625,7 +625,7 @@ export default function TimesheetDashboard() {
           </div>
 
           {loading ? (
-            <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Loading…</div>
+            <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Stacking your time slots…</div>
           ) : entries.length > 0 ? (
             <div className="td-table-scroll">
               <table className="td-table">
@@ -1015,5 +1015,11 @@ const styles = `
     .td-day-entry { flex-direction: column; gap: 6px; }
     .td-day-entry-left { flex-direction: row; width: auto; }
     .td-day-entry-line { display: none; }
+  }
+
+  /* ===== CARD GLOSS (subtle top sheen, theme-aware) ===== */
+  .td-kpi-card, .td-card, .td-filter-card, .td-day-card {
+    background: var(--gloss-sheen), var(--bg-card);
+    box-shadow: inset 0 1px 0 var(--gloss-hi), var(--shadow-card);
   }
 `;

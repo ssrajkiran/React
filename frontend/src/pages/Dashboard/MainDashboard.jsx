@@ -300,7 +300,7 @@ export default function MainDashboard() {
           </div>
 
           {loading ? (
-            <div className="md-loading"><i className="bi bi-arrow-repeat md-spin" /> Loading…</div>
+            <div className="md-loading"><i className="bi bi-arrow-repeat md-spin" /> Laying out your day…</div>
           ) : recentEntries.length > 0 ? (
             <div className="md-activity-list">
               {recentEntries.map((entry, idx) => (
@@ -636,15 +636,20 @@ const styles = `
   }
   .md-hero {
     position: relative; overflow: hidden;
-    background: linear-gradient(155deg, #0C0B2E 0%, #161452 55%, #2D28A0 140%);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 45%),
+      linear-gradient(155deg,
+        color-mix(in srgb, var(--primary) 55%, #020617) 0%,
+        color-mix(in srgb, var(--primary) 82%, #020617) 55%,
+        color-mix(in srgb, var(--primary) 95%, #020617) 140%);
     border-radius: var(--radius-lg); padding: 22px 24px;
     color: #fff; display: flex; flex-direction: column; gap: 14px;
-    box-shadow: 0 12px 32px rgba(12, 11, 46, 0.35);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 30%, transparent);
   }
   .md-hero::after {
     content: ""; position: absolute; top: -50px; right: -50px;
     width: 170px; height: 170px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--primary-light) 55%, transparent), transparent 70%);
     pointer-events: none;
   }
   .md-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -665,7 +670,7 @@ const styles = `
   .md-hero-bar { height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
   .md-hero-bar span {
     display: block; height: 100%; border-radius: 6px;
-    background: linear-gradient(90deg, #22D3EE, #8B5CF6, #EC4899);
+    background: linear-gradient(90deg, var(--primary-light), var(--primary), color-mix(in srgb, var(--primary-light) 70%, #ffffff));
     transition: width 0.6s ease;
   }
   .md-hero-progress-label { font-size: 11px; color: rgba(255, 255, 255, 0.65); font-variant-numeric: tabular-nums; }
@@ -824,4 +829,15 @@ const styles = `
     .md-hero-val { font-size: 36px; }
     .md-rail { grid-template-columns: repeat(2, 1fr); }
   }
+
+  /* ===== CARD GLOSS (subtle top sheen, theme-aware) ===== */
+  .md-card, .md-side-card, .md-rail-tile {
+    background: var(--gloss-sheen), var(--bg-card);
+    box-shadow: inset 0 1px 0 var(--gloss-hi), var(--shadow-card);
+  }
+  .md-rail-tile.md-tint-info { background: var(--gloss-sheen), var(--info-soft); }
+  .md-rail-tile.md-tint-warning { background: var(--gloss-sheen), var(--warning-soft); }
+  .md-rail-tile.md-tint-danger { background: var(--gloss-sheen), var(--danger-soft); }
+  .md-rail-tile.md-tint-success { background: var(--gloss-sheen), var(--success-soft); }
+  .md-rail-tile.md-tint-purple { background: var(--gloss-sheen), var(--purple-soft); }
 `;

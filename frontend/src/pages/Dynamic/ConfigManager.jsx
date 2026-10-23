@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link } from "react-router-dom";
@@ -14,7 +14,7 @@ const FIELD_TYPES = [
 
 const emptyConfig = () => ({
   module_name: "", table_name: "", display_name: "", api_route: "",
-  icon: "bi-grid", primary_color: "#5048E5", menu_key: "",
+  icon: "bi-grid", primary_color: "var(--primary)", menu_key: "",
   search_placeholder: "Search...", page_title: "All Items",
   empty_message: "No items found", empty_sub_message: "Add your first item to get started",
   is_active: true,
@@ -185,7 +185,7 @@ export default function ConfigManager() {
         <div className={`cfg-toast cfg-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="cfg-toast-close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
+          <button className="cfg-toast-close" title="Close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
         </div>
       )}
 
@@ -260,7 +260,7 @@ export default function ConfigManager() {
                     <td className="cfg-td-muted cfg-center">{i + 1}</td>
                     <td>
                       <div className="cfg-module-cell">
-                        <div className="cfg-module-icon" style={{ background: cfg.primary_color || "#5048E5" }}>
+                        <div className="cfg-module-icon" style={{ background: cfg.primary_color || "var(--primary)" }}>
                           <i className={`bi ${cfg.icon || "bi-grid"}`} />
                         </div>
                         <span className="cfg-module-name">{cfg.module_name}</span>
@@ -322,7 +322,7 @@ export default function ConfigManager() {
                 <p className="cfg-modal-title">{editConfig ? "Edit Config" : "Create Config"}</p>
                 <p className="cfg-modal-sub">{editConfig ? "Update module configuration." : "Define a new module and its fields."}</p>
               </div>
-              <button className="cfg-modal-close" onClick={() => setShowModal(false)}>
+              <button className="cfg-modal-close" title="Close" onClick={() => setShowModal(false)}>
                 <i className="bi bi-x-lg" />
               </button>
             </div>
@@ -384,18 +384,18 @@ export default function ConfigManager() {
                 <div key={idx} className="cfg-field-card">
                   <div className="cfg-field-card-header">
                     <div className="cfg-field-drag">
-                      <button className="cfg-drag-btn" disabled={idx === 0} onClick={() => moveField(idx, -1)}>
+                      <button className="cfg-drag-btn" title="Move up" disabled={idx === 0} onClick={() => moveField(idx, -1)}>
                         <i className="bi bi-chevron-up" />
                       </button>
                       <span className="cfg-field-num">{idx + 1}</span>
-                      <button className="cfg-drag-btn" disabled={idx === fields.length - 1} onClick={() => moveField(idx, 1)}>
+                      <button className="cfg-drag-btn" title="Move down" disabled={idx === fields.length - 1} onClick={() => moveField(idx, 1)}>
                         <i className="bi bi-chevron-down" />
                       </button>
                     </div>
                     <span className="cfg-field-preview">
                       {field.field_label || field.field_key || "New Field"} — <code>{field.field_type}</code>
                     </span>
-                    <button className="cfg-field-remove" onClick={() => removeField(idx)}>
+                    <button className="cfg-field-remove" title="Remove field" onClick={() => removeField(idx)}>
                       <i className="bi bi-trash" />
                     </button>
                   </div>
@@ -473,8 +473,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: cfg-fade-in 0.2s ease;
   }
-  .cfg-toast-success { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
-  .cfg-toast-error   { background: #FEF2F2; color: #DC2626; border: 1px solid #fca5a5; }
+  .cfg-toast-success { background: var(--success-soft); color: var(--success); border: 1px solid #6ee7b7; }
+  .cfg-toast-error   { background: var(--danger-soft); color: var(--danger); border: 1px solid #fca5a5; }
   .cfg-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* ── Header ── */
@@ -517,7 +517,7 @@ const styles = `
   .cfg-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }
   .cfg-empty-icon {
     width: 60px; height: 60px; border-radius: 50%;
-    background: #EEF2FF; color: var(--primary); font-size: 24px;
+    background: var(--primary-soft); color: var(--primary); font-size: 24px;
     display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
   }
   .cfg-pulse { animation: cfg-pulse 1.5s ease-in-out infinite; }
@@ -536,7 +536,7 @@ const styles = `
   .cfg-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .cfg-table tbody tr:last-child td { border-bottom: none; }
   .cfg-tr { transition: background 0.1s; }
-  .cfg-tr:hover td { background: #fafbff; }
+  .cfg-tr:hover td { background: var(--bg-hover); }
   .cfg-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .cfg-center { text-align: center; }
 
@@ -550,14 +550,14 @@ const styles = `
   .cfg-badge {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
-    background: #EEF2FF; color: #5048E5; border: 1px solid #c7d2fe;
+    background: var(--primary-soft); color: var(--primary); border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
   }
   .cfg-status {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
   }
-  .cfg-status-active { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
-  .cfg-status-inactive { background: #FEF2F2; color: #DC2626; border: 1px solid #fca5a5; }
+  .cfg-status-active { background: var(--success-soft); color: var(--success); border: 1px solid #6ee7b7; }
+  .cfg-status-inactive { background: var(--danger-soft); color: var(--danger); border: 1px solid #fca5a5; }
 
   /* ── Actions ── */
   .cfg-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
@@ -568,18 +568,18 @@ const styles = `
     transition: background 0.15s; font-family: var(--font);
     text-decoration: none;
   }
-  .cfg-action-view { background: #ECFDF5; color: #059669; border: 1px solid #6ee7b7; }
-  .cfg-action-view:hover { background: #d1fae5; color: #059669; }
-  .cfg-action-edit { background: #EEF2FF; color: #5048E5; border: 1px solid #c7d2fe; }
-  .cfg-action-edit:hover { background: #e0e7ff; }
+  .cfg-action-view { background: var(--success-soft); color: var(--success); border: 1px solid #6ee7b7; }
+  .cfg-action-view:hover { background: var(--success-soft); color: var(--success); }
+  .cfg-action-edit { background: var(--primary-soft); color: var(--primary); border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent); }
+  .cfg-action-edit:hover { background: var(--primary-soft); }
   .cfg-action-delete {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; background: #FEF2F2; color: #DC2626;
+    padding: 5px 12px; background: var(--danger-soft); color: var(--danger);
     border: 1px solid #fca5a5; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s; font-family: var(--font);
   }
-  .cfg-action-delete:hover { background: #fee2e2; }
+  .cfg-action-delete:hover { background: var(--danger-soft); }
 
   /* ── Buttons ── */
   .cfg-btn {
@@ -589,12 +589,12 @@ const styles = `
     transition: all 0.15s; font-family: var(--font); white-space: nowrap; border: none;
   }
   .cfg-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .cfg-btn-primary { background: #5048E5; color: #fff; }
-  .cfg-btn-primary:hover:not(:disabled) { background: #4338CA; transform: translateY(-1px); color: #fff; }
-  .cfg-btn-danger { background: #DC2626; color: #fff; }
+  .cfg-btn-primary { background: var(--primary); color: #fff; }
+  .cfg-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); color: #fff; }
+  .cfg-btn-danger { background: var(--danger); color: #fff; }
   .cfg-btn-danger:hover:not(:disabled) { background: #b91c1c; }
   .cfg-btn-outline { background: var(--bg-card); border: 1px solid var(--border); color: var(--t-muted); }
-  .cfg-btn-outline:hover { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
+  .cfg-btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
   .cfg-btn-sm { padding: 6px 14px; font-size: 12px; }
 
   /* ── Overlay + Modal ── */
@@ -619,7 +619,7 @@ const styles = `
   }
   .cfg-modal-close:hover { color: var(--t-base); background: var(--bg); }
   .cfg-modal-icon { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 14px; }
-  .cfg-modal-icon-danger { background: #FEF2F2; color: #DC2626; }
+  .cfg-modal-icon-danger { background: var(--danger-soft); color: var(--danger); }
   .cfg-modal-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 6px; }
   .cfg-modal-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0 0 20px; }
   .cfg-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -635,7 +635,7 @@ const styles = `
   .cfg-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
   .cfg-field { display: flex; flex-direction: column; gap: 5px; }
   .cfg-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .cfg-required { color: #DC2626; }
+  .cfg-required { color: var(--danger); }
   .cfg-color-input { width: 48px; height: 36px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; padding: 2px; }
   .cfg-select-wrap { position: relative; display: flex; align-items: center; }
   .cfg-select {
@@ -660,7 +660,7 @@ const styles = `
     background: #fff; transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
-  .cfg-toggle-wrap input:checked + .cfg-toggle-track { background: #5048E5; }
+  .cfg-toggle-wrap input:checked + .cfg-toggle-track { background: var(--primary); }
   .cfg-toggle-wrap input:checked + .cfg-toggle-track .cfg-toggle-thumb { transform: translateX(18px); }
 
   /* ── Fields ── */
@@ -693,13 +693,13 @@ const styles = `
     font-size: 14px; padding: 4px; border-radius: var(--radius);
     transition: all 0.15s; display: flex; align-items: center;
   }
-  .cfg-field-remove:hover { color: #DC2626; background: #FEF2F2; }
+  .cfg-field-remove:hover { color: var(--danger); background: var(--danger-soft); }
   .cfg-field-toggles { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
   .cfg-mini-toggle {
     display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600;
     color: var(--t-muted); cursor: pointer;
   }
-  .cfg-mini-toggle input { width: 14px; height: 14px; accent-color: #5048E5; }
+  .cfg-mini-toggle input { width: 14px; height: 14px; accent-color: var(--primary); }
 
   @media (max-width: 600px) { .cfg-form-grid { grid-template-columns: 1fr; } }
 `;

@@ -21,6 +21,21 @@
     rel="stylesheet"
   />
 
+  <!-- Apply saved appearance prefs before first paint (prevents theme flash) -->
+  <script>
+    (function () {
+      try {
+        var p = JSON.parse(localStorage.getItem("hrms-prefs") || "null") || {};
+        var legacy = localStorage.getItem("hrms-theme");
+        var theme = p.theme || (legacy === "dark" ? "dark" : "light");
+        var r = document.documentElement;
+        r.setAttribute("data-theme", theme);
+        r.setAttribute("data-accent", p.accent || "teal");
+        r.setAttribute("data-font", p.font || "poppins");
+      } catch (e) {}
+    })();
+  </script>
+
 </head>
 
 <body>

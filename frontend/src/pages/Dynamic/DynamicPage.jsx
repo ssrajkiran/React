@@ -362,7 +362,7 @@ export default function DynamicPage() {
         <div className={`dy-toast dy-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="dy-toast-close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
+          <button className="dy-toast-close" title="Close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
         </div>
       )}
 
@@ -370,7 +370,7 @@ export default function DynamicPage() {
         {/* Header */}
         <div className="dy-header">
           <div>
-            <h5 className="dy-title">{config?.page_title || "Loading..."}</h5>
+            <h5 className="dy-title">{config?.page_title || "Setting the stage..."}</h5>
             <div className="dy-breadcrumb">
               <span>Dynamic CRUD</span>
               <i className="bi bi-chevron-right" />
@@ -395,7 +395,7 @@ export default function DynamicPage() {
                   onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }}
                 />
                 {searchText && (
-                  <button className="dy-clear-btn" onClick={() => { setSearchText(""); setCurrentPage(1); }}>
+                  <button className="dy-clear-btn" title="Clear search" onClick={() => { setSearchText(""); setCurrentPage(1); }}>
                     <i className="bi bi-x" />
                   </button>
                 )}
@@ -412,7 +412,7 @@ export default function DynamicPage() {
           {loading ? (
             <div className="dy-empty-state">
               <div className="dy-empty-icon dy-pulse"><i className="bi bi-cpu" /></div>
-              <p className="dy-empty-title">Loading data...</p>
+              <p className="dy-empty-title">Wiring up your data…</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="dy-empty-state">
@@ -522,7 +522,7 @@ export default function DynamicPage() {
                 <p className="dy-modal-title">{editItem ? `Edit ${config?.display_name || "Record"}` : `Create ${config?.display_name || "Record"}`}</p>
                 <p className="dy-modal-sub">{editItem ? "Update the record details." : "Fill in the fields below."}</p>
               </div>
-              <button className="dy-modal-close" onClick={() => setShowModal(false)}>
+              <button className="dy-modal-close" title="Close" onClick={() => setShowModal(false)}>
                 <i className="bi bi-x-lg" />
               </button>
             </div>
@@ -606,8 +606,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: dy-fade-in 0.2s ease;
   }
-  .dy-toast-success { background: #ECFDF5; color: #059669; }
-  .dy-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .dy-toast-success { background: var(--success-soft); color: var(--success); }
+  .dy-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .dy-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* ── Header ── */
@@ -662,7 +662,7 @@ const styles = `
   }
   .dy-empty-icon {
     width: 60px; height: 60px; border-radius: 50%;
-    background: #EEF2FF; color: var(--primary); font-size: 24px;
+    background: var(--primary-soft); color: var(--primary); font-size: 24px;
     display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
   }
   .dy-pulse { animation: dy-pulse 1.5s ease-in-out infinite; }
@@ -686,7 +686,7 @@ const styles = `
   .dy-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .dy-table tbody tr:last-child td { border-bottom: none; }
   .dy-tr { transition: background 0.1s; }
-  .dy-tr:hover td { background: #fafbff; }
+  .dy-tr:hover td { background: var(--bg-hover); }
   .dy-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .dy-center { text-align: center; }
 
@@ -694,29 +694,29 @@ const styles = `
   .dy-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
   .dy-action-edit {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; background: #EEF2FF; color: #5048E5;
+    padding: 5px 12px; background: var(--primary-soft); color: var(--primary);
     border: none; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s; font-family: var(--font);
   }
-  .dy-action-edit:hover { background: #e0e7ff; }
+  .dy-action-edit:hover { background: var(--primary-soft); }
   .dy-action-delete {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; background: #FEF2F2; color: #DC2626;
+    padding: 5px 12px; background: var(--danger-soft); color: var(--danger);
     border: none; border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s; font-family: var(--font);
   }
-  .dy-action-delete:hover { background: #fee2e2; }
+  .dy-action-delete:hover { background: var(--danger-soft); }
 
   /* ── Badges ── */
   .dy-badge {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap;
   }
-  .dy-badge-green { background: #ECFDF5; color: #059669; }
-  .dy-badge-gray  { background: #F3F4F6; color: #6B7280; }
-  .dy-badge-blue  { background: #EEF2FF; color: #5048E5; }
+  .dy-badge-green { background: var(--success-soft); color: var(--success); }
+  .dy-badge-gray  { background: var(--bg-muted); color: var(--t-muted); }
+  .dy-badge-blue  { background: var(--primary-soft); color: var(--primary); }
 
   /* ── Pagination ── */
   .dy-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 16px; border-top: 1px solid var(--border-soft); }
@@ -727,7 +727,7 @@ const styles = `
     font-size: 12.5px; font-weight: 600; color: var(--t-base);
     cursor: pointer; transition: all 0.15s; font-family: var(--font);
   }
-  .dy-page-btn:hover:not(:disabled) { color: var(--primary); background: #EEF2FF; }
+  .dy-page-btn:hover:not(:disabled) { color: var(--primary); background: var(--primary-soft); }
   .dy-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .dy-page-nums { display: flex; align-items: center; gap: 4px; }
   .dy-page-num {
@@ -737,7 +737,7 @@ const styles = `
     cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
     font-family: var(--font);
   }
-  .dy-page-num:hover { color: var(--primary); background: #EEF2FF; }
+  .dy-page-num:hover { color: var(--primary); background: var(--primary-soft); }
   .dy-page-num-active { background: var(--primary); color: #fff; }
 
   /* ── Buttons ── */
@@ -749,12 +749,12 @@ const styles = `
     border: none;
   }
   .dy-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .dy-btn-primary { background: #5048E5; color: #fff; }
-  .dy-btn-primary:hover:not(:disabled) { background: #4338CA; transform: translateY(-1px); color: #fff; }
-  .dy-btn-danger { background: #DC2626; color: #fff; }
+  .dy-btn-primary { background: var(--primary); color: #fff; }
+  .dy-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); color: #fff; }
+  .dy-btn-danger { background: var(--danger); color: #fff; }
   .dy-btn-danger:hover:not(:disabled) { background: #b91c1c; }
   .dy-btn-outline { background: var(--bg-muted); border: none; color: var(--t-muted); }
-  .dy-btn-outline:hover { color: var(--primary); background: #EEF2FF; }
+  .dy-btn-outline:hover { color: var(--primary); background: var(--primary-soft); }
 
   /* ── Overlay + Modal ── */
   .dy-overlay {
@@ -782,7 +782,7 @@ const styles = `
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; margin: 0 auto 14px;
   }
-  .dy-modal-icon-danger { background: #FEF2F2; color: #DC2626; }
+  .dy-modal-icon-danger { background: var(--danger-soft); color: var(--danger); }
   .dy-modal-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 6px; }
   .dy-modal-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0 0 20px; }
   .dy-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -799,9 +799,9 @@ const styles = `
   .dy-field { display: flex; flex-direction: column; gap: 6px; }
   .dy-field-full { grid-column: 1 / -1; }
   .dy-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .dy-required { color: #DC2626; margin-left: 2px; }
+  .dy-required { color: var(--danger); margin-left: 2px; }
   .dy-help { font-size: 11px; color: var(--t-muted); margin: 0; }
-  .dy-error { font-size: 11px; color: #DC2626; margin: 0; font-weight: 600; }
+  .dy-error { font-size: 11px; color: var(--danger); margin: 0; font-weight: 600; }
 
   /* ── Input Types ── */
   .dy-input, .dy-textarea {
@@ -827,7 +827,7 @@ const styles = `
     background: #fff; transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
-  .dy-toggle-wrap input:checked + .dy-toggle-track { background: #5048E5; }
+  .dy-toggle-wrap input:checked + .dy-toggle-track { background: var(--primary); }
   .dy-toggle-wrap input:checked + .dy-toggle-track .dy-toggle-thumb { transform: translateX(18px); }
 
   /* ── Checkbox ── */
@@ -838,7 +838,7 @@ const styles = `
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s; background: var(--bg-card);
   }
-  .dy-check-wrap input:checked + .dy-check-box { background: #5048E5; border-color: #5048E5; }
+  .dy-check-wrap input:checked + .dy-check-box { background: var(--primary); border-color: var(--primary); }
   .dy-check-wrap input:checked + .dy-check-box::after { content: "✓"; color: #fff; font-size: 12px; font-weight: 700; }
 
   /* ── Radio ── */
@@ -850,9 +850,9 @@ const styles = `
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s; flex-shrink: 0;
   }
-  .dy-radio-wrap input:checked + .dy-radio-circle { border-color: #5048E5; }
+  .dy-radio-wrap input:checked + .dy-radio-circle { border-color: var(--primary); }
   .dy-radio-wrap input:checked + .dy-radio-circle::after {
-    content: ""; width: 8px; height: 8px; border-radius: 50%; background: #5048E5;
+    content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--primary);
   }
 
   @media (max-width: 560px) { .dy-form-grid { grid-template-columns: 1fr; } }

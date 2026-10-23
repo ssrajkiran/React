@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../api";
 import StatusBadge from "../ui/StatusBadge";
 import EmptyState from "../ui/EmptyState";
+import { PageLoader } from "../ui/Loader";
 import { fmtHrs, fmtDate, fmtDob, getInitials } from "../../utils";
 
 export default function UserDetailModal({ userId, onClose, onNavigate }) {
@@ -50,7 +51,7 @@ export default function UserDetailModal({ userId, onClose, onNavigate }) {
               {loading ? <i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> : initials}
             </div>
             <div>
-              <h6 className="ul-modal-title">{loading ? "Loading…" : user?.name || "User Details"}</h6>
+              <h6 className="ul-modal-title">{loading ? "User Details" : user?.name || "User Details"}</h6>
               <p className="ul-modal-sub">{user?.email} • {user?.role}</p>
             </div>
           </div>
@@ -62,7 +63,7 @@ export default function UserDetailModal({ userId, onClose, onNavigate }) {
         {/* Loading */}
         {loading && (
           <div className="ul-modal-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
-            <i className="bi bi-arrow-repeat" style={{ fontSize: 24, color: "var(--primary)", animation: "spin 1s linear infinite" }} />
+            <PageLoader message="Gathering profile details" />
           </div>
         )}
 

@@ -5,6 +5,7 @@ import AppLayout from "../../components/layout/AppLayout";
 import Tabs from "../../components/ui/Tabs";
 import StatusBadge from "../../components/ui/StatusBadge";
 import EmptyState from "../../components/ui/EmptyState";
+import { PageLoader } from "../../components/ui/Loader";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -44,7 +45,9 @@ export default function ModuleDetailPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="empty-state"><div className="empty-state-icon"><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }}></i></div></div>
+        <div style={{ display: "flex", justifyContent: "center", padding: "60px 0" }}>
+          <PageLoader message="Unpacking module details" />
+        </div>
       </AppLayout>
     );
   }
@@ -52,7 +55,7 @@ export default function ModuleDetailPage() {
   if (!data?.module) {
     return (
       <AppLayout>
-        <EmptyState icon="bi-list-task" title="Module not found" text="The module could not be loaded." action={<button className="btn btn-primary" onClick={() => navigate(-1)}>Go Back</button>} />
+        <EmptyState icon="bi-list-task" title="Module not found" text="The module could not be loaded." action={<button className="btn btn-primary" onClick={() => navigate(-1)}><i className="bi bi-arrow-left" /> Go Back</button>} />
       </AppLayout>
     );
   }

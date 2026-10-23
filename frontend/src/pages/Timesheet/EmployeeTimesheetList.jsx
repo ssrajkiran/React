@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayoutImport from "../../components/layout/AppLayout";
 import api from "../../api";
@@ -47,6 +47,10 @@ const fmtHrs = (hrs) => {
   if (h > 0) return `${h}h`;
   return `${m}m`;
 };
+
+// ── "YYYY-MM-DD" → "22 Oct 2026" ──
+const fmtDateLabel = (d) =>
+  new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
 // ── Inline AM/PM Time Picker ──
 function AmpmTimePicker({ value, onChange, minTime, disabled }) {
@@ -101,8 +105,8 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
         disabled={disabled}
         style={{
           width: 52, height: 36, borderRadius: "var(--radius)", border: "none",
-          background: ap === "AM" ? "#EEF2FF" : "#FFF7ED",
-          color: ap === "AM" ? "#5048E5" : "#C2410C",
+          background: ap === "AM" ? "var(--primary-soft)" : "var(--orange-soft)",
+          color: ap === "AM" ? "var(--primary)" : "var(--orange)",
           fontSize: 12, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
           fontFamily: "var(--font)", opacity: disabled ? 0.5 : 1,
         }}
@@ -124,6 +128,7 @@ export default function EmployeeTimesheetList() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
   const [detailTimesheetId, setDetailTimesheetId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const PAGE_SIZE = 10;
 
   // Modal state
@@ -133,19 +138,32 @@ export default function EmployeeTimesheetList() {
   const [tasks, setTasks] = useState([]);
   const [formError, setFormError] = useState("");
   const [toast, setToast] = useState(null); // { msg, type }
+  // Approved leave dates → no timesheet entry allowed on those dates
+  const [leaveDates, setLeaveDates] = useState({});
 
   // Auth
   const token = localStorage.getItem("token");
   let loggedUserId = null;
   if (token) {
-    try { loggedUserId = JSON.parse(atob(token.split(".")[1])).id; } catch (e) {}
+    try { loggedUserId = JSON.parse(atob(token.split(".")[1])).id; } catch { /* ignore malformed token */ }
   }
   const authHeader = { Authorization: `Bearer ${token}` };
+
+  // Approved leave dates for this user
+  const loadLeaveDates = async () => {
+    try {
+      const res = await api.get("/timesheet/leave-dates", { headers: authHeader });
+      const map = {};
+      (Array.isArray(res.data) ? res.data : []).forEach((l) => { map[l.date] = l; });
+      setLeaveDates(map);
+    } catch (err) { console.error(err); }
+  };
 
   // ================= FETCH =================
   useEffect(() => {
     loadData();
     loadProjects();
+    loadLeaveDates();
     if (loggedUserId) setForm((prev) => ({ ...prev, created_by: loggedUserId }));
   }, []);
 
@@ -179,21 +197,28 @@ export default function EmployeeTimesheetList() {
     } catch (err) { console.error(err); setTasks([]); }
   };
 
+  // Full-day approved leave → entry blocked
+  const leaveErrorFor = (date) => {
+    const lv = date ? leaveDates[date] : null;
+    if (!lv || lv.half_day) return "";
+    return `You are on approved leave on ${fmtDateLabel(date)}. Timesheet entry is not allowed.`;
+  };
+
+  // Max hours allowed on a date (half-day leave → 4 hrs)
+  const dayLimitFor = (date) => {
+    const lv = date ? leaveDates[date] : null;
+    return lv && lv.half_day ? 4 : 8;
+  };
+
   // ================= FORM =================
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormError("");
-    if (name === "project") {
-      setForm((prev) => ({ ...prev, project: value, task: "" }));
-      loadTasks(value);
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
+  const handleDateChange = (val) => {
+    setForm((prev) => ({ ...prev, date: val }));
+    setFormError(leaveErrorFor(val));
   };
 
   // Live overlap check when time changes
   const checkOverlapLive = (date, startTime, endTime) => {
-    if (!date || !startTime || !endTime) { setFormError(""); return; }
+    if (!date || !startTime || !endTime) { setFormError(leaveErrorFor(date)); return; }
     const newStart = startTime.substring(0, 5);
     const newEnd = endTime.substring(0, 5);
     const overlapEntry = data.find((t) => {
@@ -208,7 +233,7 @@ export default function EmployeeTimesheetList() {
       const oEnd = formatAMPM(overlapEntry.end_time);
       setFormError(`Time overlap! Entry already exists from ${oStart} to ${oEnd}. Choose a different time.`);
     } else {
-      setFormError("");
+      setFormError(leaveErrorFor(date));
     }
   };
 
@@ -235,6 +260,12 @@ export default function EmployeeTimesheetList() {
       setFormError("Please select a date.");
       return;
     }
+    const leaveMsg = leaveErrorFor(form.date);
+    if (leaveMsg) {
+      setFormError(leaveMsg);
+      return;
+    }
+    const dayLimit = dayLimitFor(form.date);
     if (!isPermission && !form.project) {
       setFormError("Please select a project.");
       return;
@@ -258,8 +289,8 @@ export default function EmployeeTimesheetList() {
       .filter((t) => toDateStr(t.timesheet_date) === form.date)
       .reduce((sum, t) => sum + Number(t.man_hrs), 0);
 
-    if (totalHours + hoursToAdd > 8) {
-      setFormError(`Only ${fmtHrs(8 - totalHours)} remaining for this date.`);
+    if (totalHours + hoursToAdd > dayLimit) {
+      setFormError(`Only ${fmtHrs(dayLimit - totalHours)} remaining for this date.`);
       return;
     }
 
@@ -309,6 +340,18 @@ export default function EmployeeTimesheetList() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/timesheet/delete/${id}`, { headers: authHeader });
+      setData((prev) => prev.filter((t) => t.timesheet_id !== id));
+      setDeleteConfirm(null);
+      showToast("Timesheet deleted successfully.", "success");
+    } catch (err) {
+      console.error(err);
+      showToast(err.response?.data?.message || "Failed to delete timesheet.", "error");
+    }
+  };
+
   // ================= TABLE =================
   const filtered = useMemo(() => {
     const t = searchText.toLowerCase();
@@ -346,8 +389,8 @@ export default function EmployeeTimesheetList() {
       : null;
 
   const statusConfig = {
-    completed:     { color: "#059669", bg: "#ECFDF5", border: "#6ee7b7", label: "Completed" },
-    "in-progress": { color: "#D97706", bg: "#FFFBEB", border: "#FCD34D", label: "In Progress" },
+    completed:     { color: "var(--success)", bg: "var(--success-soft)", border: "color-mix(in srgb, var(--success) 35%, transparent)", label: "Completed" },
+    "in-progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)", label: "In Progress" },
   };
 
   // Compute hours from either time-based or legacy man_hrs entries
@@ -367,7 +410,9 @@ export default function EmployeeTimesheetList() {
         .filter((t) => toDateStr(t.timesheet_date) === form.date)
         .reduce((s, t) => s + hoursForEntry(t), 0)
     : 0;
-  const hoursRemaining = 8 - hoursUsedOnDate;
+  const hoursRemaining = dayLimitFor(form.date) - hoursUsedOnDate;
+  // Full-day approved leave on the selected date → whole form locked, no entry
+  const leaveBlocked = !!leaveErrorFor(form.date);
 
   return (
     <AppLayout>
@@ -413,7 +458,7 @@ export default function EmployeeTimesheetList() {
               onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
             />
             {searchText && (
-              <button className="et-search-clear" onClick={() => setSearchText("")}>
+              <button className="et-search-clear" title="Clear search" onClick={() => setSearchText("")}>
                 <i className="bi bi-x" />
               </button>
             )}
@@ -440,15 +485,16 @@ export default function EmployeeTimesheetList() {
                     {label} <SortIcon field={key} />
                   </th>
                 ))}
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="et-state-cell">
+                <tr><td colSpan={9} className="et-state-cell">
                   <div className="et-loading"><i className="bi bi-arrow-repeat et-spin" /> Loading timesheets…</div>
                 </td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={8} className="et-state-cell">
+                <tr><td colSpan={9} className="et-state-cell">
                   <div className="et-empty"><i className="bi bi-clock-history" /><span>No timesheets found</span></div>
                 </td></tr>
               ) : paginated.map((row, idx) => {
@@ -477,7 +523,7 @@ export default function EmployeeTimesheetList() {
                         className="et-status-pill"
                         style={sc
                           ? { background: sc.bg, color: sc.color, borderColor: sc.border }
-                          : { background: "#F3F4F6", color: "#6B7280", borderColor: "#D1D5DB" }}
+                          : { background: "var(--bg-muted)", color: "var(--t-muted)", borderColor: "var(--border)" }}
                       >
                         {sc ? sc.label : (row.task_status || "Pending")}
                       </span>
@@ -493,6 +539,15 @@ export default function EmployeeTimesheetList() {
                         <i className="bi bi-stopwatch" />{fmtHrs(rowHours)}
                       </span>
                     </td>
+                    <td>
+                      <button
+                        className="et-action-btn et-action-delete"
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(row); }}
+                        title="Delete"
+                      >
+                        <i className="bi bi-trash" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -507,16 +562,16 @@ export default function EmployeeTimesheetList() {
               Page {page} of {totalPages} · {filtered.length} results
             </span>
             <div className="et-page-btns">
-              <button className="et-page-btn" disabled={page === 1} onClick={() => setPage(1)}><i className="bi bi-chevron-double-left" /></button>
-              <button className="et-page-btn" disabled={page === 1} onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left" /></button>
+              <button className="et-page-btn" title="First page" disabled={page === 1} onClick={() => setPage(1)}><i className="bi bi-chevron-double-left" /></button>
+              <button className="et-page-btn" title="Previous page" disabled={page === 1} onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left" /></button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const p = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
                 return (
                   <button key={p} className={`et-page-btn ${p === page ? "active" : ""}`} onClick={() => setPage(p)}>{p}</button>
                 );
               })}
-              <button className="et-page-btn" disabled={page === totalPages} onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right" /></button>
-              <button className="et-page-btn" disabled={page === totalPages} onClick={() => setPage(totalPages)}><i className="bi bi-chevron-double-right" /></button>
+              <button className="et-page-btn" title="Next page" disabled={page === totalPages} onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right" /></button>
+              <button className="et-page-btn" title="Last page" disabled={page === totalPages} onClick={() => setPage(totalPages)}><i className="bi bi-chevron-double-right" /></button>
             </div>
           </div>
         )}
@@ -534,29 +589,40 @@ export default function EmployeeTimesheetList() {
                   <p className="ul-modal-sub">Log your work hours</p>
                 </div>
               </div>
-              <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
             </div>
 
             <div className="ul-modal-divider" />
 
-              <div className="ul-modal-body">
+              <div className={`ul-modal-body ${leaveBlocked ? "et-body-locked" : ""}`}>
+                {/* Leave day → entry not allowed */}
+                {leaveBlocked && (
+                  <div className="et-leave-block">
+                    <i className="bi bi-calendar-x-fill" />
+                    <div>
+                      <strong>This day is Leave — timesheet entry is not allowed</strong>
+                      <p>{leaveErrorFor(form.date)}</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* 8-hour meter */}
-                {form.date && (
+                {form.date && !leaveBlocked && (
                   <div className="et-hrs-meter">
                     <div className="et-hrs-meter-top">
                       <span className="et-hrs-meter-label">
                         Hours used on {new Date(form.date + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                       </span>
-                      <span className="et-hrs-meter-val" style={{ color: hoursRemaining <= 0 ? "#DC2626" : hoursRemaining <= 2 ? "#D97706" : "#059669" }}>
-                        {fmtHrs(hoursUsedOnDate)} / 8 hrs
+                      <span className="et-hrs-meter-val" style={{ color: hoursRemaining <= 0 ? "var(--danger)" : hoursRemaining <= 2 ? "var(--warning)" : "var(--success)" }}>
+                        {fmtHrs(hoursUsedOnDate)} / {dayLimitFor(form.date)} hrs
                       </span>
                     </div>
                     <div className="et-hrs-bar-bg">
                       <div
                         className="et-hrs-bar-fill"
                         style={{
-                          width: `${Math.min(100, (hoursUsedOnDate / 8) * 100)}%`,
-                          background: hoursRemaining <= 0 ? "#DC2626" : hoursRemaining <= 2 ? "#D97706" : "#059669",
+                          width: `${Math.min(100, (hoursUsedOnDate / dayLimitFor(form.date)) * 100)}%`,
+                          background: hoursRemaining <= 0 ? "var(--danger)" : hoursRemaining <= 2 ? "var(--warning)" : "var(--success)",
                         }}
                       />
                     </div>
@@ -567,7 +633,7 @@ export default function EmployeeTimesheetList() {
                 )}
 
                 {/* Error */}
-                {formError && (
+                {formError && !leaveBlocked && (
                   <div className="et-form-error">
                     <i className="bi bi-exclamation-circle" /> {formError}
                   </div>
@@ -578,10 +644,18 @@ export default function EmployeeTimesheetList() {
                     <label className="et-label">Date <span className="et-required">*</span></label>
                     <SharedDatePicker
                       value={form.date}
-                      onChange={(val) => setForm({ ...form, date: val })}
+                      onChange={handleDateChange}
                       max={new Date().toISOString().split("T")[0]}
                       className="et-input"
                     />
+                    {form.date && !leaveBlocked && leaveDates[form.date] && (
+                      <p className="et-field-hint" style={{ color: leaveDates[form.date].half_day ? "var(--warning)" : "var(--danger)", fontWeight: 600 }}>
+                        <i className="bi bi-exclamation-triangle" />{" "}
+                        {leaveDates[form.date].half_day
+                          ? "Half-day leave: max 4 hrs allowed."
+                          : "Approved leave: no timesheet entry allowed."}
+                      </p>
+                    )}
                   </div>
 
                   <div className="et-field">
@@ -684,14 +758,14 @@ export default function EmployeeTimesheetList() {
                       disabled={form.entry_type === "permission"}
                     />
                     {form.entry_type === "permission" && form.start_time && (
-                      <span style={{ fontSize: "11px", color: "#5048E5", fontWeight: 600 }}>
+                      <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: 600 }}>
                         Auto: Start + 15 min
                       </span>
                     )}
                   </div>
                 </div>
 
-                {form.entry_type === "project" && (
+                {!leaveBlocked && form.entry_type === "project" && (
                   <div className="et-field">
                     <label className="et-label">Work Description</label>
                     <textarea
@@ -704,15 +778,15 @@ export default function EmployeeTimesheetList() {
                   </div>
                 )}
 
-                {form.entry_type === "permission" && (
-                  <div className="et-field-hint" style={{ color: "#5048E5", fontWeight: 600, fontSize: "12px" }}>
+                {!leaveBlocked && form.entry_type === "permission" && (
+                  <div className="et-field-hint" style={{ color: "var(--primary)", fontWeight: 600, fontSize: "12px" }}>
                     <i className="bi bi-info-circle" /> Permission mode: 15 minutes auto-assigned
                   </div>
                 )}
 
                 {/* Live hours preview */}
-                {form.start_time && form.end_time && (
-                  <div style={{ fontSize: "12px", color: calcHoursFromTimes(form.start_time, form.end_time) > 0 ? "#059669" : "#DC2626", fontWeight: 600 }}>
+                {!leaveBlocked && form.start_time && form.end_time && (
+                  <div style={{ fontSize: "12px", color: calcHoursFromTimes(form.start_time, form.end_time) > 0 ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
                     <i className="bi bi-clock" /> {fmtHrs(calcHoursFromTimes(form.start_time, form.end_time))} will be logged
                   </div>
                 )}
@@ -720,7 +794,7 @@ export default function EmployeeTimesheetList() {
 
               <div className="ul-modal-footer">
                 <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="ul-btn ul-btn-primary" onClick={handleSave}>
+                <button className="ul-btn ul-btn-primary" onClick={handleSave} disabled={leaveBlocked}>
                   <i className="bi bi-send" /> Save Timesheet
                 </button>
               </div>
@@ -741,6 +815,29 @@ export default function EmployeeTimesheetList() {
           }}
         />
       )}
+      {/* ── DELETE CONFIRM MODAL ── */}
+      {deleteConfirm && (
+        <div className="ul-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="ul-modal ul-modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="ul-modal-icon ul-modal-icon-danger">
+              <i className="bi bi-trash" />
+            </div>
+            <h6 className="ul-modal-title">Delete Timesheet</h6>
+            <p className="ul-modal-sub">Are you sure you want to delete this timesheet?</p>
+            <p className="ul-modal-sub" style={{ marginTop: 4 }}>
+              <strong>{deleteConfirm.task_name}</strong>
+              {deleteConfirm.project_name && <> — {deleteConfirm.project_name}</>}
+            </p>
+            <div className="ul-modal-divider" />
+            <div className="ul-modal-footer">
+              <button className="ul-btn ul-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              <button className="ul-btn ul-btn-danger" onClick={() => handleDelete(deleteConfirm.timesheet_id)}>
+                <i className="bi bi-trash" /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
@@ -755,8 +852,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: et-fade-in 0.2s ease;
   }
-  .et-toast-success { background: #ECFDF5; color: #059669; }
-  .et-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .et-toast-success { background: var(--success-soft); color: var(--success); }
+  .et-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .et-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* Page header */
@@ -792,7 +889,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .et-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .et-search:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .et-search-clear { position: absolute; right: 8px; background: none; border: none; color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px; display: flex; align-items: center; }
   .et-search-clear:hover { color: var(--t-base); }
   .et-count { font-size: 12px; font-weight: 600; color: var(--t-muted); background: var(--bg-card); box-shadow: var(--shadow-sm); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
@@ -808,7 +905,7 @@ const styles = `
   .et-sort-icon { margin-left: 4px; font-size: 9px; }
   .et-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .et-tr { transition: background 0.1s; }
-  .et-tr:hover td { background: #fafbff; }
+  .et-tr:hover td { background: var(--bg-hover); }
   .et-tr:last-child td { border-bottom: none; }
   .et-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .et-center { text-align: center; }
@@ -816,9 +913,14 @@ const styles = `
   .et-task-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-base); font-weight: 500; }
 
   /* Chips */
-  .et-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #EEF2FF; color: #5048E5; white-space: nowrap; }
+  .et-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: var(--primary-soft); color: var(--primary); white-space: nowrap; }
   .et-status-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-  .et-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: #FFF7ED; color: #C2410C; border-radius: 20px; white-space: nowrap; }
+  .et-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: var(--orange-soft); color: var(--orange); border-radius: 20px; white-space: nowrap; }
+
+  /* Actions */
+  .et-action-btn { width: 30px; height: 30px; border-radius: var(--radius); border: none; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .et-action-delete { background: var(--danger-soft); color: var(--danger); }
+  .et-action-delete:hover { background: var(--danger); color: #fff; }
   .et-hrs-pill i { font-size: 11px; }
 
   /* States */
@@ -842,7 +944,7 @@ const styles = `
   .et-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 20px; }
   @media (max-width: 560px) { .et-form-grid { grid-template-columns: 1fr; } }
   .et-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .et-required { color: #DC2626; }
+  .et-required { color: var(--danger); }
   .et-input, .et-select {
     width: 100%; padding: 9px 12px;
     border: none; border-radius: var(--radius);
@@ -850,8 +952,8 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .et-input:focus, .et-select:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
-  .et-input:disabled, .et-select:disabled { background: var(--bg); color: var(--t-muted); cursor: not-allowed; }
+  .et-input:focus, .et-select:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
+  .et-input:disabled, .et-select:disabled { background: var(--bg); color: var(--t-muted); cursor: not-allowed; opacity: 0.6; }
   .et-textarea {
     width: 100%; padding: 9px 12px;
     border: none; border-radius: var(--radius);
@@ -859,7 +961,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s; resize: none; line-height: 1.5;
   }
-  .et-textarea:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .et-textarea:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .et-select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
@@ -869,7 +971,14 @@ const styles = `
   .et-select-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .et-select-wrap .et-select { padding-left: 32px; }
   .et-field-hint { font-size: 11.5px; color: var(--t-muted); margin: 0; }
-  .et-form-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #FEF2F2; color: #DC2626; border-radius: var(--radius); font-size: 12.5px; font-weight: 600; }
+  /* Leave day block banner */
+  .et-leave-block { display: flex; gap: 12px; align-items: flex-start; padding: 14px; background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: var(--radius); }
+  .et-leave-block i { font-size: 22px; line-height: 1; color: var(--danger); margin-top: 2px; }
+  .et-leave-block strong { display: block; font-size: 13px; color: var(--danger); }
+  .et-leave-block p { margin: 4px 0 0; font-size: 12.5px; color: var(--danger); font-weight: 600; }
+  .et-body-locked .et-form-grid .et-field:not(:first-child) { opacity: 0.45; pointer-events: none; }
+  .ul-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .et-form-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--danger-soft); color: var(--danger); border-radius: var(--radius); font-size: 12.5px; font-weight: 600; }
 
   /* Hours picker */
   .et-hrs-options { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -880,19 +989,25 @@ const styles = `
     cursor: pointer; transition: all 0.15s;
     font-family: var(--font);
   }
-  .et-hrs-btn:hover:not(.disabled) { color: var(--primary); background: #EEF2FF; }
+  .et-hrs-btn:hover:not(.disabled) { color: var(--primary); background: var(--primary-soft); }
   .et-hrs-btn.active { background: var(--primary); color: #fff; }
   .et-hrs-btn.disabled { opacity: 0.35; cursor: not-allowed; }
 
   /* Hours meter */
   .et-hrs-meter { background: var(--bg-muted); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; }
-  .et-hrs-meter-top { display: flex; align-items: center; justify-content: space-between; }
+  .et-hrs-meter-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .et-hrs-meter-label { font-size: 11.5px; color: var(--t-muted); font-weight: 500; }
-  .et-hrs-meter-val { font-size: 12px; font-weight: 700; }
+  .et-hrs-meter-val { font-size: 12px; font-weight: 700; white-space: nowrap; }
   .et-hrs-bar-bg { width: 100%; height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
   .et-hrs-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background 0.3s ease; }
   .et-hrs-hint { font-size: 11px; color: var(--t-muted); margin: 0; }
-  .et-hrs-warning { font-size: 11px; color: #DC2626; font-weight: 600; margin: 0; }
+  .et-hrs-warning { font-size: 11px; color: var(--danger); font-weight: 600; margin: 0; }
+
+  /* Delete confirm */
+  .et-delete-warn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; text-align: center; }
+  .et-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--danger-soft); color: var(--danger); font-size: 22px; display: flex; align-items: center; justify-content: center; }
+  .et-delete-msg { font-size: 14px; font-weight: 600; color: var(--t-base); margin: 0; }
+  .et-delete-detail { font-size: 12.5px; color: var(--t-muted); margin: 0; max-width: 280px; }
 
   .ul-modal { border: none; border-radius: var(--radius-lg); box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); }
 

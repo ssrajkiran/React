@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import jsPDF from "jspdf";
@@ -134,9 +135,9 @@ export default function AISummary() {
   };
 
   const statusConfig = {
-    "completed":   { color: "#059669", bg: "#ECFDF5", border: "#6ee7b7" },
-    "in progress": { color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
-    "in-progress": { color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
+    "completed":   { color: "var(--success)", bg: "var(--success-soft)", border: "color-mix(in srgb, var(--success) 35%, transparent)" },
+    "in progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)" },
+    "in-progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)" },
   };
 
   return (
@@ -148,16 +149,21 @@ export default function AISummary() {
         <div className={`sr-toast sr-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="sr-toast-close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
+          <button className="sr-toast-close" title="Close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
         </div>
       )}
 
       {/* ── PAGE HEADER ── */}
-      <div className="sr-head-row">
-        <div className="sr-head">
-          <span className="sr-eyebrow">Reports</span>
-          <h2 className="sr-title">Timesheet Report</h2>
-          <p className="sr-sub">Employee-wise timesheet for a selected date range</p>
+      <div className="sr-page-header">
+        <div>
+          <h5 className="sr-page-title">Timesheet Report</h5>
+          <nav className="sr-breadcrumb">
+            <Link to="/admin">Dashboard</Link>
+            <i className="bi bi-chevron-right" />
+            <span>Reports</span>
+            <i className="bi bi-chevron-right" />
+            <span>Timesheet Report</span>
+          </nav>
         </div>
         {generated && tableData.length > 0 && (
           <button className="sr-export-btn" onClick={exportPDF}>
@@ -338,7 +344,7 @@ export default function AISummary() {
                                 className="sr-status-pill"
                                 style={sc
                                   ? { background: sc.bg, color: sc.color }
-                                  : { background: "#F3F4F6", color: "#6B7280" }}
+                                  : { background: "var(--bg-muted)", color: "var(--t-muted)" }}
                               >
                                 {t.status || "Pending"}
                               </span>
@@ -396,37 +402,33 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
-  .sr-toast-success { background: #ECFDF5; color: #059669; }
-  .sr-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .sr-toast-success { background: var(--success-soft); color: var(--success); }
+  .sr-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .sr-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
-  /* Page header */
-  .sr-head-row {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap; margin-bottom: 18px;
-  }
-  .sr-eyebrow {
-    display: block; font-size: 11px; font-weight: 700; letter-spacing: 1.6px;
-    text-transform: uppercase; color: var(--primary); margin-bottom: 6px;
-  }
-  .sr-title { font-size: 24px; font-weight: 800; margin: 0; color: var(--t-base); letter-spacing: -0.02em; }
-  .sr-sub { font-size: 13px; color: var(--t-muted); margin: 5px 0 0; }
+  /* Page header (module-wise) */
+  .sr-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .sr-page-title { font-size: 24px; font-weight: 800; color: var(--t-base); margin: 0; letter-spacing: -0.02em; }
+  .sr-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); margin-top: 6px; }
+  .sr-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
+  .sr-breadcrumb a:hover { text-decoration: underline; }
+  .sr-breadcrumb i { font-size: 10px; opacity: 0.5; }
 
   /* Export btn */
   .sr-export-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: #059669; color: #fff;
+    padding: 9px 18px; background: var(--success); color: #fff;
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font);
   }
-  .sr-export-btn:hover { background: #047857; transform: translateY(-1px); }
+  .sr-export-btn:hover { background: var(--success); transform: translateY(-1px); }
 
   /* Filter card */
   .sr-filter-card {
     background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
-    padding: 18px 20px; margin-bottom: 20px;
+    padding: 14px 20px; margin-bottom: 20px;
   }
   .sr-filter-inner { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
   .sr-filter-group { display: flex; flex-direction: column; gap: 6px; }
@@ -440,7 +442,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .sr-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .sr-input:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
 
   /* Generate btn */
   .sr-generate-btn {
@@ -462,7 +464,7 @@ const styles = `
   }
   .sr-empty-icon {
     width: 60px; height: 60px; border-radius: 50%;
-    background: #EEF2FF; color: var(--primary); font-size: 24px;
+    background: var(--primary-soft); color: var(--primary); font-size: 24px;
     display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
   }
   .sr-pulse { animation: sr-pulse 1.5s ease-in-out infinite; }
@@ -485,10 +487,10 @@ const styles = `
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; flex-shrink: 0;
   }
-  .sr-stat-blue   { background: #EEF2FF; color: #5048E5; }
-  .sr-stat-green  { background: #ECFDF5; color: #059669; }
-  .sr-stat-orange { background: #FFF7ED; color: #C2410C; }
-  .sr-stat-purple { background: #FAF5FF; color: #7C3AED; }
+  .sr-stat-blue   { background: var(--primary-soft); color: var(--primary); }
+  .sr-stat-green  { background: var(--success-soft); color: var(--success); }
+  .sr-stat-orange { background: var(--orange-soft); color: var(--orange); }
+  .sr-stat-purple { background: var(--purple-soft); color: var(--purple); }
   .sr-stat-val { font-size: 20px; font-weight: 800; color: var(--t-base); margin: 0 0 2px; line-height: 1; }
   .sr-stat-val-sm { font-size: 12px; font-weight: 700; color: var(--t-base); margin: 0 0 2px; line-height: 1.4; }
   .sr-stat-label { font-size: 11px; color: var(--t-muted); font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -533,9 +535,9 @@ const styles = `
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
   }
-  .sr-meta-blue   { background: #EEF2FF; color: #5048E5; }
-  .sr-meta-green  { background: #ECFDF5; color: #059669; }
-  .sr-meta-orange { background: #FFF7ED; color: #C2410C; }
+  .sr-meta-blue   { background: var(--primary-soft); color: var(--primary); }
+  .sr-meta-green  { background: var(--success-soft); color: var(--success); }
+  .sr-meta-orange { background: var(--orange-soft); color: var(--orange); }
   .sr-emp-count { font-size: 11.5px; font-weight: 600; color: var(--t-muted); background: var(--bg-card); box-shadow: var(--shadow-sm); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
 
   /* Table */
@@ -546,7 +548,7 @@ const styles = `
   .sr-th-sm { width: 48px; text-align: center; }
   .sr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .sr-tr { transition: background 0.1s; }
-  .sr-tr:hover td { background: #fafbff; }
+  .sr-tr:hover td { background: var(--bg-hover); }
   .sr-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .sr-center { text-align: center; }
   .sr-nowrap { white-space: nowrap; }
@@ -558,10 +560,10 @@ const styles = `
   .sr-tfoot-label { font-size: 11.5px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.04em; text-align: right; }
 
   /* Pills */
-  .sr-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #EEF2FF; color: #5048E5; white-space: nowrap; }
+  .sr-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: var(--primary-soft); color: var(--primary); white-space: nowrap; }
   .sr-status-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-  .sr-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: #FFF7ED; color: #C2410C; border-radius: 20px; white-space: nowrap; }
-  .sr-hrs-pill-total { background: #EEF2FF; color: #5048E5; }
+  .sr-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: var(--orange-soft); color: var(--orange); border-radius: 20px; white-space: nowrap; }
+  .sr-hrs-pill-total { background: var(--primary-soft); color: var(--primary); }
   .sr-hrs-pill i { font-size: 11px; }
 
   /* Spin */

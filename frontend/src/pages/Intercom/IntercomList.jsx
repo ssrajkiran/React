@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 
@@ -129,7 +129,7 @@ export default function IntercomList() {
         <div className={`ic-toast ic-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="ic-toast-close" onClick={() => setToast(null)}>
+          <button className="ic-toast-close" title="Close" onClick={() => setToast(null)}>
             <i className="bi bi-x" />
           </button>
         </div>
@@ -173,28 +173,25 @@ export default function IntercomList() {
         )}
       </div>
 
-      {/* Search + Filter */}
-      <div className="ic-filter-card">
-        <div className="ic-filter-inner">
-          <div className="ic-filter-group" style={{ flex: 1, maxWidth: 400 }}>
-            <label className="ic-label">Search</label>
-            <div className="ic-input-wrap">
-              <i className="bi bi-search ic-input-icon" />
-              <input
-                className="ic-input"
-                placeholder="Search by name, intercom number or department…"
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-              />
-              {search && (
-                <button className="ic-clear-btn" onClick={() => handleSearch("")}>
-                  <i className="bi bi-x" />
-                </button>
-              )}
-            </div>
+      {/* Data Table */}
+      <div className="ic-table-card">
+        {/* Toolbar (module-wise) */}
+        <div className="ic-toolbar">
+          <div className="ic-input-wrap ic-search-wrap">
+            <i className="bi bi-search ic-input-icon" />
+            <input
+              className="ic-input ic-search"
+              placeholder="Search by name, intercom number or department…"
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+            {search && (
+              <button className="ic-clear-btn" title="Clear search" onClick={() => handleSearch("")}>
+                <i className="bi bi-x" />
+              </button>
+            )}
           </div>
           <div className="ic-filter-group">
-            <label className="ic-label">Department</label>
             <select
               className="ic-select"
               value={deptFilter}
@@ -206,14 +203,11 @@ export default function IntercomList() {
               ))}
             </select>
           </div>
-          <div className="ic-count-pill">
+          <span className="ic-count-pill">
             <i className="bi bi-telephone" /> {filtered.length} entries
-          </div>
+          </span>
         </div>
-      </div>
 
-      {/* Data Table */}
-      <div className="ic-table-card">
         {loading ? (
           <div className="ic-empty-state">
             <div className="ic-empty-icon ic-pulse">
@@ -333,7 +327,7 @@ export default function IntercomList() {
                   </p>
                 </div>
               </div>
-              <button className="ic-modal-close" onClick={() => setShowResultModal(false)}>
+              <button className="ic-modal-close" title="Close" onClick={() => setShowResultModal(false)}>
                 <i className="bi bi-x-lg" />
               </button>
             </div>
@@ -374,8 +368,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: ic-fade-in 0.2s ease;
   }
-  .ic-toast-success { background: #ECFDF5; color: #059669; }
-  .ic-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .ic-toast-success { background: var(--success-soft); color: var(--success); }
+  .ic-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .ic-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   .ic-page-header {
@@ -388,30 +382,30 @@ const styles = `
   .ic-header-actions { display: flex; gap: 8px; }
   .ic-upload-btn {
     display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px;
-    background: #059669; color: #fff; border: none; border-radius: var(--radius);
+    background: var(--success); color: #fff; border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
     font-family: var(--font); white-space: nowrap;
   }
-  .ic-upload-btn:hover:not(:disabled) { background: #047857; }
+  .ic-upload-btn:hover:not(:disabled) { background: var(--success); }
   .ic-upload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  .ic-filter-card {
-    background: var(--bg-card); border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
-    padding: 18px 20px; margin-bottom: 16px;
+  /* ── Toolbar (module-wise) ── */
+  .ic-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border-soft); gap: 12px; flex-wrap: wrap;
   }
-  .ic-filter-inner { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-  .ic-filter-group { display: flex; flex-direction: column; gap: 6px; }
   .ic-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .ic-filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .ic-search-wrap { flex: 1; max-width: 400px; }
   .ic-input-wrap { position: relative; display: flex; align-items: center; }
   .ic-input-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
-  .ic-input {
-    width: 100%; padding: 9px 34px 9px 34px; border: none;
+  .ic-input, .ic-search {
+    width: 100%; padding: 8px 32px 8px 34px; border: none;
     border-radius: var(--radius); background: var(--bg-muted); font-size: 13px;
     color: var(--t-base); font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .ic-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .ic-input:focus, .ic-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
   .ic-clear-btn {
     position: absolute; right: 9px; background: none; border: none;
     cursor: pointer; color: var(--t-muted); font-size: 15px;
@@ -419,15 +413,15 @@ const styles = `
   }
   .ic-clear-btn:hover { color: var(--t-base); }
   .ic-select {
-    padding: 9px 12px; border: none; border-radius: var(--radius);
+    padding: 8px 12px; border: none; border-radius: var(--radius);
     background: var(--bg-muted); font-size: 13px; color: var(--t-base);
     font-family: var(--font); outline: none; min-width: 180px; cursor: pointer;
   }
   .ic-count-pill {
     display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
     font-weight: 600; color: var(--t-muted); background: var(--bg-card);
-    box-shadow: var(--shadow-sm); border-radius: 20px; padding: 5px 12px;
-    white-space: nowrap; align-self: flex-end;
+    box-shadow: var(--shadow-sm); border-radius: 20px; padding: 3px 10px;
+    white-space: nowrap;
   }
 
   .ic-table-card {
@@ -440,24 +434,24 @@ const styles = `
   .ic-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .ic-table thead tr { border-bottom: 1px solid var(--border-soft); }
   .ic-table th {
-    padding: 11px 16px; font-size: 10.5px; font-weight: 700;
+    padding: 10px 14px; font-size: 10.5px; font-weight: 700;
     color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.06em;
-    text-align: left; white-space: nowrap; background: var(--bg-muted);
+    text-align: left; white-space: nowrap; background: var(--bg-card);
   }
   .ic-table td {
-    padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle;
+    padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle;
   }
   .ic-table tbody tr:last-child td { border-bottom: none; }
   .ic-table tbody tr { transition: background 0.1s; }
-  .ic-table tbody tr:hover td { background: #fafbff; }
+  .ic-table tbody tr:hover td { background: var(--bg-hover); }
   .ic-td-center { text-align: center; font-weight: 600; color: var(--t-muted); }
   .ic-td-dept { font-size: 12px; color: var(--t-muted); }
 
   .ic-name-cell { display: flex; align-items: center; gap: 10px; }
   .ic-avatar {
     width: 32px; height: 32px; border-radius: 8px;
-    background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
-    color: #5048E5; font-size: 13px; font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-soft), var(--info-soft));
+    color: var(--primary); font-size: 13px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .ic-name { font-weight: 600; font-size: 13px; color: var(--t-base); }
@@ -466,14 +460,14 @@ const styles = `
     display: inline-block; padding: 3px 10px; border-radius: 6px;
     font-size: 12px; font-weight: 700; font-family: var(--font-mono);
   }
-  .ic-badge-primary { background: #EEF2FF; color: #5048E5; }
+  .ic-badge-primary { background: var(--primary-soft); color: var(--primary); }
 
   .ic-empty-state {
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; padding: 60px 20px; text-align: center;
   }
   .ic-empty-icon {
-    width: 60px; height: 60px; border-radius: 50%; background: #EEF2FF;
+    width: 60px; height: 60px; border-radius: 50%; background: var(--primary-soft);
     color: var(--primary); font-size: 24px; display: flex;
     align-items: center; justify-content: center; margin-bottom: 14px;
   }
@@ -494,7 +488,7 @@ const styles = `
     font-size: 12.5px; font-weight: 600; color: var(--t-base); cursor: pointer;
     transition: all 0.15s; font-family: var(--font);
   }
-  .ic-page-btn:hover:not(:disabled) { color: var(--primary); background: #EEF2FF; }
+  .ic-page-btn:hover:not(:disabled) { color: var(--primary); background: var(--primary-soft); }
   .ic-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .ic-page-num {
     width: 32px; height: 32px; border-radius: var(--radius);
@@ -503,7 +497,7 @@ const styles = `
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     font-family: var(--font); transition: all 0.15s;
   }
-  .ic-page-num:hover { color: var(--primary); background: #EEF2FF; }
+  .ic-page-num:hover { color: var(--primary); background: var(--primary-soft); }
   .ic-page-num.ic-active { background: var(--primary); color: #fff; }
 
   .ic-overlay {
@@ -528,7 +522,7 @@ const styles = `
     width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center; font-size: 18px;
   }
-  .ic-modal-icon-success { background: #ECFDF5; color: #059669; }
+  .ic-modal-icon-success { background: var(--success-soft); color: var(--success); }
   .ic-modal-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0; }
   .ic-modal-sub { font-size: 12.5px; color: var(--t-muted); margin: 2px 0 0; }
   .ic-modal-close {
@@ -544,7 +538,7 @@ const styles = `
     padding: 14px 24px; border-top: 1px solid var(--border-soft); gap: 8px;
   }
   .ic-sql-block {
-    background: #1E293B; color: #A5F3FC; padding: 16px; border-radius: var(--radius);
+    background: var(--t-base); color: color-mix(in srgb, var(--info) 40%, transparent); padding: 16px; border-radius: var(--radius);
     font-size: 11.5px; font-family: var(--font-mono); overflow-x: auto;
     max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
     line-height: 1.6; margin: 0;
@@ -557,7 +551,7 @@ const styles = `
   .ic-btn-primary { background: var(--primary); color: #fff; }
   .ic-btn-primary:hover { background: var(--primary-dark); }
   .ic-btn-ghost { background: var(--bg-muted); color: var(--t-muted); border: none; }
-  .ic-btn-ghost:hover { color: var(--primary); background: #EEF2FF; }
+  .ic-btn-ghost:hover { color: var(--primary); background: var(--primary-soft); }
 
   .ic-spin { animation: ic-spin 1s linear infinite; display: inline-block; }
   @keyframes ic-spin { to { transform: rotate(360deg); } }

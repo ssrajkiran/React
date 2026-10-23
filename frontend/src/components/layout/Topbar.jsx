@@ -23,6 +23,7 @@ const PAGE_TITLES = {
   "/holidays": "Holidays",
   "/admin/roles": "Roles",
   "/profile": "My Profile",
+  "/settings": "Personalization",
 };
 
 function getPageTitle(pathname) {
@@ -52,7 +53,13 @@ function getAvatarColor(name) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-export default function Topbar({ onMenuClick, sidebarOpen }) {
+export default function Topbar({
+  onMenuClick,
+  sidebarOpen,
+  onSearchClick,
+  onThemeToggle,
+  isDark,
+}) {
   const [userName, setUserName] = useState("User");
   const [userInitials, setUserInitials] = useState("U");
   const [role, setRole] = useState("employee");
@@ -68,7 +75,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
         try {
           const payload = JSON.parse(atob(token.split(".")[1]));
           setRole(payload.role || "employee");
-        } catch (_) {}
+        } catch { /* malformed token — keep default role */ }
         const res = await api.get("/auth/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -96,7 +103,8 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("permissions");
     window.location.href = "/";
   };
 
@@ -135,6 +143,26 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
       </div>
 
       <div className="topbar-actions">
+        <button
+          className="topbar-search-btn"
+          title="Search (Ctrl + K)"
+          aria-label="Open global search"
+          onClick={() => onSearchClick?.()}
+        >
+          <i className="bi bi-search"></i>
+          <span>Search…</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+
+        <button
+          className="topbar-icon-btn"
+          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          onClick={() => onThemeToggle?.()}
+        >
+          <i className={`bi ${isDark ? "bi-sun" : "bi-moon-stars"}`}></i>
+        </button>
+
         <NotificationBell />
 
         <button
@@ -211,7 +239,10 @@ export default function Topbar({ onMenuClick, sidebarOpen }) {
               </button>
             </li>
             <li>
-              <button className="dropdown-item">
+              <button
+                className="dropdown-item"
+                onClick={() => navigate("/settings")}
+              >
                 <span className="dropdown-icon-wrap" style={{ background: "var(--warning-soft)", color: "var(--warning)" }}>
                   <i className="bi bi-gear"></i>
                 </span>

@@ -1,4 +1,4 @@
-export default function({list,onClose}){
+export default function LeaveHistoryModal({list,onClose}){
 
 return(
 <div style={{
@@ -14,7 +14,7 @@ return(
 }}>
 
 <div style={{
- background:"#fff",
+ background:"var(--bg-card)",
  width:"80%",
  maxWidth:520,
  maxHeight:"calc(100vh - 32px)",
@@ -24,10 +24,10 @@ return(
  overflow:"auto"
 }}>
 
-<h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700}}>My Leave History</h3>
+<h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:"var(--t-base)"}}>My Leave History</h3>
 
 {list.map((l,i)=>(
-<div key={i} style={{padding:"8px 0",borderBottom:"1px solid #E5E7EB",fontSize:13}}>
+<div key={i} style={{padding:"8px 0",borderBottom:"1px solid var(--border-soft)",fontSize:13,color:"var(--t-base)"}}>
 {l.from} → {l.to} | {l.type}
 </div>
 ))}
@@ -35,12 +35,12 @@ return(
 <button onClick={onClose} style={{
  marginTop:16,
  padding:"9px 18px",
- background:"#fff",
- border:"1px solid #E5E7EB",
+ background:"var(--bg-muted)",
+ border:"1px solid var(--border)",
  borderRadius:8,
  fontSize:13,
  fontWeight:600,
- color:"#6B7280",
+ color:"var(--t-muted)",
  cursor:"pointer"
 }}>Close</button>
 

@@ -2,6 +2,7 @@ import { Routes, Route, useLocation, Outlet } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RouteLoader from "./components/layout/RouteLoader";
 
 import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
@@ -27,6 +28,7 @@ import AdminTimesheet from "./pages/Timesheet/AdminTimesheetList.jsx";
 import Roles from "./pages/Roles/Roles.jsx";
 import DynamicPage from "./pages/Dynamic/DynamicPage.jsx";
 import IntercomList from "./pages/Intercom/IntercomList.jsx";
+import Settings from "./pages/Settings/Settings.jsx";
 
 
 export default function App() {
@@ -46,6 +48,7 @@ export default function App() {
       />
 
       {/* ✅ KEY FIX HERE */}
+      <RouteLoader />
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -77,6 +80,7 @@ export default function App() {
           <Route path="/intercom" element={<IntercomList />} />
           <Route path="/employee/intercom" element={<IntercomList />} />
           <Route path="/admin/intercom" element={<IntercomList />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
     </>

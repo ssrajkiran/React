@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -16,6 +17,13 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-  include: ["react-data-table-component"]
-}
+    include: ["react-data-table-component"]
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+    css: false,
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
+  },
 })

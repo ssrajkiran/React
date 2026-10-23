@@ -1,7 +1,5 @@
 import Select from "react-select";
 
-const getComputedVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-
 const ssStyles = {
   control: (base, state) => ({
     ...base,
@@ -12,8 +10,10 @@ const ssStyles = {
     fontFamily: "var(--font)",
     minHeight: "40px",
     background: "var(--bg-card)",
+    color: "var(--t-base)",
     "&:hover": { borderColor: "var(--primary)" },
   }),
+  input: (base) => ({ ...base, color: "var(--t-base)" }),
   menu: (base) => ({
     ...base,
     borderRadius: "8px",
@@ -21,6 +21,7 @@ const ssStyles = {
     boxShadow: "var(--shadow-lg)",
     zIndex: 9999,
     overflow: "hidden",
+    backgroundColor: "var(--bg-card)",
   }),
   menuPortal: (base) => ({ ...base, zIndex: 9999 }),
   menuList: (base) => ({
@@ -28,6 +29,7 @@ const ssStyles = {
     maxHeight: "200px",
     overflowY: "auto",
     padding: "4px",
+    backgroundColor: "var(--bg-card)",
   }),
   option: (base, state) => ({
     ...base,

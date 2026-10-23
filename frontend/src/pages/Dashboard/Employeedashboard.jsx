@@ -575,4 +575,10 @@ const styles = `
     }
     .db-stat-value { font-size: 22px; }
   }
+
+  /* ===== CARD GLOSS (subtle top sheen, theme-aware) ===== */
+  .db-card, .db-balance-card {
+    background: var(--gloss-sheen), var(--bg-card);
+    box-shadow: inset 0 1px 0 var(--gloss-hi), var(--shadow-card);
+  }
 `;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import api from "../../api";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -73,11 +73,11 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
     <div className="hcp-root">
       {/* Month nav */}
       <div className="hcp-nav">
-        <button className="hcp-nav-btn" onClick={() => setViewDate(subMonths(viewDate, 1))}>
+        <button className="hcp-nav-btn" title="Previous month" onClick={() => setViewDate(subMonths(viewDate, 1))}>
           <i className="bi bi-chevron-left" />
         </button>
         <span className="hcp-month-label">{format(viewDate, "MMMM yyyy")}</span>
-        <button className="hcp-nav-btn" onClick={() => setViewDate(addMonths(viewDate, 1))}>
+        <button className="hcp-nav-btn" title="Next month" onClick={() => setViewDate(addMonths(viewDate, 1))}>
           <i className="bi bi-chevron-right" />
         </button>
       </div>
@@ -133,7 +133,7 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
               ? ` — ${holidayMap[value]}`
               : ` — ${specialWeekendLabel(new Date(value + "T00:00:00"))}`}
           </span>
-          <button className="hcp-clear" onClick={() => onChange("")}>
+          <button className="hcp-clear" title="Clear date" onClick={() => onChange("")}>
             <i className="bi bi-x" />
           </button>
         </div>
@@ -424,16 +424,16 @@ const generateSummary = () => {
 
   // ── CONFIG ─────────────────────────────────────────────────────────────────
   const typeConfig = {
-    leave:      { label: "Leave",      color: "#5048E5", bg: "#EEF2FF" },
-    compoff:    { label: "Comp Off",   color: "#0891B2", bg: "#ECFEFF" },
-    permission: { label: "Permission", color: "#D97706", bg: "#FFFBEB" },
-    present:    { label: "Present",    color: "#059669", bg: "#ECFDF5" },
+    leave:      { label: "Leave",      color: "var(--primary)", bg: "var(--primary-soft)" },
+    compoff:    { label: "Comp Off",   color: "var(--info)", bg: "var(--info-soft)" },
+    permission: { label: "Permission", color: "var(--warning)", bg: "var(--warning-soft)" },
+    present:    { label: "Present",    color: "var(--success)", bg: "var(--success-soft)" },
   };
 
   const statusConfig = {
-    approved: { label: "Approved", color: "#059669", bg: "#ECFDF5" },
-    pending:  { label: "Pending",  color: "#D97706", bg: "#FFFBEB" },
-    rejected: { label: "Rejected", color: "#DC2626", bg: "#FEF2F2" },
+    approved: { label: "Approved", color: "var(--success)", bg: "var(--success-soft)" },
+    pending:  { label: "Pending",  color: "var(--warning)", bg: "var(--warning-soft)" },
+    rejected: { label: "Rejected", color: "var(--danger)", bg: "var(--danger-soft)" },
   };
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
@@ -452,14 +452,6 @@ const generateSummary = () => {
           </nav>
         </div>
         <div className="al-header-actions">
-          <div className="al-view-toggle">
-            <button className={`al-toggle-btn ${viewMode === "calendar" ? "active" : ""}`} onClick={() => setViewMode("calendar")}>
-              <i className="bi bi-calendar3" /> Calendar
-            </button>
-            <button className={`al-toggle-btn ${viewMode === "list" ? "active" : ""}`} onClick={() => setViewMode("list")}>
-              <i className="bi bi-list-ul" /> List
-            </button>
-          </div>
           <button className="al-summary-btn" onClick={generateSummary}>
             <i className="bi bi-bar-chart-line" /> Summary
           </button>
@@ -475,6 +467,17 @@ const generateSummary = () => {
 
       {/* MAIN CARD */}
       <div className="al-card">
+        <div className="al-toolbar">
+          <div className="al-view-toggle">
+            <button className={`al-toggle-btn ${viewMode === "calendar" ? "active" : ""}`} onClick={() => setViewMode("calendar")}>
+              <i className="bi bi-calendar3" /> Calendar
+            </button>
+            <button className={`al-toggle-btn ${viewMode === "list" ? "active" : ""}`} onClick={() => setViewMode("list")}>
+              <i className="bi bi-list-ul" /> List
+            </button>
+          </div>
+          <span className="al-count">{events.length} record{events.length === 1 ? "" : "s"}</span>
+        </div>
         {viewMode === "calendar" ? (
           <>
             <div className="al-legend">
@@ -489,6 +492,7 @@ const generateSummary = () => {
                 <i className="bi bi-info-circle" /> Click an event to view &amp; manage
               </span>
             </div>
+            <div className="al-calendar-wrap">
             <Calendar
               selectable={false}
               localizer={localizer}
@@ -503,7 +507,7 @@ const generateSummary = () => {
               })}
               components={{
                 event: ({ event }) => {
-                  const s = statusConfig[event.status] || { color: "#6B7280", bg: "#F3F4F6" };
+                  const s = statusConfig[event.status] || { color: "var(--t-muted)", bg: "var(--bg-muted)" };
                   const t = typeConfig[event.type] || {};
                   return (
                     <div className="al-cal-event">
@@ -517,6 +521,7 @@ const generateSummary = () => {
                 },
               }}
             />
+            </div>
           </>
         ) : (
           <div className="al-table-wrap">
@@ -539,11 +544,12 @@ const generateSummary = () => {
                       )}
                     </th>
                   ))}
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedEvents.length === 0 ? (
-                  <tr><td colSpan={7} className="al-empty">No records found</td></tr>
+                  <tr><td colSpan={8} className="al-empty">No records found</td></tr>
                 ) : sortedEvents.map((ev, idx) => (
                   <tr key={idx} className="al-tr" onClick={() => handleSelectEvent(ev)}>
                     <td>
@@ -565,6 +571,17 @@ const generateSummary = () => {
                       <span className="al-status-pill" style={{ background: statusConfig[ev.status]?.bg, color: statusConfig[ev.status]?.color }}>
                         {statusConfig[ev.status]?.label || ev.status}
                       </span>
+                    </td>
+                    <td>
+                      <div className="al-actions">
+                        <button
+                          className="al-action-btn al-action-view"
+                          title="View & Manage"
+                          onClick={(e) => { e.stopPropagation(); handleSelectEvent(ev); }}
+                        >
+                          <i className="bi bi-eye" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -590,7 +607,7 @@ const generateSummary = () => {
                   <p className="ul-modal-sub">View and manage leave request</p>
                 </div>
               </div>
-              <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
             </div>
 
             <div className="ul-modal-divider" />
@@ -699,7 +716,7 @@ const generateSummary = () => {
                   <p className="ul-modal-sub">Submit a leave request for an employee</p>
                 </div>
               </div>
-              <button className="ul-modal-close" onClick={() => setShowApplyModal(false)}><i className="bi bi-x-lg" /></button>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowApplyModal(false)}><i className="bi bi-x-lg" /></button>
             </div>
 
             <div className="ul-modal-divider" />
@@ -911,7 +928,7 @@ const generateSummary = () => {
                   <p className="ul-modal-sub">Current Financial Year</p>
                 </div>
               </div>
-              <button className="ul-modal-close" onClick={() => setShowSummaryModal(false)}><i className="bi bi-x-lg" /></button>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowSummaryModal(false)}><i className="bi bi-x-lg" /></button>
             </div>
 
             <div className="ul-modal-divider" />
@@ -971,23 +988,27 @@ const styles = `
   /* ── page layout ── */
   .al-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
   .al-page-title { font-size:24px; font-weight:800; color:var(--t-base); margin:0; letter-spacing:-0.02em; }
-  .al-breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--t-muted); }
+  .al-breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--t-muted); margin-top:6px; }
   .al-breadcrumb a { color:var(--primary); text-decoration:none; font-weight:500; }
   .al-breadcrumb a:hover { text-decoration:underline; }
   .al-breadcrumb i { font-size:10px; opacity:0.5; }
   .al-header-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .al-view-toggle { display:flex; background:var(--bg-muted); border-radius:var(--radius); padding:3px; gap:2px; }
-  .al-toggle-btn { display:flex; align-items:center; gap:6px; padding:6px 14px; border:none; border-radius:calc(var(--radius) - 2px); font-size:12.5px; font-weight:600; color:var(--t-muted); background:transparent; cursor:pointer; transition:all 0.15s; font-family:var(--font); }
-  .al-toggle-btn.active { background:var(--bg-card); color:var(--primary); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
-  .al-toggle-btn:hover:not(.active) { color:var(--t-base); }
+  .al-view-toggle { display:flex; background:var(--bg-muted); border-radius:var(--radius); padding:3px; gap:4px; }
+  .al-toggle-btn { display:flex; align-items:center; gap:6px; padding:6px 14px; border:none; border-radius:6px; font-size:12.5px; font-weight:600; color:var(--t-muted); background:transparent; cursor:pointer; transition:all 0.15s; font-family:var(--font); }
+  .al-toggle-btn.active { background:var(--primary); color:#fff; box-shadow:var(--shadow-sm); }
+  .al-toggle-btn:hover:not(.active) { color:var(--primary); background:var(--bg-hover); }
   .al-apply-btn, .al-summary-btn { display:flex; align-items:center; gap:7px; padding:9px 18px; border:none; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s,transform 0.15s; letter-spacing:0.01em; font-family:var(--font); }
   .al-apply-btn { background:var(--primary); color:#fff; }
   .al-apply-btn:hover { background:var(--primary-dark); transform:translateY(-1px); }
   .al-summary-btn { background:var(--bg-muted); color:var(--t-muted); }
   .al-summary-btn:hover { background:var(--bg-card); color:var(--t-base); }
-  .al-card { background:var(--bg-card); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); }
+  /* Card — module-wise layout (full-bleed card + toolbar strip) */
+  .al-card { background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); overflow:hidden; }
+  .al-toolbar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border-soft); gap:12px; }
+  .al-count { font-size:12px; font-weight:600; color:var(--t-muted); background:var(--bg-card); box-shadow:var(--shadow-sm); border-radius:20px; padding:3px 10px; white-space:nowrap; }
+  .al-calendar-wrap { padding:14px 20px 20px; }
   /* ── legend ── */
-  .al-legend { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+  .al-legend { display:flex; align-items:center; gap:16px; padding:12px 20px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; }
   .al-legend-item { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--t-muted); font-weight:500; }
   .al-legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .al-legend-sep { flex:1; }
@@ -1000,11 +1021,11 @@ const styles = `
   /* ── rbc overrides ── */
   .rbc-calendar { font-family:var(--font) !important; }
   .rbc-toolbar button { border-radius:var(--radius) !important; font-size:12.5px !important; font-weight:600 !important; color:var(--t-muted) !important; border-color:transparent !important; background:var(--bg-muted) !important; }
-  .rbc-toolbar button.rbc-active, .rbc-toolbar button:hover { background:var(--primary-light) !important; color:var(--primary) !important; border-color:transparent !important; box-shadow:none !important; }
+  .rbc-toolbar button.rbc-active, .rbc-toolbar button:hover { background:var(--primary-soft) !important; color:var(--primary) !important; border-color:transparent !important; box-shadow:none !important; }
   .rbc-toolbar-label { font-size:14px !important; font-weight:700 !important; color:var(--t-base) !important; }
   .rbc-header { font-size:11px !important; font-weight:700 !important; color:var(--t-muted) !important; text-transform:uppercase !important; letter-spacing:0.06em !important; padding:8px 0 !important; border-color:var(--border-soft) !important; }
-  .rbc-today { background:var(--primary-light) !important; }
-  .rbc-off-range-bg { background:#fafafa !important; }
+  .rbc-today { background:var(--primary-soft) !important; }
+  .rbc-off-range-bg { background:var(--bg-muted) !important; }
   .rbc-date-cell { font-size:12px !important; color:var(--t-muted) !important; font-weight:500 !important; }
   .rbc-date-cell.rbc-now a { color:var(--primary) !important; font-weight:700 !important; }
   .rbc-month-row, .rbc-month-view, .rbc-day-bg, .rbc-header { border-color:var(--border-soft) !important; }
@@ -1012,18 +1033,23 @@ const styles = `
   .al-table-wrap { overflow-x:auto; }
   .al-table { width:100%; border-collapse:collapse; font-size:13px; }
   .al-table thead tr { border-bottom:1px solid var(--border-soft); }
-  .al-table th { padding:10px 14px; font-size:11px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; }
+  .al-table th { padding:10px 14px; font-size:10.5px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; background:var(--bg-card); }
   .al-th-sortable { cursor:pointer; user-select:none; }
   .al-th-sortable:hover { color:var(--primary); }
-  .al-sort-icon { margin-left:4px; font-size:10px; }
+  .al-sort-icon { margin-left:4px; font-size:9px; }
   .al-table td { padding:11px 14px; border-bottom:1px solid var(--border-soft); vertical-align:middle; color:var(--t-base); }
-  .al-tr { cursor:pointer; transition:background 0.12s; }
-  .al-tr:hover td { background:var(--bg); }
+  .al-tr { cursor:pointer; transition:background 0.1s; }
+  .al-tr:hover td { background:var(--bg-hover); }
   .al-tr:last-child td { border-bottom:none; }
   .al-empty { text-align:center; color:var(--t-muted); padding:32px; }
+  /* ── action buttons (module-wise) ── */
+  .al-actions { display:flex; align-items:center; gap:6px; }
+  .al-action-btn { width:30px; height:30px; border:none; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:all 0.15s; }
+  .al-action-view { background:var(--primary-soft); color:var(--primary); }
+  .al-action-view:hover { background:var(--primary); color:#fff; }
   /* ── shared atoms ── */
   .al-emp-cell { display:flex; align-items:center; gap:9px; }
-  .al-avatar { width:30px; height:30px; border-radius:50%; background:var(--primary-light); color:var(--primary); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .al-avatar { width:30px; height:30px; border-radius:50%; background:var(--primary-soft); color:var(--primary); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .al-avatar-lg { width:36px; height:36px; font-size:14px; }
   .al-date { font-size:12.5px; color:var(--t-muted); font-variant-numeric:tabular-nums; }
   .al-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--t-muted); }
@@ -1041,7 +1067,7 @@ const styles = `
   .al-modal-header-left { display:flex; flex-direction:column; gap:5px; }
   .al-modal-title { font-size:14px; font-weight:700; color:var(--t-base); margin:0; letter-spacing:-0.01em; }
   .al-modal-close { width:30px; height:30px; border-radius:var(--radius); background:var(--bg-muted); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--t-muted); font-size:13px; transition:all 0.15s; flex-shrink:0; }
-  .al-modal-close:hover { background:#FEF2F2; color:#DC2626; }
+  .al-modal-close:hover { background: var(--danger-soft); color: var(--danger); }
   .al-modal-body { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px; }
   .al-modal-body::-webkit-scrollbar { width:4px; }
   .al-modal-body::-webkit-scrollbar-track { background:transparent; }
@@ -1075,17 +1101,17 @@ const styles = `
   .al-btn-primary:hover:not(:disabled) { background:var(--primary-dark); }
   .al-btn-ghost { background:var(--bg-muted); border-color:transparent; color:var(--t-muted); }
   .al-btn-ghost:hover { background:var(--bg); }
-  .al-btn-success { background:#ECFDF5; color:#059669; }
-  .al-btn-success:hover:not(:disabled) { background:#059669; color:#fff; }
-  .al-btn-danger { background:#FEF2F2; color:#DC2626; }
-  .al-btn-danger:hover:not(:disabled) { background:#DC2626; color:#fff; }
+  .al-btn-success { background:var(--success-soft); color:var(--success); }
+  .al-btn-success:hover:not(:disabled) { background:var(--success); color:#fff; }
+  .al-btn-danger { background:var(--danger-soft); color:var(--danger); }
+  .al-btn-danger:hover:not(:disabled) { background:var(--danger); color:#fff; }
   /* ── misc ── */
   .al-spin { animation:al-spin 0.7s linear infinite; display:inline-block; }
   @keyframes al-spin { to { transform:rotate(360deg); } }
   .al-info-text { font-size:12.5px; color:var(--t-muted); margin:0; display:flex; align-items:center; gap:6px; }
-  .al-hint-text { font-size:11.5px; color:#0891B2; margin:0; display:flex; align-items:center; gap:5px; background:#ECFEFF; padding:8px 10px; border-radius:var(--radius); }
-  .al-empty-compoff { display:flex; align-items:flex-start; gap:10px; padding:12px; background:#FFFBEB; border-radius:var(--radius); font-size:12.5px; color:#92400E; line-height:1.5; }
-  .al-empty-compoff i { font-size:16px; margin-top:1px; flex-shrink:0; color:#D97706; }
+  .al-hint-text { font-size:11.5px; color:var(--info); margin:0; display:flex; align-items:center; gap:5px; background:var(--info-soft); padding:8px 10px; border-radius:var(--radius); }
+  .al-empty-compoff { display:flex; align-items:flex-start; gap:10px; padding:12px; background:var(--warning-soft); border-radius:var(--radius); font-size:12.5px; color:var(--warning); line-height:1.5; }
+  .al-empty-compoff i { font-size:16px; margin-top:1px; flex-shrink:0; color:var(--warning); }
 
   /* ════════════════════════════════════════════════
      HOLIDAY CALENDAR PICKER
@@ -1105,21 +1131,21 @@ const styles = `
   .hcp-regular-weekend { color:#d1d5db; }
   .hcp-selectable { cursor:pointer; }
   /* holiday = red tint */
-  .hcp-holiday { background:#FEF2F2; color:#DC2626; font-weight:700; }
-  .hcp-holiday.hcp-selectable:hover { background:#DC2626; color:#fff; }
+  .hcp-holiday { background:var(--danger-soft); color:var(--danger); font-weight:700; }
+  .hcp-holiday.hcp-selectable:hover { background:var(--danger); color:#fff; }
   /* special weekend = amber tint */
-  .hcp-special-weekend { background:#FFFBEB; color:#D97706; font-weight:700; }
-  .hcp-special-weekend.hcp-selectable:hover { background:#D97706; color:#fff; }
+  .hcp-special-weekend { background:var(--warning-soft); color:var(--warning); font-weight:700; }
+  .hcp-special-weekend.hcp-selectable:hover { background:var(--warning); color:#fff; }
   /* selected ring */
-  .hcp-selected.hcp-holiday { background:#DC2626 !important; color:#fff !important; outline:2.5px solid #DC2626; outline-offset:2px; }
-  .hcp-selected.hcp-special-weekend { background:#D97706 !important; color:#fff !important; outline:2.5px solid #D97706; outline-offset:2px; }
+  .hcp-selected.hcp-holiday { background:var(--danger) !important; color:#fff !important; outline:2.5px solid var(--danger); outline-offset:2px; }
+  .hcp-selected.hcp-special-weekend { background:var(--warning) !important; color:#fff !important; outline:2.5px solid var(--warning); outline-offset:2px; }
   /* today underline */
   .hcp-today .hcp-day-num { text-decoration:underline; text-underline-offset:2px; }
   .hcp-day-num { position:relative; line-height:1; }
   /* dots */
   .hcp-dot { width:4px; height:4px; border-radius:50%; position:absolute; bottom:3px; }
-  .hcp-dot-holiday { background:#DC2626; }
-  .hcp-dot-sw { background:#D97706; }
+  .hcp-dot-holiday { background:var(--danger); }
+  .hcp-dot-sw { background:var(--warning); }
   /* selected banner */
   .hcp-selected-info { display:flex; align-items:center; gap:8px; padding:8px 11px; background:var(--primary-light); border-radius:var(--radius); font-size:12.5px; color:var(--primary); }
   .hcp-selected-info i { font-size:13px; flex-shrink:0; }
@@ -1138,8 +1164,8 @@ const styles = `
   .hcp-list-selected { background:var(--bg) !important; }
   .hcp-list-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
   .hcp-list-date { font-weight:700; white-space:nowrap; min-width:88px; }
-  .hcp-list-holiday .hcp-list-date { color:#DC2626; }
-  .hcp-list-sw .hcp-list-date { color:#D97706; }
+  .hcp-list-holiday .hcp-list-date { color:var(--danger); }
+  .hcp-list-sw .hcp-list-date { color:var(--warning); }
   .hcp-list-name { flex:1; color:var(--t-muted); font-size:11.5px; }
   .hcp-list-check { color:var(--primary); font-size:13px; flex-shrink:0; }
   /* no dates */

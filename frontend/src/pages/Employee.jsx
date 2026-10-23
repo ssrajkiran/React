@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import LeaveCalendar from "../components/LeaveCalendar";
 import api from "../api";
 
@@ -46,7 +46,7 @@ export default function Employee() {
     <div style={container}>
       <div style={header}>
         Leave Management System
-        <button onClick={() => { localStorage.clear(); location = "/" }} style={logout}>
+        <button onClick={() => { localStorage.removeItem("token"); localStorage.removeItem("permissions"); location = "/" }} style={logout}>
           Logout
         </button>
       </div>
@@ -159,14 +159,14 @@ const container = { minHeight: "100vh", background: "var(--bg)" };
 const gap = { minHeight: "5vh" };
 const header = { background: "#1f2937", color: "#fff", padding: 15, display: "flex", justifyContent: "space-between" };
 const main = { display: "flex", gap: 20, padding: 20 };
-const card = { flex: 1, background: "#fff", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20)" };
+const card = { flex: 1, background: "var(--bg-card)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20)" };
 const grid = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 };
 const input = { width: "100%", padding: 10, marginTop: 5, border: "none", background: "var(--bg-muted)", borderRadius: "var(--radius)", outline: "none" };
 const textarea = { width: "100%", height: 80, marginTop: 15, border: "none", background: "var(--bg-muted)", borderRadius: "var(--radius)", outline: "none" };
-const btn = { marginTop: 15, width: "100%", padding: 10, background: "#2563eb", color: "#fff", border: "none" };
+const btn = { marginTop: 15, width: "100%", padding: 10, background: "var(--primary)", color: "#fff", border: "none" };
 const logout = { background: "#dc2626", color: "#fff", border: "none", padding: "5px 10px" };
 
 /* Table Styles */
 const table = { width: "100%", borderCollapse: "collapse", marginTop: 15, fontFamily: "Arial, sans-serif", fontSize: 14 };
-const th = { borderBottom: "1px solid var(--border-soft)", padding: 8, background: "#EEF2FF", color: "#5048E5", textAlign: "left" };
+const th = { borderBottom: "1px solid var(--border-soft)", padding: 8, background: "var(--primary-soft)", color: "var(--primary)", textAlign: "left" };
 const td = { borderBottom: "1px solid var(--border-soft)", padding: 8 };

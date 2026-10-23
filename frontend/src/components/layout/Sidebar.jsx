@@ -43,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }) {
         arr.forEach((p) => { map[p.menu_key] = p; });
         setPermissions(map);
       }
-    } catch (err) {}
+    } catch { /* ignore malformed stored permissions */ }
 
     // Then fetch fresh permissions from API (always, on every navigation)
     const fetchPermissions = async () => {
@@ -91,7 +91,8 @@ export default function Sidebar({ isOpen, onClose }) {
   const dashPath = role === "admin" ? "/admin" : "/employee";
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("permissions");
     window.location.href = "/";
   };
 
@@ -383,6 +384,19 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
         </div>
       )}
+
+      {/* Preferences — visible to every user */}
+      <div className="sidebar-section" style={{ marginTop: 8 }}>
+        <div className="sidebar-section-label">Preferences</div>
+        <Link
+          to="/settings"
+          className={`menu-item ${isActive("/settings", true) ? "active" : ""}`}
+          onClick={handleNavClick}
+        >
+          <i className="bi bi-palette menu-icon"></i>
+          Personalization
+        </Link>
+      </div>
 
       {/* Sidebar Footer — User Card */}
       <div className="sidebar-footer">

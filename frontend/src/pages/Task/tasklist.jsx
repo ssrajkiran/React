@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import AppLayoutImport from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
@@ -189,8 +189,8 @@ export default function TaskList() {
   };
 
   const statusConfig = {
-    "In Progress": { color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
-    "Completed":   { color: "#059669", bg: "#ECFDF5", border: "#6ee7b7" },
+    "In Progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 40%, transparent)" },
+    "Completed":   { color: "var(--success)", bg: "var(--success-soft)", border: "#6ee7b7" },
   };
 
   return (
@@ -231,7 +231,7 @@ export default function TaskList() {
               onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
             />
             {searchText && (
-              <button className="tl-search-clear" onClick={() => setSearchText("")}>
+              <button className="tl-search-clear" title="Clear search" onClick={() => setSearchText("")}>
                 <i className="bi bi-x" />
               </button>
             )}
@@ -364,16 +364,16 @@ export default function TaskList() {
               Page {page} of {totalPages} · {filtered.length} results
             </span>
             <div className="tl-page-btns">
-              <button className="tl-page-btn" disabled={page === 1} onClick={() => setPage(1)}><i className="bi bi-chevron-double-left" /></button>
-              <button className="tl-page-btn" disabled={page === 1} onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left" /></button>
+              <button className="tl-page-btn" title="First page" disabled={page === 1} onClick={() => setPage(1)}><i className="bi bi-chevron-double-left" /></button>
+              <button className="tl-page-btn" title="Previous page" disabled={page === 1} onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left" /></button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const p = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
                 return (
                   <button key={p} className={`tl-page-btn ${p === page ? "active" : ""}`} onClick={() => setPage(p)}>{p}</button>
                 );
               })}
-              <button className="tl-page-btn" disabled={page === totalPages} onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right" /></button>
-              <button className="tl-page-btn" disabled={page === totalPages} onClick={() => setPage(totalPages)}><i className="bi bi-chevron-double-right" /></button>
+              <button className="tl-page-btn" title="Next page" disabled={page === totalPages} onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right" /></button>
+              <button className="tl-page-btn" title="Last page" disabled={page === totalPages} onClick={() => setPage(totalPages)}><i className="bi bi-chevron-double-right" /></button>
             </div>
           </div>
         )}
@@ -415,7 +415,7 @@ export default function TaskList() {
                     <p className="ul-modal-sub">Update module details below</p>
                   </div>
                 </div>
-                <button className="ul-modal-close" onClick={() => setShowEditModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="ul-modal-close" title="Close" onClick={() => setShowEditModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
               <div className="ul-modal-body">
@@ -504,7 +504,7 @@ export default function TaskList() {
                     <p className="ul-modal-sub">Add new modules to a project</p>
                   </div>
                 </div>
-                <button className="ul-modal-close" onClick={() => setShowCreateModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="ul-modal-close" title="Close" onClick={() => setShowCreateModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
               <div className="ul-modal-body">
@@ -527,6 +527,7 @@ export default function TaskList() {
                       </div>
                       <button
                         className={`ul-btn ${isAddingProject ? "ul-btn-danger" : "ul-btn-ghost"}`}
+                        title={isAddingProject ? "Cancel new project" : "Add new project"}
                         onClick={() => setIsAddingProject(!isAddingProject)}
                         style={{ flexShrink: 0 }}
                       >
@@ -559,7 +560,7 @@ export default function TaskList() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "var(--t-muted)" }}>Module {idx + 1}</span>
                         {createFormData.tasks.length > 1 && (
-                          <button className="ul-btn ul-btn-ghost" onClick={() => handleRemoveTaskRow(idx)} style={{ padding: "3px 8px", fontSize: 12, color: "#DC2626" }}>
+                          <button className="ul-btn ul-btn-ghost" title="Remove module" onClick={() => handleRemoveTaskRow(idx)} style={{ padding: "3px 8px", fontSize: 12, color: "var(--danger)" }}>
                             <i className="bi bi-x" />
                           </button>
                         )}
@@ -630,30 +631,64 @@ export default function TaskList() {
   );
 }
 
-// ── React Select custom styles matching design system ──
+// ── React Select custom styles matching design system (theme/accent aware) ──
 const selectStyles = {
   control: (base, state) => ({
     ...base,
-    borderColor: "transparent",
+    borderColor: state.isFocused ? "var(--primary)" : "transparent",
     backgroundColor: "var(--bg-muted)",
-    boxShadow: state.isFocused ? "0 0 0 3px rgba(80,72,229,0.18)" : "none",
+    boxShadow: state.isFocused ? "0 0 0 3px var(--primary-ring)" : "none",
     borderRadius: "8px",
     fontSize: "13px",
     fontFamily: "var(--font)",
+    color: "var(--t-base)",
     minHeight: "38px",
-    "&:hover": { borderColor: "transparent" },
+    "&:hover": { borderColor: "var(--primary)" },
   }),
-  menu: (base) => ({ ...base, borderRadius: "10px", fontSize: "13px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 9999 }),
+  input: (base) => ({ ...base, color: "var(--t-base)" }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: "10px",
+    fontSize: "13px",
+    backgroundColor: "var(--bg-card)",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+    zIndex: 9999,
+    overflow: "hidden",
+  }),
+  menuList: (base) => ({ ...base, backgroundColor: "var(--bg-card)" }),
   option: (base, state) => ({
     ...base,
-    backgroundColor: state.isSelected ? "#5048E5" : state.isFocused ? "#EEF2FF" : "transparent",
-    color: state.isSelected ? "#fff" : "#111827",
+    backgroundColor: state.isSelected
+      ? "var(--primary)"
+      : state.isFocused
+        ? "var(--primary-soft)"
+        : "transparent",
+    color: state.isSelected ? "#fff" : "var(--t-base)",
     fontWeight: state.isSelected ? 600 : 400,
   }),
-  multiValue: (base) => ({ ...base, backgroundColor: "#EEF2FF", borderRadius: "6px" }),
-  multiValueLabel: (base) => ({ ...base, color: "#5048E5", fontWeight: 600, fontSize: "12px" }),
-  multiValueRemove: (base) => ({ ...base, color: "#5048E5", "&:hover": { backgroundColor: "#5048E5", color: "#fff" } }),
-  placeholder: (base) => ({ ...base, color: "#9CA3AF", fontSize: "13px" }),
+  multiValue: (base) => ({
+    ...base,
+    backgroundColor: "var(--primary-soft)",
+    borderRadius: "6px",
+  }),
+  multiValueLabel: (base) => ({
+    ...base,
+    color: "var(--primary)",
+    fontWeight: 600,
+    fontSize: "12px",
+  }),
+  multiValueRemove: (base) => ({
+    ...base,
+    color: "var(--primary)",
+    "&:hover": { backgroundColor: "var(--primary)", color: "#fff" },
+  }),
+  placeholder: (base) => ({ ...base, color: "var(--t-light)", fontSize: "13px" }),
+  singleValue: (base) => ({ ...base, color: "var(--t-base)", fontWeight: 500 }),
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base) => ({ ...base, color: "var(--t-muted)", padding: "4px" }),
+  clearIndicator: (base) => ({ ...base, color: "var(--t-muted)", padding: "4px" }),
+  loadingMessage: (base) => ({ ...base, color: "var(--t-muted)" }),
+  noOptionsMessage: (base) => ({ ...base, color: "var(--t-muted)" }),
 };
 
 // ================= STYLES =================
@@ -735,7 +770,7 @@ const styles = `
   .tl-sort-icon { margin-left: 4px; font-size: 9px; }
   .tl-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .tl-tr { transition: background 0.1s; }
-  .tl-tr:hover td { background: #fafbff; }
+  .tl-tr:hover td { background: var(--bg-hover); }
   .tl-tr:last-child td { border-bottom: none; }
   .tl-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .tl-nowrap { white-space: nowrap; }
@@ -745,12 +780,12 @@ const styles = `
   .tl-project-pill {
     display: inline-block; font-size: 11.5px; font-weight: 700;
     padding: 3px 10px; border-radius: 20px;
-    background: #EEF2FF; color: #5048E5; white-space: nowrap;
+    background: var(--primary-soft); color: var(--primary); white-space: nowrap;
   }
   .tl-assignees { display: flex; flex-wrap: wrap; gap: 4px; }
   .tl-assignee-chip {
     font-size: 11px; font-weight: 600; padding: 2px 8px;
-    background: #ECFEFF; color: #0891B2; border-radius: 20px; white-space: nowrap;
+    background: var(--info-soft); color: var(--info); border-radius: 20px; white-space: nowrap;
   }
   .tl-assignee-more {
     font-size: 11px; font-weight: 700; padding: 2px 7px;
@@ -766,25 +801,25 @@ const styles = `
   .tl-hrs-split { display: flex; flex-direction: column; gap: 4px; }
   .tl-hrs-card {
     display: flex; align-items: center; justify-content: space-between;
-    background: #F9FAFB; border-radius: 6px;
+    background: var(--bg-muted); border-radius: 6px;
     padding: 4px 8px; gap: 10px;
     box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
   }
-  .tl-hrs-card:hover { background: #EEF2FF; }
+  .tl-hrs-card:hover { background: var(--primary-soft); }
   .tl-hrs-card-left { display: flex; align-items: center; gap: 6px; }
   .tl-hrs-card-right { display: flex; align-items: center; gap: 4px; }
   .tl-hrs-avatar {
     width: 20px; height: 20px; border-radius: 50%;
-    background: linear-gradient(135deg, #5048E5, #818CF8);
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
     color: #fff; font-size: 9px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .tl-hrs-user { font-size: 11px; font-weight: 500; color: var(--t-muted); }
-  .tl-hrs-card-right i { font-size: 9px; color: #5048E5; }
+  .tl-hrs-card-right i { font-size: 9px; color: var(--primary); }
   .tl-hrs-val { font-size: 11px; font-weight: 700; color: var(--t-base); }
   .tl-hrs-total-row {
     display: flex; align-items: center; gap: 5px;
-    font-size: 10.5px; font-weight: 700; color: #5048E5;
+    font-size: 10.5px; font-weight: 700; color: var(--primary);
     border-top: 1px solid var(--border-soft); padding-top: 4px; margin-top: 2px;
   }
   .tl-hrs-total-row i { font-size: 11px; }
@@ -798,12 +833,12 @@ const styles = `
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; cursor: pointer; transition: all 0.15s;
   }
-  .tl-action-edit { background: #EEF2FF; color: #5048E5; }
-  .tl-action-edit:hover { background: #5048E5; color: #fff; }
+  .tl-action-edit { background: var(--primary-soft); color: var(--primary); }
+  .tl-action-edit:hover { background: var(--primary); color: #fff; }
   .tl-action-timesheet { background: var(--success-soft); color: var(--success); }
   .tl-action-timesheet:hover { background: var(--success); color: #fff; }
-  .tl-action-delete { background: #FEF2F2; color: #DC2626; }
-  .tl-action-delete:hover { background: #DC2626; color: #fff; }
+  .tl-action-delete { background: var(--danger-soft); color: var(--danger); }
+  .tl-action-delete:hover { background: var(--danger); color: #fff; }
 
   /* States */
   .tl-state-cell { padding: 0 !important; border: none !important; }
@@ -877,7 +912,7 @@ const styles = `
     background: var(--bg-muted); display: flex; align-items: center; justify-content: center;
     cursor: pointer; color: var(--t-muted); font-size: 13px; transition: all 0.15s; flex-shrink: 0;
   }
-  .tl-modal-close:hover { background: #FEF2F2; color: #DC2626; }
+  .tl-modal-close:hover { background: var(--danger-soft); color: var(--danger); }
 
   .tl-modal-body {
     flex: 1; overflow-y: auto; padding: 20px;
@@ -925,11 +960,11 @@ const styles = `
   .tl-project-row .tl-select { flex: 1; }
   .tl-toggle-new-btn {
     width: 38px; height: 38px; border-radius: var(--radius);
-    background: #ECFDF5; color: #059669; font-size: 16px; font-weight: 700;
+    background: var(--success-soft); color: var(--success); font-size: 16px; font-weight: 700;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: all 0.15s; flex-shrink: 0;
   }
-  .tl-toggle-new-btn.cancel { background: #FEF2F2; color: #DC2626; }
+  .tl-toggle-new-btn.cancel { background: var(--danger-soft); color: var(--danger); }
   .tl-toggle-new-btn:hover { filter: brightness(0.92); }
 
   /* Radio group */
@@ -961,22 +996,22 @@ const styles = `
   .tl-add-row-btn {
     display: flex; align-items: center; gap: 5px;
     padding: 5px 12px;
-    background: #ECFDF5; color: #059669; border-radius: var(--radius);
+    background: var(--success-soft); color: var(--success); border-radius: var(--radius);
     font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s;
     font-family: var(--font);
   }
-  .tl-add-row-btn:hover { background: #059669; color: #fff; }
+  .tl-add-row-btn:hover { background: var(--success); color: #fff; }
   .tl-remove-btn {
     width: 24px; height: 24px; border-radius: 6px;
-    background: #FEF2F2; color: #DC2626;
+    background: var(--danger-soft); color: var(--danger);
     font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
   }
-  .tl-remove-btn:hover { background: #DC2626; color: #fff; }
+  .tl-remove-btn:hover { background: var(--danger); color: #fff; }
 
   /* Delete confirm */
   .tl-delete-warn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; text-align: center; }
-  .tl-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: #FEF2F2; color: #DC2626; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+  .tl-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--danger-soft); color: var(--danger); font-size: 22px; display: flex; align-items: center; justify-content: center; }
   .tl-delete-msg { font-size: 14px; font-weight: 600; color: var(--t-base); margin: 0; }
   .tl-delete-task { font-size: 12.5px; color: var(--t-muted); margin: 0; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
 
@@ -993,6 +1028,6 @@ const styles = `
   .tl-btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
   .tl-btn-ghost { background: var(--bg-muted); border-color: transparent; color: var(--t-muted); }
   .tl-btn-ghost:hover { background: var(--bg); }
-  .tl-btn-danger { background: #FEF2F2; color: #DC2626; }
-  .tl-btn-danger:hover:not(:disabled) { background: #DC2626; color: #fff; }
+  .tl-btn-danger { background: var(--danger-soft); color: var(--danger); }
+  .tl-btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; }
 `;

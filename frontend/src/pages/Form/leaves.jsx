@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import api from "../../api";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -60,18 +60,18 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
   for (let i = 1; i <= rem; i++) cells.push({ day: i, otherMonth: true, disabled: true });
 
   const TYPE_STYLE = {
-    holiday: { bg: "#ECFDF5", color: "#059669", dot: "#059669" },
-    sunday: { bg: "#FEF2F2", color: "#DC2626", dot: "#DC2626" },
-    "saturday-off": { bg: "#FFFBEB", color: "#D97706", dot: "#D97706" },
-    workday: { bg: "transparent", color: "#D1D5DB", dot: null },
+    holiday: { bg: "var(--success-soft)", color: "var(--success)", dot: "var(--success)" },
+    sunday: { bg: "var(--danger-soft)", color: "var(--danger)", dot: "var(--danger)" },
+    "saturday-off": { bg: "var(--warning-soft)", color: "var(--warning)", dot: "var(--warning)" },
+    workday: { bg: "transparent", color: "var(--border)", dot: null },
   };
 
   return (
     <div className="hcal">
       <div className="hcal-nav">
-        <button className="hcal-nav-btn" onClick={() => navigate(-1)}><i className="bi bi-chevron-left" /></button>
+        <button className="hcal-nav-btn" title="Previous month" onClick={() => navigate(-1)}><i className="bi bi-chevron-left" /></button>
         <span className="hcal-title">{MONTHS[month]} {year}</span>
-        <button className="hcal-nav-btn" onClick={() => navigate(1)}><i className="bi bi-chevron-right" /></button>
+        <button className="hcal-nav-btn" title="Next month" onClick={() => navigate(1)}><i className="bi bi-chevron-right" /></button>
       </div>
       <div className="hcal-grid">
         <div className="hcal-dow">
@@ -86,7 +86,7 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
             const clickable = !c.disabled && !c.otherMonth;
             return (
               <div key={i} className={["hcal-day-cell", c.otherMonth || c.disabled ? "hcal-disabled" : "", isSelected ? "hcal-selected" : ""].join(" ").trim()}
-                style={isSelected ? {} : { background: c.otherMonth ? "transparent" : ts.bg, color: c.otherMonth ? "#E5E7EB" : ts.color }}
+                style={isSelected ? {} : { background: c.otherMonth ? "transparent" : ts.bg, color: c.otherMonth ? "var(--border)" : ts.color }}
                 title={c.label || ""} onClick={() => clickable && onSelect(c.ds === selected ? "" : c.ds)}>
                 {c.day}
                 {ts.dot && !c.otherMonth && !isSelected && <span className="hcal-dot" style={{ background: ts.dot }} />}
@@ -96,9 +96,9 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
         </div>
       </div>
       <div className="hcal-legend">
-        <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "#059669" }} /> Public Holiday</div>
-        <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "#DC2626" }} /> Sunday</div>
-        <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "#D97706" }} /> 2nd / 4th Sat</div>
+        <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "var(--success)" }} /> Public Holiday</div>
+        <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "var(--danger)" }} /> Sunday</div>
+        <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "var(--warning)" }} /> 2nd / 4th Sat</div>
       </div>
     </div>
   );
@@ -238,15 +238,15 @@ export default function Leaves() {
   };
 
   const typeConfig = {
-    leave: { label: "Leave", color: "#5048E5", bg: "#EEF2FF" },
-    compoff: { label: "Comp Off", color: "#0891B2", bg: "#ECFEFF" },
-    permission: { label: "Permission", color: "#D97706", bg: "#FFFBEB" },
-    present: { label: "Present on Holiday", color: "#059669", bg: "#ECFDF5" },
+    leave: { label: "Leave", color: "var(--primary)", bg: "var(--primary-soft)" },
+    compoff: { label: "Comp Off", color: "var(--info)", bg: "var(--info-soft)" },
+    permission: { label: "Permission", color: "var(--warning)", bg: "var(--warning-soft)" },
+    present: { label: "Present on Holiday", color: "var(--success)", bg: "var(--success-soft)" },
   };
   const statusConfig = {
-    approved: { label: "Approved", color: "#059669", bg: "#ECFDF5" },
-    pending: { label: "Pending", color: "#D97706", bg: "#FFFBEB" },
-    rejected: { label: "Rejected", color: "#DC2626", bg: "#FEF2F2" },
+    approved: { label: "Approved", color: "var(--success)", bg: "var(--success-soft)" },
+    pending: { label: "Pending", color: "var(--warning)", bg: "var(--warning-soft)" },
+    rejected: { label: "Rejected", color: "var(--danger)", bg: "var(--danger-soft)" },
   };
   const typeIcons = { leave: "bi-calendar-x", compoff: "bi-arrow-left-right", permission: "bi-clock", present: "bi-person-check" };
   const modalTitle = isViewMode ? `${typeConfig[formData.leave_type]?.label || "Leave"} Details` : formData.id ? "Edit Request" : "New Request";
@@ -278,7 +278,6 @@ export default function Leaves() {
   });
 
   const formatDate = (d) => { try { return format(new Date(d), "dd MMM yyyy"); } catch { return "—"; } };
-  const formatTime = (d) => { try { return format(new Date(d), "hh:mm a"); } catch { return "—"; } };
 
   return (
     <AppLayout>
@@ -286,14 +285,17 @@ export default function Leaves() {
 
       <div className="lv-page-header">
         <div>
-          <h1 className="lv-page-title">Attendance</h1>
+          <h5 className="lv-page-title">Attendance</h5>
           <nav className="lv-breadcrumb">
             <Link to="/employee/dashboard">Dashboard</Link>
             <i className="bi bi-chevron-right" />
             <span>Attendance</span>
           </nav>
         </div>
-        <div className="lv-header-actions">
+      </div>
+
+      <div className="lv-card">
+        <div className="lv-toolbar">
           <div className="lv-view-toggle">
             <button className={`lv-toggle-btn ${viewMode === "calendar" ? "active" : ""}`} onClick={() => setViewMode("calendar")}>
               <i className="bi bi-calendar3" /> Calendar
@@ -302,13 +304,13 @@ export default function Leaves() {
               <i className="bi bi-list-ul" /> List
             </button>
           </div>
-          <button className="btn btn-primary btn-md" onClick={() => { setFormData(blankForm()); setCompoffEligible([]); setIsViewMode(false); setShowModal(true); }}>
-            <i className="bi bi-plus-lg" /> Apply Leave
-          </button>
+          <div className="lv-toolbar-right">
+            <span className="lv-count">{events.length} record{events.length === 1 ? "" : "s"}</span>
+            <button className="lv-apply-btn" onClick={() => { setFormData(blankForm()); setCompoffEligible([]); setIsViewMode(false); setShowModal(true); }}>
+              <i className="bi bi-plus-lg" /> Apply Leave
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="lv-card">
         {viewMode === "calendar" ? (
           <>
             <div className="lv-legend">
@@ -321,13 +323,15 @@ export default function Leaves() {
               <div className="lv-legend-sep" />
               <span className="lv-legend-hint"><i className="bi bi-info-circle" /> Click a date to apply · Click an event to view</span>
             </div>
-            <Calendar selectable localizer={localizer} events={events} startAccessor="start" endAccessor="end"
-              style={{ height: 600 }} onSelectSlot={handleSelectSlot} onSelectEvent={handleSelectEvent}
-              eventPropGetter={(event) => {
-                const color = event.status === "approved" ? "#059669" : event.status === "rejected" ? "#DC2626" : "#D97706";
-                return { style: { backgroundColor: color, color: "#fff", borderRadius: "6px", border: "none", fontSize: "12px", fontWeight: 600 } };
-              }}
-            />
+            <div className="lv-calendar-wrap">
+              <Calendar selectable localizer={localizer} events={events} startAccessor="start" endAccessor="end"
+                style={{ height: 600 }} onSelectSlot={handleSelectSlot} onSelectEvent={handleSelectEvent}
+                eventPropGetter={(event) => {
+                  const color = event.status === "approved" ? "var(--success)" : event.status === "rejected" ? "var(--danger)" : "var(--warning)";
+                  return { style: { backgroundColor: color, color: "#fff", borderRadius: "6px", border: "none", fontSize: "12px", fontWeight: 600 } };
+                }}
+              />
+            </div>
           </>
         ) : (
           <div className="lv-table-wrap">
@@ -383,11 +387,11 @@ export default function Leaves() {
                       </td>
                       <td>
                         <div className="lv-actions">
-                          <button className="btn btn-icon-sm btn-outline" title="View" onClick={() => handleSelectEvent(ev)}>
+                          <button className="lv-action-btn lv-view-btn" title="View" onClick={() => handleSelectEvent(ev)}>
                             <i className="bi bi-eye" />
                           </button>
                           {ev.status !== "approved" && (
-                            <button className="btn btn-icon-sm btn-outline-danger" title="Edit" onClick={() => { handleSelectEvent(ev); setIsViewMode(false); }}>
+                            <button className="lv-action-btn lv-edit-btn" title="Edit" onClick={() => { handleSelectEvent(ev); setIsViewMode(false); }}>
                               <i className="bi bi-pencil" />
                             </button>
                           )}
@@ -418,7 +422,7 @@ export default function Leaves() {
                     <p className="ul-modal-sub">{isViewMode ? "View request details" : "Submit a leave request"}</p>
                   </div>
                 </div>
-                <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+                <button className="ul-modal-close" title="Close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
               </div>
 
               <div className="ul-modal-divider" />
@@ -697,24 +701,28 @@ export default function Leaves() {
 }
 
 const styles = `
-  .lv-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
+  .lv-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
   .lv-page-title { font-size:24px; font-weight:800; letter-spacing:-0.02em; color:var(--t-base); margin:0; }
   .lv-breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--t-muted); margin-top:6px; }
   .lv-breadcrumb a { color:var(--primary); text-decoration:none; font-weight:500; }
   .lv-breadcrumb a:hover { text-decoration:underline; }
   .lv-breadcrumb i { font-size:10px; opacity:0.5; }
-  .lv-header-actions { display:flex; align-items:center; gap:10px; }
-  .lv-view-toggle { display:flex; border-radius:var(--radius); overflow:hidden; }
-  .lv-toggle-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; border:none; background:var(--bg-card); font-size:12.5px; font-weight:600; color:var(--t-muted); cursor:pointer; transition:all 0.15s; font-family:var(--font); }
-  .lv-toggle-btn:hover { background:var(--bg); }
-  .lv-toggle-btn.active { background:var(--primary-light); color:var(--primary); }
-  .lv-toggle-btn i { font-size:13px; }
-  .lv-apply-btn { display:flex; align-items:center; gap:7px; padding:9px 18px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius); font-size:14px; font-weight:600; cursor:pointer; transition:all 0.15s; font-family:var(--font); }
+  .lv-apply-btn { display:flex; align-items:center; gap:7px; padding:9px 18px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s, transform 0.15s; font-family:var(--font); }
   .lv-apply-btn:hover { background:var(--primary-dark); transform:translateY(-1px); }
   .lv-apply-btn i { font-size:14px; }
 
-  .lv-card { background:var(--bg-card); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); }
-  .lv-legend { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+  /* Card — module-wise layout (full-bleed card + toolbar strip) */
+  .lv-card { background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); overflow:hidden; }
+  .lv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border-soft); gap:12px; }
+  .lv-count { font-size:12px; font-weight:600; color:var(--t-muted); background:var(--bg-card); box-shadow:var(--shadow-sm); border-radius:20px; padding:3px 10px; white-space:nowrap; }
+  .lv-toolbar-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
+  .lv-view-toggle { display:flex; gap:4px; background:var(--bg-muted); border-radius:var(--radius); padding:3px; }
+  .lv-toggle-btn { display:flex; align-items:center; gap:6px; padding:6px 14px; border:none; background:transparent; border-radius:6px; font-size:12.5px; font-weight:600; color:var(--t-muted); cursor:pointer; transition:all 0.15s; font-family:var(--font); }
+  .lv-toggle-btn:hover:not(.active) { color:var(--primary); background:var(--bg-hover); }
+  .lv-toggle-btn.active { background:var(--primary); color:#fff; box-shadow:var(--shadow-sm); }
+  .lv-toggle-btn i { font-size:13px; }
+  .lv-legend { display:flex; align-items:center; gap:16px; padding:12px 20px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; }
+  .lv-calendar-wrap { padding:14px 20px 20px; }
   .lv-legend-item { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--t-muted); font-weight:500; }
   .lv-legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .lv-legend-sep { flex:1; }
@@ -722,39 +730,42 @@ const styles = `
 
   .rbc-calendar { font-family:var(--font) !important; }
   .rbc-toolbar button { border-radius:var(--radius) !important; font-size:12.5px !important; font-weight:600 !important; color:var(--t-muted) !important; border-color:transparent !important; background:var(--bg-muted) !important; }
-  .rbc-toolbar button.rbc-active, .rbc-toolbar button:hover { background:var(--primary-light) !important; color:var(--primary) !important; box-shadow:none !important; }
+  .rbc-toolbar button.rbc-active, .rbc-toolbar button:hover { background:var(--primary-soft) !important; color:var(--primary) !important; box-shadow:none !important; }
   .rbc-toolbar-label { font-size:14px !important; font-weight:700 !important; color:var(--t-base) !important; }
   .rbc-header { font-size:11px !important; font-weight:700 !important; color:var(--t-muted) !important; text-transform:uppercase !important; letter-spacing:0.06em !important; padding:8px 0 !important; border-color:var(--border-soft) !important; }
-  .rbc-today { background:var(--primary-light) !important; }
-  .rbc-off-range-bg { background:#fafafa !important; }
+  .rbc-today { background:var(--primary-soft) !important; }
+  .rbc-off-range-bg { background:var(--bg-muted) !important; }
   .rbc-date-cell { font-size:12px !important; color:var(--t-muted) !important; font-weight:500 !important; }
   .rbc-date-cell.rbc-now a { color:var(--primary) !important; font-weight:700 !important; }
-  .rbc-day-bg:hover { background:#f5f6ff !important; cursor:pointer; }
+  .rbc-day-bg:hover { background: var(--bg-hover) !important; cursor:pointer; }
   .rbc-month-row, .rbc-month-view, .rbc-day-bg, .rbc-header { border-color:var(--border-soft) !important; }
 
   .lv-table-wrap { overflow-x:auto; }
-  .lv-table { width:100%; border-collapse:collapse; font-size:14px; }
+  .lv-table { width:100%; border-collapse:collapse; font-size:13px; }
   .lv-table thead tr { border-bottom:1px solid var(--border-soft); }
-  .lv-table th { padding:12px 14px; font-size:12px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; }
+  .lv-table th { padding:10px 14px; font-size:10.5px; font-weight:700; color:var(--t-muted); text-transform:uppercase; letter-spacing:0.06em; text-align:left; white-space:nowrap; background:var(--bg-card); }
   .lv-th-sortable { cursor:pointer; user-select:none; }
   .lv-th-sortable:hover { color:var(--primary); }
-  .lv-sort-icon { font-size:10px; margin-left:4px; }
-  .lv-table td { padding:12px 14px; border-bottom:1px solid var(--border-soft); vertical-align:middle; color:var(--t-base); }
-  .lv-tr { transition:background 0.12s; }
-  .lv-tr:hover { background:var(--primary-light); }
+  .lv-sort-icon { font-size:9px; margin-left:4px; }
+  .lv-table td { padding:11px 14px; border-bottom:1px solid var(--border-soft); vertical-align:middle; color:var(--t-base); }
+  .lv-tr { transition:background 0.1s; }
+  .lv-tr:hover td { background:var(--bg-hover); }
+  .lv-tr:last-child td { border-bottom:none; }
   .lv-date-cell { display:flex; flex-direction:column; gap:2px; }
-  .lv-date-main { font-size:14px; font-weight:500; }
-  .lv-date-sub { font-size:12px; color:var(--t-muted); }
-  .lv-duration { font-size:14px; font-weight:600; color:var(--t-base); }
-  .lv-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:var(--t-muted); }
+  .lv-date-main { font-size:13px; font-weight:500; }
+  .lv-date-sub { font-size:11.5px; color:var(--t-muted); }
+  .lv-duration { font-size:13px; font-weight:600; color:var(--t-base); }
+  .lv-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; color:var(--t-muted); }
   .lv-muted { color:var(--t-muted); }
   .lv-type-pill, .lv-status-pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:0.02em; white-space:nowrap; }
   .lv-status-pill-sm { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:20px; letter-spacing:0.04em; width:fit-content; }
   .lv-status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
   .lv-actions { display:flex; align-items:center; gap:6px; }
-  .lv-action-btn { width:32px; height:32px; border:none; border-radius:var(--radius); background:var(--bg-muted); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--t-muted); transition:all 0.15s; }
-  .lv-view-btn:hover { background:#EEF2FF; color:var(--primary); }
-  .lv-edit-btn:hover { background:#FEF2F2; color:#DC2626; }
+  .lv-action-btn { width:30px; height:30px; border:none; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:all 0.15s; }
+  .lv-view-btn { background:var(--primary-soft); color:var(--primary); }
+  .lv-view-btn:hover { background:var(--primary); color:#fff; }
+  .lv-edit-btn { background:var(--danger-soft); color:var(--danger); }
+  .lv-edit-btn:hover { background:var(--danger); color:#fff; }
   .lv-empty-state { text-align:center; padding:48px 24px; }
   .lv-empty-icon { font-size:48px; color:var(--t-muted); opacity:0.4; display:block; margin-bottom:16px; }
   .lv-empty-state h3 { font-size:16px; font-weight:600; color:var(--t-base); margin:0 0 8px; }
@@ -776,16 +787,16 @@ const styles = `
   .lv-radio-group { display:flex; gap:8px; flex-wrap:wrap; }
   .lv-radio-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:var(--radius); font-size:13px; font-weight:500; color:var(--t-muted); cursor:pointer; transition:all 0.15s; user-select:none; background:var(--bg-muted); }
   .lv-radio-btn input[type="radio"] { display:none; }
-  .lv-radio-btn.active { background:var(--primary-light); color:var(--primary); font-weight:600; }
+  .lv-radio-btn.active { background:var(--primary-soft); color:var(--primary); font-weight:600; }
   .lv-radio-btn:has(input:disabled) { opacity:0.5; cursor:default; }
 
-  .lv-days-display { display:flex; align-items:center; gap:8px; padding:0 12px; background:var(--primary-light); border-radius:var(--radius); font-size:14px; font-weight:700; color:var(--primary); height:40px; }
+  .lv-days-display { display:flex; align-items:center; gap:8px; padding:0 12px; background:var(--primary-soft); border-radius:var(--radius); font-size:14px; font-weight:700; color:var(--primary); height:40px; }
   .lv-info-text { font-size:13px; color:var(--t-muted); margin:0; display:flex; align-items:center; gap:6px; }
-  .lv-hint-text { font-size:12px; color:#0891B2; margin:0; display:flex; align-items:center; gap:5px; background:#ECFEFF; padding:8px 10px; border-radius:var(--radius); }
-  .lv-empty-compoff { display:flex; align-items:flex-start; gap:10px; padding:12px; background:#FFFBEB; border-radius:var(--radius); font-size:13px; color:#92400E; line-height:1.5; }
-  .lv-empty-compoff i { font-size:16px; margin-top:1px; flex-shrink:0; color:#D97706; }
-  .lv-delete-icon-wrap { width:56px; height:56px; border-radius:50%; background:#FEF2F2; display:flex; align-items:center; justify-content:center; margin:0 auto; }
-  .lv-delete-icon-wrap i { font-size:24px; color:#DC2626; }
+  .lv-hint-text { font-size:12px; color:var(--info); margin:0; display:flex; align-items:center; gap:5px; background:var(--info-soft); padding:8px 10px; border-radius:var(--radius); }
+  .lv-empty-compoff { display:flex; align-items:flex-start; gap:10px; padding:12px; background:var(--warning-soft); border-radius:var(--radius); font-size:13px; color:var(--warning); line-height:1.5; }
+  .lv-empty-compoff i { font-size:16px; margin-top:1px; flex-shrink:0; color:var(--warning); }
+  .lv-delete-icon-wrap { width:56px; height:56px; border-radius:50%; background:var(--danger-soft); display:flex; align-items:center; justify-content:center; margin:0 auto; }
+  .lv-delete-icon-wrap i { font-size:24px; color:var(--danger); }
 
   /* View Modal Content */
   .lv-view-content { display:flex; flex-direction:column; gap:16px; }
@@ -806,13 +817,13 @@ const styles = `
   .hcal { border-radius:var(--radius); overflow:hidden; }
   .hcal-nav { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--bg-muted); }
   .hcal-nav-btn { width:28px; height:28px; border:none; border-radius:6px; background:var(--bg-card); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--t-muted); transition:all 0.12s; }
-  .hcal-nav-btn:hover { background:var(--primary-light); color:var(--primary); }
+  .hcal-nav-btn:hover { background:var(--primary-soft); color:var(--primary); }
   .hcal-title { font-size:13px; font-weight:700; color:var(--t-base); }
   .hcal-grid { padding:10px; }
   .hcal-dow { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:4px; }
-  .hcal-dow-cell { text-align:center; font-size:10px; font-weight:700; color:#9CA3AF; letter-spacing:0.05em; padding:3px 0; text-transform:uppercase; }
-  .hcal-dow-sun { color:#EF4444; }
-  .hcal-dow-sat { color:#F59E0B; }
+  .hcal-dow-cell { text-align:center; font-size:10px; font-weight:700; color:var(--t-light); letter-spacing:0.05em; padding:3px 0; text-transform:uppercase; }
+  .hcal-dow-sun { color:var(--danger); }
+  .hcal-dow-sat { color:var(--warning); }
   .hcal-days { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
   .hcal-day-cell { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:7px; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.12s; gap:2px; }
   .hcal-day-cell:hover:not(.hcal-disabled):not(.hcal-selected) { filter:brightness(0.92); transform:scale(1.06); }
@@ -822,6 +833,6 @@ const styles = `
   .hcal-legend { display:flex; gap:12px; flex-wrap:wrap; padding:8px 12px; border-top:1px solid var(--border-soft); background:var(--bg); }
   .hcal-leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--t-muted); font-weight:500; }
   .hcal-leg-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-  .lv-selected-date-chip { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--primary-light); border-radius:var(--radius); font-size:13px; font-weight:600; color:var(--primary); }
+  .lv-selected-date-chip { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--primary-soft); border-radius:var(--radius); font-size:13px; font-weight:600; color:var(--primary); }
   .ul-modal { border:none; border-radius:var(--radius-lg); box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); }
 `;

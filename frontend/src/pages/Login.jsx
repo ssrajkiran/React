@@ -76,7 +76,7 @@ const btn={
  width:"100%",
  marginTop:20,
  padding:10,
- background:"#4f46e5",
+    background:"#0D9488",
  color:"#fff",
  border:"none",
  borderRadius:5,

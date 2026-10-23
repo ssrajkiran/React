@@ -42,8 +42,8 @@ const css = `
     position: absolute; border-radius: 50%; pointer-events: none;
     filter: blur(60px);
   }
-  .vt-orb-1 { width: 300px; height: 300px; background: rgba(99,102,241,0.2); top: -80px; right: -60px; animation: vt-pulse 7s ease-in-out infinite; }
-  .vt-orb-2 { width: 220px; height: 220px; background: rgba(59,130,246,0.12); bottom: 10%; left: -50px; animation: vt-pulse 9s ease-in-out infinite reverse; }
+  .vt-orb-1 { width: 300px; height: 300px; background: rgba(45,212,191,0.2); top: -80px; right: -60px; animation: vt-pulse 7s ease-in-out infinite; }
+  .vt-orb-2 { width: 220px; height: 220px; background: rgba(20,184,166,0.12); bottom: 10%; left: -50px; animation: vt-pulse 9s ease-in-out infinite reverse; }
   .vt-orb-3 { width: 160px; height: 160px; background: rgba(168,85,247,0.1); top: 45%; right: 20%; animation: vt-pulse 11s ease-in-out infinite; }
 
   @keyframes vt-pulse {
@@ -77,7 +77,7 @@ const css = `
   }
   .vt-heading em {
     font-style: normal;
-    background: linear-gradient(135deg, #818CF8 0%, #C4B5FD 50%, #93C5FD 100%);
+    background: linear-gradient(135deg, #2DD4BF 0%, #5EEAD4 50%, #99F6E4 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -116,7 +116,7 @@ const css = `
     content: '';
     position: absolute; top: -3px; left: 50%; transform: translateX(-50%);
     width: 6px; height: 6px; border-radius: 50%;
-    background: #818CF8;
+    background: #2DD4BF;
   }
 
   @keyframes vt-rotate { to { transform: rotate(360deg); } }
@@ -156,7 +156,7 @@ const css = `
   .vt-clock-center {
     position: absolute;
     width: 10px; height: 10px; border-radius: 50%;
-    background: #818CF8;
+    background: #2DD4BF;
     box-shadow: 0 0 16px rgba(129,140,248,0.6);
     z-index: 2;
   }
@@ -185,7 +185,7 @@ const css = `
     font-size: 13px; flex-shrink: 0;
   }
   .vt-fc-icon-green { background: rgba(16,185,129,0.2); color: #6EE7B7; }
-  .vt-fc-icon-blue { background: rgba(59,130,246,0.2); color: #93C5FD; }
+  .vt-fc-icon-blue { background: rgba(20,184,166,0.2); color: #99F6E4; }
   .vt-fc-label { font-size: 10.5px; color: rgba(255,255,255,0.4); font-weight: 500; }
   .vt-fc-value { font-size: 14px; color: #fff; font-weight: 600; margin-top: 2px; }
 
@@ -198,7 +198,7 @@ const css = `
   .vt-stat { display: flex; align-items: center; gap: 6px; }
   .vt-stat-dot { width: 6px; height: 6px; border-radius: 50%; }
   .vt-stat-dot.green { background: #10B981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
-  .vt-stat-dot.blue { background: #3B82F6; box-shadow: 0 0 8px rgba(59,130,246,0.5); }
+  .vt-stat-dot.blue { background: #14B8A6; box-shadow: 0 0 8px rgba(20,184,166,0.5); }
   .vt-stat-label { font-size: 11px; color: rgba(255,255,255,0.3); font-weight: 500; }
 
   /* ═══ RIGHT PANEL — Integrated White Area ═══ */
@@ -240,10 +240,10 @@ const css = `
   .vt-lrow { display: flex; justify-content: space-between; align-items: center; }
   .vt-label { font-size: 14px; font-weight: 600; color: #374151; }
   .vt-forgot {
-    font-size: 12px; color: #4338CA; font-weight: 600;
+    font-size: 12px; color: #0F766E; font-weight: 600;
     cursor: pointer; transition: color 0.15s;
   }
-  .vt-forgot:hover { color: #3730A3; text-decoration: underline; }
+  .vt-forgot:hover { color: var(--primary-dark); text-decoration: underline; }
 
   .vt-iw {
     display: flex; align-items: center;
@@ -254,8 +254,8 @@ const css = `
     position: relative;
   }
   .vt-iw:focus-within {
-    border-color: #4338CA;
-    box-shadow: 0 0 0 3px rgba(67,56,202,0.08);
+    border-color: #0F766E;
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
     background: #fff;
   }
   .vt-iw .vt-icon {
@@ -263,7 +263,7 @@ const css = `
     padding: 0 14px; flex-shrink: 0;
     transition: color 0.2s;
   }
-  .vt-iw:focus-within .vt-icon { color: #4338CA; }
+  .vt-iw:focus-within .vt-icon { color: #0F766E; }
   .vt-iw input {
     flex: 1; border: none; outline: none;
     font-size: 14px; font-weight: 500; color: #0F1029;
@@ -280,12 +280,12 @@ const css = `
     display: flex; align-items: center;
     transition: color 0.15s;
   }
-  .vt-eye:hover { color: #4338CA; }
+  .vt-eye:hover { color: var(--primary-dark); }
 
   .vt-btn {
     width: 100%;
     padding: 14px 24px;
-    background: linear-gradient(135deg, #3730A3 0%, #5048E5 100%);
+    background: linear-gradient(135deg, #115E59 0%, #0D9488 100%);
     color: #fff; border: none; border-radius: 10px;
     font-size: 16px; font-weight: 600;
     display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -315,10 +315,10 @@ const css = `
 
   .vt-reg { text-align: center; font-size: 14px; color: #8B92B3; margin: 0; }
   .vt-reg a {
-    color: #4338CA; font-weight: 600; text-decoration: none;
+    color: #0F766E; font-weight: 600; text-decoration: none;
     transition: color 0.15s;
   }
-  .vt-reg a:hover { color: #3730A3; text-decoration: underline; }
+  .vt-reg a:hover { color: var(--primary-dark); text-decoration: underline; }
 
   .vt-foot {
     margin-top: 32px;
@@ -600,7 +600,7 @@ export default function Login() {
                   />
                   <button
                     type="button"
-                    className="vt-eye"
+                    className="vt-eye" title="Show/hide password"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
@@ -639,11 +639,11 @@ export default function Login() {
               style={{
                 width: "100%", marginTop: 16, padding: "12px 20px",
                 background: "#fff", border: "1.5px solid #E2E4ED", borderRadius: 10,
-                fontSize: 14, fontWeight: 600, color: "#4338CA", cursor: "pointer",
+                fontSize: 14, fontWeight: 600, color: "#0F766E", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 fontFamily: "'Poppins', sans-serif", transition: "all 0.2s",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4338CA"; e.currentTarget.style.background = "#F5F3FF"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#0F766E"; e.currentTarget.style.background = "#F0FDFA"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E2E4ED"; e.currentTarget.style.background = "#fff"; }}
             >
               <i className="bi bi-telephone" /> Intercom Directory
@@ -682,8 +682,8 @@ export default function Login() {
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{
-                  width: 40, height: 40, borderRadius: 10, background: "#EEF2FF",
-                  color: "#4338CA", fontSize: 18, display: "flex",
+                  width: 40, height: 40, borderRadius: 10, background: "#F0FDFA",
+                  color: "#0F766E", fontSize: 18, display: "flex",
                   alignItems: "center", justifyContent: "center",
                 }}>
                   <i className="bi bi-telephone" />
@@ -699,6 +699,7 @@ export default function Login() {
               </div>
               <button
                 onClick={() => setShowIntercom(false)}
+                title="Close"
                 style={{
                   width: 32, height: 32, borderRadius: 8, border: "1px solid #E8ECF1",
                   background: "transparent", display: "flex", alignItems: "center",
@@ -733,6 +734,7 @@ export default function Login() {
                 {intercomSearch && (
                   <button
                     onClick={() => { setIntercomSearch(""); setIntercomResults([]); setSelectedDept(""); }}
+                    title="Clear search"
                     style={{
                       background: "none", border: "none", cursor: "pointer",
                       color: "#A8AECA", padding: "0 14px", fontSize: 16,
@@ -781,13 +783,13 @@ export default function Login() {
                               border: "1.5px solid #E2E4ED", borderRadius: 12, padding: "16px 14px",
                               cursor: "pointer", transition: "all 0.2s", background: "#fff",
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4338CA"; e.currentTarget.style.background = "#F5F3FF"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(67,56,202,0.1)"; }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#0F766E"; e.currentTarget.style.background = "#F0FDFA"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(13,148,136,0.1)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E2E4ED"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
                           >
                             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                               <div style={{
-                                width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
-                                color: "#4338CA", fontSize: 14, fontWeight: 700, display: "flex",
+                                width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #F0FDFA, #CCFBF1)",
+                                color: "#0F766E", fontSize: 14, fontWeight: 700, display: "flex",
                                 alignItems: "center", justifyContent: "center", flexShrink: 0,
                               }}>
                                 <i className="bi bi-building" />
@@ -798,7 +800,7 @@ export default function Login() {
                             </div>
                             <div style={{
                               display: "inline-block", padding: "3px 10px", borderRadius: 6,
-                              fontSize: 12, fontWeight: 700, background: "#EEF2FF", color: "#5048E5",
+                              fontSize: 12, fontWeight: 700, background: "#F0FDFA", color: "#0D9488",
                             }}>
                               {rows.length} intercom{rows.length !== 1 ? "s" : ""}
                             </div>
@@ -815,12 +817,13 @@ export default function Login() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                     <button
                       onClick={() => setSelectedDept("")}
+                      title="Back to departments"
                       style={{
                         width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E2E4ED",
                         background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                        cursor: "pointer", color: "#4338CA", fontSize: 14, transition: "all 0.15s", flexShrink: 0,
+                        cursor: "pointer", color: "#0F766E", fontSize: 14, transition: "all 0.15s", flexShrink: 0,
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#F5F3FF"; e.currentTarget.style.borderColor = "#4338CA"; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#F0FDFA"; e.currentTarget.style.borderColor = "#0F766E"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#E2E4ED"; }}
                     >
                       <i className="bi bi-arrow-left" />
@@ -852,8 +855,8 @@ export default function Login() {
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                 <div style={{
                                   width: 30, height: 30, borderRadius: 8,
-                                  background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
-                                  color: "#5048E5", fontSize: 12, fontWeight: 700,
+                                  background: "linear-gradient(135deg, #F0FDFA, #CCFBF1)",
+                                  color: "#0D9488", fontSize: 12, fontWeight: 700,
                                   display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                                 }}>
                                   {row.name?.charAt(0)?.toUpperCase() || "?"}
@@ -865,7 +868,7 @@ export default function Login() {
                               <span style={{
                                 display: "inline-block", padding: "3px 10px", borderRadius: 6,
                                 fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-                                background: "#EEF2FF", color: "#5048E5", border: "1px solid #c7d2fe",
+                                background: "#F0FDFA", color: "#0D9488", border: "1px solid #99F6E4",
                               }}>
                                 {row.intercom}
                               </span>
@@ -904,8 +907,8 @@ export default function Login() {
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                 <div style={{
                                   width: 30, height: 30, borderRadius: 8,
-                                  background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)",
-                                  color: "#5048E5", fontSize: 12, fontWeight: 700,
+                                  background: "linear-gradient(135deg, #F0FDFA, #CCFBF1)",
+                                  color: "#0D9488", fontSize: 12, fontWeight: 700,
                                   display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                                 }}>
                                   {row.name?.charAt(0)?.toUpperCase() || "?"}
@@ -917,7 +920,7 @@ export default function Login() {
                               <span style={{
                                 display: "inline-block", padding: "3px 10px", borderRadius: 6,
                                 fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-                                background: "#EEF2FF", color: "#5048E5", border: "1px solid #c7d2fe",
+                                background: "#F0FDFA", color: "#0D9488", border: "1px solid #99F6E4",
                               }}>
                                 {row.intercom}
                               </span>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import api from "../api";
 
 export default function AdminDashboard() {
@@ -21,7 +21,7 @@ export default function AdminDashboard() {
 
       <div style={header}>
         Admin Dashboard
-        <button onClick={() => { localStorage.clear(); location = "/" }} style={logout}>Logout</button>
+        <button onClick={() => { localStorage.removeItem("token"); localStorage.removeItem("permissions"); location = "/" }} style={logout}>Logout</button>
       </div>
 
       <div style={main}>
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
 const container = { minHeight: "100vh", background: "var(--bg)" };
 const header = { background: "#1f2937", color: "#fff", padding: 15, display: "flex", justifyContent: "space-between", alignItems: "center" };
 const main = { padding: 20 };
-const card = { background: "#fff", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20)" };
+const card = { background: "var(--bg-card)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20)" };
 
 const table = {
   width: "100%",
@@ -99,8 +99,8 @@ const thTd = {
 };
 
 
-const rowEven = { background: "#EEF2FF" };
-const rowOdd = { background: "#ffffff" };
+const rowEven = { background: "var(--primary-soft)" };
+const rowOdd = { background: "var(--bg-card)" };
 
 const approveBtn = {
   padding: "5px 10px",

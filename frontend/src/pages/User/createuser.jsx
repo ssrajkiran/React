@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { useNavigate, Link } from "react-router-dom";
@@ -63,7 +63,7 @@ export default function CreateUser() {
         <div className={`sr-toast sr-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="sr-toast-close" onClick={() => setToast(null)}>
+          <button className="sr-toast-close" title="Close" onClick={() => setToast(null)}>
             <i className="bi bi-x" />
           </button>
         </div>
@@ -159,7 +159,7 @@ export default function CreateUser() {
                 />
                 <button
                   type="button"
-                  className="cu-pw-toggle"
+                  className="cu-pw-toggle" title="Show/hide password"
                   onClick={() => setShowPassword((v) => !v)}
                   tabIndex={-1}
                 >
@@ -234,8 +234,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
-  .sr-toast-success { background: #ECFDF5; color: #059669; }
-  .sr-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .sr-toast-success { background: var(--success-soft); color: var(--success); }
+  .sr-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .sr-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* ── Page header ── */
@@ -275,7 +275,7 @@ const styles = `
   .cu-form-heading { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
   .cu-form-icon {
     width: 44px; height: 44px; border-radius: var(--radius);
-    background: #EEF2FF; color: var(--primary); font-size: 20px; flex-shrink: 0;
+    background: var(--primary-soft); color: var(--primary); font-size: 20px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .cu-form-title { font-size: 14px; font-weight: 700; color: var(--t-base); margin: 0 0 3px; }
@@ -294,7 +294,7 @@ const styles = `
 
   /* ── Input variants ── */
   .cu-input { display: block; }
-  .cu-input-error { border-color: #EF4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.1) !important; }
+  .cu-input-error { border-color: var(--danger) !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.1) !important; }
   .cu-input-password { padding-right: 38px; }
 
   /* ── Password toggle ── */
@@ -316,7 +316,7 @@ const styles = `
   /* ── Field error ── */
   .cu-field-error {
     display: flex; align-items: center; gap: 5px;
-    font-size: 11.5px; font-weight: 600; color: #DC2626;
+    font-size: 11.5px; font-weight: 600; color: var(--danger);
   }
   .cu-field-error i { font-size: 11px; }
 
@@ -331,17 +331,17 @@ const styles = `
     cursor: pointer; transition: color 0.15s, background 0.15s;
     font-family: var(--font);
   }
-  .cu-back-btn:hover { color: var(--primary); background: #EEF2FF; }
+  .cu-back-btn:hover { color: var(--primary); background: var(--primary-soft); }
 
   .cu-save-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 9px 22px; background: #059669; color: #fff;
+    padding: 9px 22px; background: var(--success); color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font);
   }
-  .cu-save-btn:hover:not(:disabled) { background: #047857; transform: translateY(-1px); }
+  .cu-save-btn:hover:not(:disabled) { background: var(--success); transform: translateY(-1px); }
   .cu-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   /* ── Spin ── */

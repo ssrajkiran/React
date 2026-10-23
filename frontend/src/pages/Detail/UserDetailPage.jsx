@@ -5,6 +5,7 @@ import AppLayout from "../../components/layout/AppLayout";
 import Tabs from "../../components/ui/Tabs";
 import StatusBadge from "../../components/ui/StatusBadge";
 import EmptyState from "../../components/ui/EmptyState";
+import { PageLoader } from "../../components/ui/Loader";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -44,7 +45,9 @@ export default function UserDetailPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="empty-state"><div className="empty-state-icon"><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }}></i></div></div>
+        <div style={{ display: "flex", justifyContent: "center", padding: "60px 0" }}>
+          <PageLoader message="Gathering profile details" />
+        </div>
       </AppLayout>
     );
   }
@@ -52,7 +55,7 @@ export default function UserDetailPage() {
   if (!data?.user) {
     return (
       <AppLayout>
-        <EmptyState icon="bi-person-x" title="User not found" text="The user could not be loaded." action={<button className="btn btn-primary" onClick={() => navigate(-1)}>Go Back</button>} />
+        <EmptyState icon="bi-person-x" title="User not found" text="The user could not be loaded." action={<button className="btn btn-primary" onClick={() => navigate(-1)}><i className="bi bi-arrow-left" /> Go Back</button>} />
       </AppLayout>
     );
   }
@@ -73,7 +76,7 @@ export default function UserDetailPage() {
       {/* Hero */}
       <div className="detail-page">
         <div className="detail-hero">
-          <div className="detail-hero-icon" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)", color: "#fff", fontSize: 20 }}>
+          <div className="detail-hero-icon" style={{ background: "linear-gradient(135deg, var(--primary), #14B8A6)", color: "#fff", fontSize: 20 }}>
             {initials}
           </div>
           <div className="detail-hero-info">

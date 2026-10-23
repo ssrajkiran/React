@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
@@ -115,9 +115,9 @@ export default function TaskReport() {
   };
 
   const statusConfig = {
-    "In Progress": { color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
-    Completed: { color: "#059669", bg: "#ECFDF5", border: "#6ee7b7" },
-    Pending: { color: "#6B7280", bg: "#F3F4F6", border: "#D1D5DB" },
+    "In Progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 40%, transparent)" },
+    Completed: { color: "var(--success)", bg: "var(--success-soft)", border: "#6ee7b7" },
+    Pending: { color: "var(--t-muted)", bg: "var(--bg-muted)", border: "var(--border)" },
   };
 
   const formatDate = (d) => {
@@ -142,59 +142,6 @@ export default function TaskReport() {
         </div>
       </div>
 
-      {/* FILTER CARD */}
-      <div className="tr-filter-card">
-        <div className="tr-filter-header">
-          <div className="tr-filter-header-left">
-            <i className="bi bi-funnel tr-filter-icon" />
-            <span className="tr-filter-title">Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="tr-filter-badge">{activeFilterCount} active</span>
-            )}
-          </div>
-          {activeFilterCount > 0 && (
-            <button className="tr-clear-btn" onClick={handleClearFilters}>
-              <i className="bi bi-x-circle" /> Clear all
-            </button>
-          )}
-        </div>
-
-        <div className="tr-filter-row">
-          <div className="tr-filter-field">
-            <label className="tr-label">Project</label>
-            <SharedSelect
-              value={filters.project_id}
-              onChange={(val) => setFilters({ ...filters, project_id: val })}
-              options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
-              placeholder="All Projects"
-            />
-          </div>
-
-          <div className="tr-filter-field">
-            <label className="tr-label">Assigned To</label>
-            <SharedSelect
-              value={filters.assigned_to}
-              onChange={(val) => setFilters({ ...filters, assigned_to: val })}
-              options={users.map((u) => ({ value: u.id, label: u.name }))}
-              placeholder="All Users"
-            />
-          </div>
-
-          <div className="tr-filter-field">
-            <label className="tr-label">Status</label>
-            <SharedSelect
-              value={filters.status}
-              onChange={(val) => setFilters({ ...filters, status: val })}
-              options={[
-                { value: "In Progress", label: "In Progress" },
-                { value: "Completed", label: "Completed" },
-              ]}
-              placeholder="All Statuses"
-            />
-          </div>
-        </div>
-      </div>
-
       {/* DATA CARD */}
       <div className="tr-card">
         {/* Toolbar */}
@@ -209,7 +156,7 @@ export default function TaskReport() {
               onChange={(e) => { setSearchText(e.target.value); }}
             />
             {searchText && (
-              <button className="tr-search-clear" onClick={() => setSearchText("")}>
+              <button className="tr-search-clear" title="Clear search" onClick={() => setSearchText("")}>
                 <i className="bi bi-x" />
               </button>
             )}
@@ -225,6 +172,59 @@ export default function TaskReport() {
                 {grouped.every((g) => expandedProjects[g.project_name]) ? "Collapse All" : "Expand All"}
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Filters strip (module-wise) */}
+        <div className="tr-filter-strip">
+          <div className="tr-filter-header">
+            <div className="tr-filter-header-left">
+              <i className="bi bi-funnel tr-filter-icon" />
+              <span className="tr-filter-title">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="tr-filter-badge">{activeFilterCount} active</span>
+              )}
+            </div>
+            {activeFilterCount > 0 && (
+              <button className="tr-clear-btn" onClick={handleClearFilters}>
+                <i className="bi bi-x-circle" /> Clear all
+              </button>
+            )}
+          </div>
+
+          <div className="tr-filter-row">
+            <div className="tr-filter-field">
+              <label className="tr-label">Project</label>
+              <SharedSelect
+                value={filters.project_id}
+                onChange={(val) => setFilters({ ...filters, project_id: val })}
+                options={projects.map((p) => ({ value: p.id, label: p.project_name }))}
+                placeholder="All Projects"
+              />
+            </div>
+
+            <div className="tr-filter-field">
+              <label className="tr-label">Assigned To</label>
+              <SharedSelect
+                value={filters.assigned_to}
+                onChange={(val) => setFilters({ ...filters, assigned_to: val })}
+                options={users.map((u) => ({ value: u.id, label: u.name }))}
+                placeholder="All Users"
+              />
+            </div>
+
+            <div className="tr-filter-field">
+              <label className="tr-label">Status</label>
+              <SharedSelect
+                value={filters.status}
+                onChange={(val) => setFilters({ ...filters, status: val })}
+                options={[
+                  { value: "In Progress", label: "In Progress" },
+                  { value: "Completed", label: "Completed" },
+                ]}
+                placeholder="All Statuses"
+              />
+            </div>
           </div>
         </div>
 
@@ -343,16 +343,13 @@ const styles = `
   .tr-breadcrumb a:hover { text-decoration: underline; }
   .tr-breadcrumb i { font-size: 10px; opacity: 0.5; }
 
-  /* Filter card */
-  .tr-filter-card {
-    background: var(--bg-card);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
-    padding: 16px 20px; margin-bottom: 16px;
+  /* Filters strip (inside main card) */
+  .tr-filter-strip {
+    padding: 14px 20px; border-bottom: 1px solid var(--border-soft);
   }
   .tr-filter-header {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
   .tr-filter-header-left { display: flex; align-items: center; gap: 8px; }
   .tr-filter-icon { color: var(--t-muted); font-size: 13px; }

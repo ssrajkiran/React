@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../api";
 import StatusBadge from "../ui/StatusBadge";
 import EmptyState from "../ui/EmptyState";
+import { PageLoader } from "../ui/Loader";
 import { fmtHrs, fmtDateLong, getInitials } from "../../utils";
 
 export default function TimesheetDetailModal({ timesheetId, onClose, onNavigate }) {
@@ -30,11 +31,11 @@ export default function TimesheetDetailModal({ timesheetId, onClose, onNavigate 
         {/* Header */}
         <div className="ul-modal-header">
           <div className="ul-modal-header-left">
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--info-soft, #DBEAFE)", color: "var(--info, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12,               background: "var(--info-soft, #CCFBF1)", color: "var(--info, #0D9488)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
               {loading ? <i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> : <i className="bi bi-clock-history" />}
             </div>
             <div>
-              <h6 className="ul-modal-title">{loading ? "Loading…" : `Timesheet Entry #${data?.id || ""}`}</h6>
+              <h6 className="ul-modal-title">{loading ? "Timesheet Entry" : `Timesheet Entry #${data?.id || ""}`}</h6>
               <p className="ul-modal-sub">{data?.employee_name} • {fmtDateLong(data?.date)}</p>
             </div>
           </div>
@@ -46,7 +47,7 @@ export default function TimesheetDetailModal({ timesheetId, onClose, onNavigate 
         {/* Loading */}
         {loading && (
           <div className="ul-modal-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
-            <i className="bi bi-arrow-repeat" style={{ fontSize: 24, color: "var(--primary)", animation: "spin 1s linear infinite" }} />
+            <PageLoader message="Tallying your time entries" />
           </div>
         )}
 

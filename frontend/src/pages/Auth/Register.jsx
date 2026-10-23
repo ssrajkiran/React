@@ -50,7 +50,7 @@ const injectStyles = () => {
     }
     .reg-blob2 {
       position: absolute; width: 280px; height: 280px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(96,165,250,0.1) 0%, transparent 65%);
+      background: radial-gradient(circle, rgba(45,212,191,0.1) 0%, transparent 65%);
       bottom: -30px; left: -60px; pointer-events: none;
       animation: reg-float 10s ease-in-out infinite reverse;
     }
@@ -98,7 +98,7 @@ const injectStyles = () => {
     }
     .reg-left-heading-accent {
       font-style: normal;
-      background: linear-gradient(135deg, #818CF8 0%, #C4B5FD 50%, #93C5FD 100%);
+      background: linear-gradient(135deg, #2DD4BF 0%, #5EEAD4 50%, #99F6E4 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -124,7 +124,7 @@ const injectStyles = () => {
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    .reg-step-icon { font-size: 16px; color: #A5B4FC; }
+    .reg-step-icon { font-size: 16px; color: #5EEAD4; }
     .reg-step-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); }
 
     /* Bottom */
@@ -173,9 +173,9 @@ const injectStyles = () => {
       margin: 0 auto 20px;
       width: 56px; height: 56px;
       border-radius: 14px;
-      background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
+      background: linear-gradient(135deg, #F0FDFA, #CCFBF1);
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 2px 12px rgba(67,56,202,0.1);
+      box-shadow: 0 2px 12px rgba(13,148,136,0.1);
     }
     .reg-form-logo img {
       width: 32px; height: 32px; object-fit: contain;
@@ -208,12 +208,12 @@ const injectStyles = () => {
       transition: all 0.2s ease; height: 48px;
     }
     .reg-input-wrap:focus-within {
-      border-color: #4338CA;
-      box-shadow: 0 0 0 3px rgba(67,56,202,0.08);
+      border-color: #0F766E;
+      box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
       background: #fff;
     }
     .reg-input-icon { font-size: 14px; color: #A8AECA; padding: 0 14px; flex-shrink: 0; transition: color 0.2s; }
-    .reg-input-wrap:focus-within .reg-input-icon { color: #4338CA; }
+    .reg-input-wrap:focus-within .reg-input-icon { color: #0F766E; }
     .reg-input {
       flex: 1; border: none; outline: none;
       font-size: 14px; font-weight: 500; color: #0D1030;
@@ -230,13 +230,13 @@ const injectStyles = () => {
       display: flex; align-items: center;
       transition: color 0.15s;
     }
-    .reg-eye-btn:hover { color: #4338CA; }
+    .reg-eye-btn:hover { color: var(--primary-dark); }
 
     /* Submit */
     .reg-submit-btn {
       width: 100%;
       padding: clamp(13px, 1.4vw, 14px) 24px;
-      background: linear-gradient(135deg, #3730A3 0%, #5048E5 100%);
+      background: linear-gradient(135deg, #115E59 0%, #0D9488 100%);
       color: #fff; border: none; border-radius: 10px;
       font-size: 16px; font-weight: 600;
       cursor: pointer;
@@ -266,8 +266,8 @@ const injectStyles = () => {
 
     /* Login link */
     .reg-login-text { text-align: center; font-size: 14px; color: #828BAA; margin: 0; }
-    .reg-login-link { color: #4338CA; font-weight: 600; text-decoration: none; transition: color 0.15s; }
-    .reg-login-link:hover { color: #3730A3; text-decoration: underline; }
+    .reg-login-link { color: #0F766E; font-weight: 600; text-decoration: none; transition: color 0.15s; }
+    .reg-login-link:hover { color: var(--primary-dark); text-decoration: underline; }
 
     .reg-right-footer {
       margin-top: 32px; font-size: 12px; color: #A8AECA;
@@ -427,7 +427,7 @@ export default function Register() {
                 <input type={showPassword ? "text" : "password"} placeholder="Enter a secure password"
                   value={password} onChange={(e) => setPassword(e.target.value)} required
                   className="reg-input" style={{ paddingRight: 42 }} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="reg-eye-btn">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="reg-eye-btn" title="Show/hide password">
                   <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
                 </button>
               </div>

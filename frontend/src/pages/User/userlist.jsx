@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
@@ -119,7 +119,7 @@ export default function UsersPresent() {
         <div className={`sr-toast sr-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="sr-toast-close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
+          <button className="sr-toast-close" title="Close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
         </div>
       )}
 
@@ -140,34 +140,27 @@ export default function UsersPresent() {
         </Link>
       </div>
 
-      {/* ── SEARCH CARD ── */}
-      <div className="sr-filter-card">
-        <div className="sr-filter-inner">
-          <div className="sr-filter-group" style={{ flex: 1, maxWidth: 340 }}>
-            <label className="sr-label">Search Users</label>
-            <div className="sr-input-wrap">
-              <i className="bi bi-search sr-input-icon" />
-              <input
-                className="sr-input"
-                placeholder="Search by name, email or role…"
-                value={searchText}
-                onChange={handleSearch}
-              />
-              {searchText && (
-                <button className="ul-clear-btn" onClick={() => { setSearchText(""); setCurrentPage(1); }}>
-                  <i className="bi bi-x" />
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="ul-count-pill">
-            <i className="bi bi-people" /> {filtered.length} user{filtered.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-      </div>
-
       {/* ── TABLE CARD ── */}
       <div className="ul-table-card">
+        <div className="ul-toolbar">
+          <div className="sr-input-wrap ul-search-wrap">
+            <i className="bi bi-search sr-input-icon" />
+            <input
+              className="sr-input ul-search"
+              placeholder="Search by name, email or role…"
+              value={searchText}
+              onChange={handleSearch}
+            />
+            {searchText && (
+              <button className="ul-clear-btn" title="Clear search" onClick={() => { setSearchText(""); setCurrentPage(1); }}>
+                <i className="bi bi-x" />
+              </button>
+            )}
+          </div>
+          <span className="ul-count-pill">
+            <i className="bi bi-people" /> {filtered.length} user{filtered.length !== 1 ? "s" : ""}
+          </span>
+        </div>
 
         {/* Loading */}
         {loading && (
@@ -222,11 +215,11 @@ export default function UsersPresent() {
                       <td className="sr-td-muted">{fmtDob(user.dob)}</td>
                       <td>
                         <div className="ul-actions">
-                          <button className="ul-edit-btn" onClick={() => handleUpdate(user)}>
-                            <i className="bi bi-pencil" /> Edit
+                          <button className="ul-action-btn ul-action-edit" title="Edit User" onClick={() => handleUpdate(user)}>
+                            <i className="bi bi-pencil" />
                           </button>
-                          <button className="ul-delete-btn" onClick={() => setDeleteConfirm(user.id)}>
-                            <i className="bi bi-trash" /> Delete
+                          <button className="ul-action-btn ul-action-delete" title="Delete User" onClick={() => setDeleteConfirm(user.id)}>
+                            <i className="bi bi-trash" />
                           </button>
                         </div>
                       </td>
@@ -295,7 +288,7 @@ export default function UsersPresent() {
                   <p className="ul-modal-sub">Update the user's information below</p>
                 </div>
               </div>
-              <button className="ul-modal-close" onClick={() => setShowModal(false)}>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowModal(false)}>
                 <i className="bi bi-x-lg" />
               </button>
             </div>
@@ -351,7 +344,7 @@ export default function UsersPresent() {
                       placeholder="Leave blank to keep current"
                       style={{ paddingRight: 36 }}
                     />
-                    <button type="button" onClick={() => setShowPassword((v) => !v)}
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} title="Show/hide password"
                       style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--t-muted)", padding: 4 }}>
                       <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} />
                     </button>
@@ -402,8 +395,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
-  .sr-toast-success { background: #ECFDF5; color: #059669; }
-  .sr-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .sr-toast-success { background: var(--success-soft); color: var(--success); }
+  .sr-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .sr-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* ── Page header ── */
@@ -417,25 +410,22 @@ const styles = `
   .sr-breadcrumb a:hover { text-decoration: underline; }
   .sr-breadcrumb i { font-size: 10px; opacity: 0.5; }
 
-  /* ── Filter card ── */
-  .sr-filter-card {
-    background: var(--bg-card);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
-    padding: 18px 20px; margin-bottom: 16px;
+  /* ── Toolbar (module-wise) ── */
+  .ul-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border-soft); gap: 12px;
   }
-  .sr-filter-inner { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-  .sr-filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .ul-search-wrap { flex: 1; max-width: 360px; }
   .sr-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .sr-input-wrap { position: relative; display: flex; align-items: center; }
   .sr-input-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
-  .sr-input {
-    width: 100%; padding: 9px 12px 9px 34px; border: none; border-radius: var(--radius);
+  .sr-input, .ul-search {
+    width: 100%; padding: 8px 32px 8px 34px; border: none; border-radius: var(--radius);
     background: var(--bg-muted); font-size: 13px; color: var(--t-base);
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .sr-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .sr-input:focus, .ul-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
 
   .ul-clear-btn {
     position: absolute; right: 9px; background: none; border: none;
@@ -448,8 +438,7 @@ const styles = `
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; font-weight: 600; color: var(--t-muted);
     background: var(--bg-card); box-shadow: var(--shadow-sm);
-    border-radius: 20px; padding: 5px 12px; white-space: nowrap;
-    align-self: flex-end;
+    border-radius: 20px; padding: 3px 10px; white-space: nowrap;
   }
 
   /* ── Table card ── */
@@ -467,7 +456,7 @@ const styles = `
   }
   .sr-empty-icon {
     width: 60px; height: 60px; border-radius: 50%;
-    background: #EEF2FF; color: var(--primary); font-size: 24px;
+    background: var(--primary-soft); color: var(--primary); font-size: 24px;
     display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
   }
   .sr-pulse { animation: sr-pulse 1.5s ease-in-out infinite; }
@@ -480,15 +469,15 @@ const styles = `
   .sr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .sr-table thead tr { border-bottom: 1px solid var(--border-soft); }
   .sr-table th {
-    padding: 11px 16px; font-size: 10.5px; font-weight: 700; color: var(--t-muted);
+    padding: 10px 14px; font-size: 10.5px; font-weight: 700; color: var(--t-muted);
     text-transform: uppercase; letter-spacing: 0.06em; text-align: left;
-    white-space: nowrap; background: var(--bg-muted);
+    white-space: nowrap; background: var(--bg-card);
   }
   .sr-th-sm { width: 56px; text-align: center; }
-  .sr-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+  .sr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .sr-table tbody tr:last-child td { border-bottom: none; }
   .sr-tr { transition: background 0.1s; }
-  .sr-tr:hover td { background: #fafbff; }
+  .sr-tr:hover td { background: var(--bg-hover); }
   .sr-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .sr-center { text-align: center; }
 
@@ -508,31 +497,21 @@ const styles = `
     font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
     white-space: nowrap;
   }
-  .ul-role-admin    { background: #FEF2F2; color: #DC2626; }
-  .ul-role-employee { background: #EEF2FF; color: #5048E5; }
+  .ul-role-admin    { background: var(--danger-soft); color: var(--danger); }
+  .ul-role-employee { background: var(--primary-soft); color: var(--primary); }
 
-  /* ── Action buttons ── */
-  .ul-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  /* ── Action buttons (module-wise) ── */
+  .ul-actions { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 
-  .ul-edit-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; background: var(--bg-muted); color: #5048E5;
-    border: none; border-radius: var(--radius);
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s, transform 0.12s;
-    font-family: var(--font);
+  .ul-action-btn {
+    width: 30px; height: 30px; border: none; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; cursor: pointer; transition: all 0.15s;
   }
-  .ul-edit-btn:hover { background: #e0e7ff; transform: translateY(-1px); }
-
-  .ul-delete-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; background: var(--bg-muted); color: #DC2626;
-    border: none; border-radius: var(--radius);
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s, transform 0.12s;
-    font-family: var(--font);
-  }
-  .ul-delete-btn:hover { background: #fee2e2; transform: translateY(-1px); }
+  .ul-action-edit { background: var(--primary-soft); color: var(--primary); }
+  .ul-action-edit:hover { background: var(--primary); color: #fff; }
+  .ul-action-delete { background: var(--danger-soft); color: var(--danger); }
+  .ul-action-delete:hover { background: var(--danger); color: #fff; }
 
   /* ── Pagination ── */
   .ul-pagination { padding: 14px 16px; border-top: 1px solid var(--border-soft); }
@@ -545,7 +524,7 @@ const styles = `
     cursor: pointer; transition: background 0.15s, color 0.15s;
     font-family: var(--font);
   }
-  .sh-page-btn:hover:not(:disabled) { color: var(--primary); background: #EEF2FF; }
+  .sh-page-btn:hover:not(:disabled) { color: var(--primary); background: var(--primary-soft); }
   .sh-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .sh-page-numbers { display: flex; align-items: center; gap: 4px; }
   .sh-page-num {
@@ -555,19 +534,19 @@ const styles = `
     cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
     font-family: var(--font);
   }
-  .sh-page-num:hover { color: var(--primary); background: #EEF2FF; }
+  .sh-page-num:hover { color: var(--primary); background: var(--primary-soft); }
   .sh-page-num-active { background: var(--primary); color: #fff; }
 
   /* ── Add User btn (reuse cu-save-btn style) ── */
   .cu-save-btn {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: #059669; color: #fff;
+    padding: 9px 18px; background: var(--success); color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; text-decoration: none;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font); white-space: nowrap;
   }
-  .cu-save-btn:hover:not(:disabled) { background: #047857; transform: translateY(-1px); color: #fff; }
+  .cu-save-btn:hover:not(:disabled) { background: var(--success); transform: translateY(-1px); color: #fff; }
   .cu-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .cu-back-btn {
@@ -578,7 +557,7 @@ const styles = `
     cursor: pointer; transition: color 0.15s, background 0.15s;
     font-family: var(--font);
   }
-  .cu-back-btn:hover { color: var(--primary); background: #EEF2FF; }
+  .cu-back-btn:hover { color: var(--primary); background: var(--primary-soft); }
 
   /* ── Overlay ── */
   .ul-overlay {
@@ -615,14 +594,14 @@ const styles = `
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; margin: 0 auto 14px;
   }
-  .ul-modal-icon-danger { background: #FEF2F2; color: #DC2626; }
+  .ul-modal-icon-danger { background: var(--danger-soft); color: var(--danger); }
   .ul-modal-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 6px; }
   .ul-modal-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0 0 20px; }
   .ul-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
 
   .ul-delete-confirm-btn {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 20px; background: #DC2626; color: #fff;
+    padding: 9px 20px; background: var(--danger); color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; cursor: pointer;
     transition: background 0.15s; font-family: var(--font);
@@ -635,7 +614,7 @@ const styles = `
   .cu-field-group { display: flex; flex-direction: column; gap: 6px; }
   .cu-form-icon {
     width: 40px; height: 40px; border-radius: var(--radius);
-    background: #EEF2FF; color: var(--primary); font-size: 18px; flex-shrink: 0;
+    background: var(--primary-soft); color: var(--primary); font-size: 18px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .cu-divider { border: none; border-top: 1px solid var(--border-soft); margin: 0 0 20px; }

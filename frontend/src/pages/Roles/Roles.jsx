@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link } from "react-router-dom";
@@ -204,7 +204,7 @@ export default function Roles() {
         <div className={`sr-toast sr-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="sr-toast-close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
+          <button className="sr-toast-close" title="Close" onClick={() => setToast(null)}><i className="bi bi-x" /></button>
         </div>
       )}
 
@@ -239,7 +239,7 @@ export default function Roles() {
                 onChange={handleSearch}
               />
               {searchText && (
-                <button className="ul-clear-btn" onClick={() => { setSearchText(""); setCurrentPage(1); }}>
+                <button className="ul-clear-btn" title="Clear search" onClick={() => { setSearchText(""); setCurrentPage(1); }}>
                   <i className="bi bi-x" />
                 </button>
               )}
@@ -306,12 +306,12 @@ export default function Roles() {
                               <i className="bi bi-lock-fill" /> Default
                             </span>
                           )}
-                          <button className="ul-edit-btn" onClick={() => openEdit(role)}>
-                            <i className="bi bi-pencil" /> Edit
+                          <button className="ul-action-btn ul-action-edit" title="Edit Role" onClick={() => openEdit(role)}>
+                            <i className="bi bi-pencil" />
                           </button>
                           {!isDefault(role) && (
-                            <button className="ul-delete-btn" onClick={() => setDeleteConfirm(role.id)}>
-                              <i className="bi bi-trash" /> Delete
+                            <button className="ul-action-btn ul-action-delete" title="Delete Role" onClick={() => setDeleteConfirm(role.id)}>
+                              <i className="bi bi-trash" />
                             </button>
                           )}
                         </div>
@@ -380,7 +380,7 @@ export default function Roles() {
                   <p className="ul-modal-sub">{selectedRole.id ? "Update role details and permissions" : "Define a new role and its permissions"}</p>
                 </div>
               </div>
-              <button className="ul-modal-close" onClick={() => setShowModal(false)}>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowModal(false)}>
                 <i className="bi bi-x-lg" />
               </button>
             </div>
@@ -491,8 +491,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: sr-fade-in 0.2s ease;
   }
-  .sr-toast-success { background: #ECFDF5; color: #059669; }
-  .sr-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .sr-toast-success { background: var(--success-soft); color: var(--success); }
+  .sr-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .sr-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* ── Page header ── */
@@ -556,7 +556,7 @@ const styles = `
   }
   .sr-empty-icon {
     width: 60px; height: 60px; border-radius: 50%;
-    background: #EEF2FF; color: var(--primary); font-size: 24px;
+    background: var(--primary-soft); color: var(--primary); font-size: 24px;
     display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
   }
   .sr-pulse { animation: sr-pulse 1.5s ease-in-out infinite; }
@@ -577,7 +577,7 @@ const styles = `
   .sr-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .sr-table tbody tr:last-child td { border-bottom: none; }
   .sr-tr { transition: background 0.1s; }
-  .sr-tr:hover td { background: #fafbff; }
+  .sr-tr:hover td { background: var(--bg-hover); }
   .sr-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .sr-center { text-align: center; }
 
@@ -595,7 +595,7 @@ const styles = `
   .ul-perm-pill {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
-    background: #ECFDF5; color: #059669;
+    background: var(--success-soft); color: var(--success);
     white-space: nowrap;
   }
 
@@ -607,28 +607,18 @@ const styles = `
     border-radius: 20px; padding: 3px 10px; white-space: nowrap;
   }
 
-  /* ── Action buttons ── */
-  .ul-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  /* ── Action buttons (module-wise) ── */
+  .ul-actions { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 
-  .ul-edit-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; background: var(--bg-muted); color: #5048E5;
-    border: none; border-radius: var(--radius);
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s, transform 0.12s;
-    font-family: var(--font);
+  .ul-action-btn {
+    width: 30px; height: 30px; border: none; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; cursor: pointer; transition: all 0.15s;
   }
-  .ul-edit-btn:hover { background: #e0e7ff; transform: translateY(-1px); }
-
-  .ul-delete-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; background: var(--bg-muted); color: #DC2626;
-    border: none; border-radius: var(--radius);
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s, transform 0.12s;
-    font-family: var(--font);
-  }
-  .ul-delete-btn:hover { background: #fee2e2; transform: translateY(-1px); }
+  .ul-action-edit { background: var(--primary-soft); color: var(--primary); }
+  .ul-action-edit:hover { background: var(--primary); color: #fff; }
+  .ul-action-delete { background: var(--danger-soft); color: var(--danger); }
+  .ul-action-delete:hover { background: var(--danger); color: #fff; }
 
   /* ── Pagination ── */
   .ul-pagination { padding: 14px 16px; border-top: 1px solid var(--border-soft); }
@@ -641,7 +631,7 @@ const styles = `
     cursor: pointer; transition: background 0.15s, color 0.15s;
     font-family: var(--font);
   }
-  .sh-page-btn:hover:not(:disabled) { color: var(--primary); background: #EEF2FF; }
+  .sh-page-btn:hover:not(:disabled) { color: var(--primary); background: var(--primary-soft); }
   .sh-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .sh-page-numbers { display: flex; align-items: center; gap: 4px; }
   .sh-page-num {
@@ -651,19 +641,19 @@ const styles = `
     cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
     font-family: var(--font);
   }
-  .sh-page-num:hover { color: var(--primary); background: #EEF2FF; }
+  .sh-page-num:hover { color: var(--primary); background: var(--primary-soft); }
   .sh-page-num-active { background: var(--primary); color: #fff; }
 
   /* ── Add Role btn (reuse cu-save-btn style) ── */
   .cu-save-btn {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: #059669; color: #fff;
+    padding: 9px 18px; background: var(--success); color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; text-decoration: none;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font); white-space: nowrap;
   }
-  .cu-save-btn:hover:not(:disabled) { background: #047857; transform: translateY(-1px); color: #fff; }
+  .cu-save-btn:hover:not(:disabled) { background: var(--success); transform: translateY(-1px); color: #fff; }
   .cu-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .cu-back-btn {
@@ -674,7 +664,7 @@ const styles = `
     cursor: pointer; transition: color 0.15s, background 0.15s;
     font-family: var(--font);
   }
-  .cu-back-btn:hover { color: var(--primary); background: #EEF2FF; }
+  .cu-back-btn:hover { color: var(--primary); background: var(--primary-soft); }
 
   /* ── Overlay ── */
   .ul-overlay {
@@ -711,14 +701,14 @@ const styles = `
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; margin: 0 auto 14px;
   }
-  .ul-modal-icon-danger { background: #FEF2F2; color: #DC2626; }
+  .ul-modal-icon-danger { background: var(--danger-soft); color: var(--danger); }
   .ul-modal-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 6px; }
   .ul-modal-sub   { font-size: 12.5px; color: var(--t-muted); margin: 0 0 20px; }
   .ul-modal-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
 
   .ul-delete-confirm-btn {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 20px; background: #DC2626; color: #fff;
+    padding: 9px 20px; background: var(--danger); color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 600; cursor: pointer;
     transition: background 0.15s; font-family: var(--font);
@@ -731,7 +721,7 @@ const styles = `
   .cu-field-group { display: flex; flex-direction: column; gap: 6px; }
   .cu-form-icon {
     width: 40px; height: 40px; border-radius: var(--radius);
-    background: #EEF2FF; color: var(--primary); font-size: 18px; flex-shrink: 0;
+    background: var(--primary-soft); color: var(--primary); font-size: 18px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .cu-divider { border: none; border-top: 1px solid var(--border-soft); margin: 0 0 20px; }
@@ -754,7 +744,7 @@ const styles = `
   .rl-all-head { width: 52px; }
   .rl-perm-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .rl-perm-table tbody tr:last-child td { border-bottom: none; }
-  .rl-perm-table tbody tr:hover td { background: #fafbff; }
+  .rl-perm-table tbody tr:hover td { background: var(--bg-hover); }
   .rl-perm-label { font-weight: 600; color: var(--t-base); font-size: 12.5px; }
   .rl-perm-cell { text-align: center; }
 
@@ -774,7 +764,7 @@ const styles = `
     background: #fff; transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
-  .rl-toggle input:checked + .rl-toggle-track { background: #5048E5; }
+  .rl-toggle input:checked + .rl-toggle-track { background: var(--primary); }
   .rl-toggle input:checked + .rl-toggle-track::after { transform: translateX(16px); }
 
   /* ── Animations ── */

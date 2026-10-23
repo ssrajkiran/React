@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import AppLayout from "../components/layout/AppLayout";
 import api from "../api";
 import { Link } from "react-router-dom";
@@ -92,7 +92,7 @@ export default function ProfilePage() {
         <div className={`sr-toast sr-toast-${toast.type}`}>
           <i className={`bi ${toast.type === "success" ? "bi-check-circle" : "bi-exclamation-circle"}`} />
           {toast.msg}
-          <button className="sr-toast-close" onClick={() => setToast(null)}>
+          <button className="sr-toast-close" title="Close" onClick={() => setToast(null)}>
             <i className="bi bi-x" />
           </button>
         </div>
@@ -209,7 +209,7 @@ export default function ProfilePage() {
           {activeTab === "password" && (
             <div className="cu-form-card">
               <div className="cu-form-heading">
-                <div className="cu-form-icon" style={{ background: "#FFF7ED", color: "#C2410C" }}>
+                <div className="cu-form-icon" style={{ background: "var(--orange-soft)", color: "var(--orange)" }}>
                   <i className="bi bi-shield-lock" />
                 </div>
                 <div>
@@ -234,7 +234,7 @@ export default function ProfilePage() {
                       value={passwordData.currentPassword}
                       onChange={(e) => setPasswordData((p) => ({ ...p, currentPassword: e.target.value }))}
                     />
-                    <button type="button" className="cu-pw-toggle" onClick={() => togglePw("current")} tabIndex={-1}>
+                    <button type="button" className="cu-pw-toggle" title="Show/hide password" onClick={() => togglePw("current")} tabIndex={-1}>
                       <i className={`bi ${showPw.current ? "bi-eye-slash" : "bi-eye"}`} />
                     </button>
                   </div>
@@ -252,7 +252,7 @@ export default function ProfilePage() {
                       value={passwordData.newPassword}
                       onChange={(e) => setPasswordData((p) => ({ ...p, newPassword: e.target.value }))}
                     />
-                    <button type="button" className="cu-pw-toggle" onClick={() => togglePw("new")} tabIndex={-1}>
+                    <button type="button" className="cu-pw-toggle" title="Show/hide password" onClick={() => togglePw("new")} tabIndex={-1}>
                       <i className={`bi ${showPw.new ? "bi-eye-slash" : "bi-eye"}`} />
                     </button>
                   </div>
@@ -270,7 +270,7 @@ export default function ProfilePage() {
                       value={passwordData.confirmPassword}
                       onChange={(e) => setPasswordData((p) => ({ ...p, confirmPassword: e.target.value }))}
                     />
-                    <button type="button" className="cu-pw-toggle" onClick={() => togglePw("confirm")} tabIndex={-1}>
+                    <button type="button" className="cu-pw-toggle" title="Show/hide password" onClick={() => togglePw("confirm")} tabIndex={-1}>
                       <i className={`bi ${showPw.confirm ? "bi-eye-slash" : "bi-eye"}`} />
                     </button>
                   </div>
@@ -284,7 +284,7 @@ export default function ProfilePage() {
                 <span />
                 <button
                   className="cu-save-btn"
-                  style={{ background: "#D97706" }}
+                  style={{ background: "var(--warning)" }}
                   onClick={handleSavePassword}
                   disabled={passwordLoading}
                 >
@@ -311,8 +311,8 @@ const styles = `
     font-size:13px;font-weight:600;font-family:var(--font);
     box-shadow:0 8px 24px rgba(0,0,0,.12);animation:sr-fade-in .2s ease;
   }
-  .sr-toast-success{background:#ECFDF5;color:#059669}
-  .sr-toast-error  {background:#FEF2F2;color:#DC2626}
+  .sr-toast-success{background:var(--success-soft);color:var(--success)}
+  .sr-toast-error  {background:var(--danger-soft);color:var(--danger)}
   .sr-toast-close{margin-left:6px;background:none;border:none;cursor:pointer;color:inherit;font-size:15px;display:flex;align-items:center}
 
   /* ── Page header ── */
@@ -353,7 +353,7 @@ const styles = `
   .cu-form-heading{display:flex;align-items:center;gap:14px;margin-bottom:20px}
   .cu-form-icon{
     width:44px;height:44px;border-radius:var(--radius);
-    background:#EEF2FF;color:var(--primary);font-size:20px;flex-shrink:0;
+    background:var(--primary-soft);color:var(--primary);font-size:20px;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;
   }
   .cu-form-title{font-size:14px;font-weight:700;color:var(--t-base);margin:0 0 3px}
@@ -364,7 +364,7 @@ const styles = `
   .cu-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .cu-save-btn{
     display:flex;align-items:center;gap:7px;padding:9px 22px;
-    background:#059669;color:#fff;border:none;border-radius:var(--radius);
+    background:var(--success);color:#fff;border:none;border-radius:var(--radius);
     font-size:13px;font-weight:600;cursor:pointer;
     transition:background .15s,transform .15s;font-family:var(--font);
   }
@@ -387,7 +387,7 @@ const styles = `
   }
   .pf-avatar{
     width:60px;height:60px;border-radius:50%;
-    background:#EEF2FF;color:var(--primary);
+    background:var(--primary-soft);color:var(--primary);
     font-size:20px;font-weight:700;
     display:flex;align-items:center;justify-content:center;
     letter-spacing:.02em;flex-shrink:0;
@@ -409,8 +409,8 @@ const styles = `
     transition:all .15s;font-family:var(--font);text-align:left;
   }
   .pf-nav-btn i{font-size:14px}
-  .pf-nav-btn:hover{background:#F3F4F6;color:var(--t-base)}
-  .pf-nav-btn.active{background:#EEF2FF;color:var(--primary)}
+  .pf-nav-btn:hover{background: var(--bg-hover);color:var(--t-base)}
+  .pf-nav-btn.active{background:var(--primary-soft);color:var(--primary)}
 
   /* ── Password grid ── */
   .pf-pw-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;margin-bottom:20px}

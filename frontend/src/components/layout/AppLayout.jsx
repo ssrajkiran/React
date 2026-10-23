@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import GlobalSearch from "./GlobalSearch";
+import { usePreferences } from "../../context/PreferencesContext";
 
 export default function AppLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem("hrms-theme") || "light");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const { toggleTheme, isDark } = usePreferences();
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar  = () => setSidebarOpen(false);
@@ -22,12 +25,17 @@ export default function AppLayout({ children }) {
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
 
+  // Global search shortcut: Ctrl/Cmd + K
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("hrms-theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="app-wrapper">
@@ -45,6 +53,9 @@ export default function AppLayout({ children }) {
         <Topbar
           onMenuClick={toggleSidebar}
           sidebarOpen={sidebarOpen}
+          onSearchClick={() => setSearchOpen(true)}
+          onThemeToggle={toggleTheme}
+          isDark={isDark}
         />
         <main className="page-content">{children}</main>
         <footer className="app-footer">
@@ -54,6 +65,8 @@ export default function AppLayout({ children }) {
           </div>
         </footer>
       </div>
+
+      {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
     </div>
   );
 }

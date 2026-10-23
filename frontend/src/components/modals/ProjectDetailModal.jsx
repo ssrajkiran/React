@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../api";
 import StatusBadge from "../ui/StatusBadge";
 import EmptyState from "../ui/EmptyState";
+import { PageLoader } from "../ui/Loader";
 import { fmtHrs, fmtDate, getInitials } from "../../utils";
 
 export default function ProjectDetailModal({ projectId, onClose, onNavigate }) {
@@ -44,7 +45,7 @@ export default function ProjectDetailModal({ projectId, onClose, onNavigate }) {
               {loading ? <i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> : <i className="bi bi-folder2-open" />}
             </div>
             <div>
-              <h6 className="ul-modal-title">{loading ? "Loading…" : project?.project_name || "Project Details"}</h6>
+              <h6 className="ul-modal-title">{loading ? "Project Details" : project?.project_name || "Project Details"}</h6>
               <p className="ul-modal-sub">{stats?.module_count || 0} modules • {stats?.contributor_count || 0} contributors • {fmtHrs(stats?.total_hours)} total</p>
             </div>
           </div>
@@ -56,7 +57,7 @@ export default function ProjectDetailModal({ projectId, onClose, onNavigate }) {
         {/* Loading */}
         {loading && (
           <div className="ul-modal-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
-            <i className="bi bi-arrow-repeat" style={{ fontSize: 24, color: "var(--primary)", animation: "spin 1s linear infinite" }} />
+            <PageLoader message="Pulling project details" />
           </div>
         )}
 

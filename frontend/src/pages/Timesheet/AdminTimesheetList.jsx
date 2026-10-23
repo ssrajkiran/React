@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
@@ -45,6 +45,10 @@ const fmtHrs = (hrs) => {
   if (h > 0) return `${h}h`;
   return `${m}m`;
 };
+
+// ── "YYYY-MM-DD" → "22 Oct 2026" ──
+const fmtDateLabel = (d) =>
+  new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
 // ── Inline AM/PM Time Picker ──
 function AmpmTimePicker({ value, onChange, minTime, disabled }) {
@@ -99,8 +103,8 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
         disabled={disabled}
         style={{
           width: 52, height: 36, borderRadius: "var(--radius)", border: "none",
-          background: ap === "AM" ? "#EEF2FF" : "#FFF7ED",
-          color: ap === "AM" ? "#5048E5" : "#C2410C",
+          background: ap === "AM" ? "var(--primary-soft)" : "var(--orange-soft)",
+          color: ap === "AM" ? "var(--primary)" : "var(--orange)",
           fontSize: 12, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
           fontFamily: "var(--font)", opacity: disabled ? 0.5 : 1,
         }}
@@ -132,6 +136,8 @@ export default function AdminTimesheetList() {
   const [projects, setProjects]     = useState([]);
   const [tasks, setTasks]           = useState([]);
   const [formError, setFormError]   = useState("");
+  // Approved leave dates of the selected user → no timesheet entry allowed
+  const [leaveDates, setLeaveDates] = useState({});
   // hours already logged for selected user+date (fetched from full data)
   const [userDayHrs, setUserDayHrs] = useState(0);
 
@@ -210,6 +216,30 @@ export default function AdminTimesheetList() {
     } catch (err) { console.error(err); setTasks([]); }
   };
 
+  // Approved leave dates of a user
+  const loadLeaveDates = async (userId) => {
+    if (!userId) { setLeaveDates({}); return; }
+    try {
+      const res = await api.get(`/timesheet/leave-dates?user_id=${userId}`, { headers: authHeader });
+      const map = {};
+      (Array.isArray(res.data) ? res.data : []).forEach((l) => { map[l.date] = l; });
+      setLeaveDates(map);
+    } catch (err) { console.error(err); setLeaveDates({}); }
+  };
+
+  // Full-day approved leave → entry blocked
+  const leaveErrorFor = (date) => {
+    const lv = date ? leaveDates[date] : null;
+    if (!lv || lv.half_day) return "";
+    return `User is on approved leave on ${fmtDateLabel(date)}. Timesheet entry is not allowed.`;
+  };
+
+  // Max hours allowed on a date (half-day leave → 4 hrs)
+  const dayLimitFor = (date) => {
+    const lv = date ? leaveDates[date] : null;
+    return lv && lv.half_day ? 4 : 8;
+  };
+
   // Recompute hours used whenever user or date changes
   const recomputeHours = (userId, date, currentData) => {
     if (!userId || !date) { setUserDayHrs(0); return; }
@@ -221,7 +251,7 @@ export default function AdminTimesheetList() {
 
   // Live overlap check when time changes
   const checkOverlapLive = (userId, date, startTime, endTime) => {
-    if (!userId || !date || !startTime || !endTime) { setFormError(""); return; }
+    if (!userId || !date || !startTime || !endTime) { setFormError(leaveErrorFor(date)); return; }
     const newStart = startTime.substring(0, 5);
     const newEnd = endTime.substring(0, 5);
     const overlapEntry = data.find((t) => {
@@ -237,7 +267,7 @@ export default function AdminTimesheetList() {
       const oEnd = formatAMPM(overlapEntry.end_time);
       setFormError(`Time overlap! Entry already exists from ${oStart} to ${oEnd}. Choose a different time.`);
     } else {
-      setFormError("");
+      setFormError(leaveErrorFor(date));
     }
   };
 
@@ -245,8 +275,15 @@ export default function AdminTimesheetList() {
   const openModal = (prefillTaskIdFromUrl) => {
     setForm({ user: "", date: "", entry_type: "project", project: "", task: prefillTaskIdFromUrl || "", start_time: "", end_time: "", work_description: "" });
     setProjects([]); setTasks([]);
+    setLeaveDates({});
     setUserDayHrs(0); setFormError("");
     setShowModal(true);
+  };
+
+  const handleDateChange = (val) => {
+    setForm((prev) => ({ ...prev, date: val }));
+    recomputeHours(form.user, val, data);
+    setFormError(leaveErrorFor(val));
   };
 
   const handleChange = (e) => {
@@ -256,12 +293,12 @@ export default function AdminTimesheetList() {
     if (name === "user") {
       setForm((prev) => ({ ...prev, user: value, project: "", task: "" }));
       setProjects([]); setTasks([]);
-      if (value) loadProjects(value);
+      if (value) { loadProjects(value); loadLeaveDates(value); }
+      else setLeaveDates({});
       recomputeHours(value, form.date, data);
 
     } else if (name === "date") {
-      setForm((prev) => ({ ...prev, date: value }));
-      recomputeHours(form.user, value, data);
+      handleDateChange(value);
 
     } else if (name === "project") {
       setForm((prev) => ({ ...prev, project: value, task: "" }));
@@ -284,6 +321,12 @@ export default function AdminTimesheetList() {
       setFormError("Please select a date.");
       return;
     }
+    const leaveMsg = leaveErrorFor(form.date);
+    if (leaveMsg) {
+      setFormError(leaveMsg);
+      return;
+    }
+    const dayLimit = dayLimitFor(form.date);
     if (!isPermission && !form.project) {
       setFormError("Please select a project.");
       return;
@@ -302,8 +345,8 @@ export default function AdminTimesheetList() {
       setFormError("End time must be after start time.");
       return;
     }
-    if (userDayHrs + hoursToAdd > 8) {
-      setFormError(`Only ${fmtHrs(8 - userDayHrs)} remaining for this user on this date.`);
+    if (userDayHrs + hoursToAdd > dayLimit) {
+      setFormError(`Only ${fmtHrs(dayLimit - userDayHrs)} remaining for this user on this date.`);
       return;
     }
 
@@ -402,7 +445,9 @@ export default function AdminTimesheetList() {
       ? <i className={`bi bi-chevron-${sortOrder === "asc" ? "up" : "down"} ts-sort-icon`} />
       : null;
 
-  const hoursRemaining = 8 - userDayHrs;
+  const hoursRemaining = dayLimitFor(form.date) - userDayHrs;
+  // Full-day approved leave on the selected date → whole form locked, no entry
+  const leaveBlocked = !!leaveErrorFor(form.date);
 
   return (
     <AppLayout>
@@ -448,7 +493,7 @@ export default function AdminTimesheetList() {
               onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
             />
             {searchText && (
-              <button className="ts-search-clear" onClick={() => setSearchText("")}>
+              <button className="ts-search-clear" title="Clear search" onClick={() => setSearchText("")}>
                 <i className="bi bi-x" />
               </button>
             )}
@@ -549,16 +594,16 @@ export default function AdminTimesheetList() {
               Page {page} of {totalPages} · {filtered.length} results
             </span>
             <div className="ts-page-btns">
-              <button className="ts-page-btn" disabled={page === 1} onClick={() => setPage(1)}><i className="bi bi-chevron-double-left" /></button>
-              <button className="ts-page-btn" disabled={page === 1} onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left" /></button>
+              <button className="ts-page-btn" title="First page" disabled={page === 1} onClick={() => setPage(1)}><i className="bi bi-chevron-double-left" /></button>
+              <button className="ts-page-btn" title="Previous page" disabled={page === 1} onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left" /></button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const p = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
                 return (
                   <button key={p} className={`ts-page-btn ${p === page ? "active" : ""}`} onClick={() => setPage(p)}>{p}</button>
                 );
               })}
-              <button className="ts-page-btn" disabled={page === totalPages} onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right" /></button>
-              <button className="ts-page-btn" disabled={page === totalPages} onClick={() => setPage(totalPages)}><i className="bi bi-chevron-double-right" /></button>
+              <button className="ts-page-btn" title="Next page" disabled={page === totalPages} onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right" /></button>
+              <button className="ts-page-btn" title="Last page" disabled={page === totalPages} onClick={() => setPage(totalPages)}><i className="bi bi-chevron-double-right" /></button>
             </div>
           </div>
         )}
@@ -576,15 +621,26 @@ export default function AdminTimesheetList() {
                   <p className="ul-modal-sub">Log work hours for a user</p>
                 </div>
               </div>
-              <button className="ul-modal-close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
             </div>
 
             <div className="ul-modal-divider" />
 
-              <div className="ul-modal-body">
+              <div className={`ul-modal-body ${leaveBlocked ? "ts-body-locked" : ""}`}>
+
+                {/* Leave day → entry not allowed */}
+                {leaveBlocked && (
+                  <div className="ts-leave-block">
+                    <i className="bi bi-calendar-x-fill" />
+                    <div>
+                      <strong>This day is Leave — timesheet entry is not allowed</strong>
+                      <p>{leaveErrorFor(form.date)}</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Hours meter — show once user + date both selected */}
-                {form.user && form.date && (
+                {form.user && form.date && !leaveBlocked && (
                   <div className="ts-hrs-meter">
                     <div className="ts-hrs-meter-top">
                       <span className="ts-hrs-meter-label">
@@ -592,16 +648,16 @@ export default function AdminTimesheetList() {
                         {form.user && users.find(u => String(u.id) === String(form.user)) &&
                           <> · <strong>{users.find(u => String(u.id) === String(form.user)).name}</strong></>}
                       </span>
-                      <span className="ts-hrs-meter-val" style={{ color: hoursRemaining <= 0 ? "#DC2626" : hoursRemaining <= 2 ? "#D97706" : "#059669" }}>
-                        {fmtHrs(userDayHrs)} / 8 hrs
+                      <span className="ts-hrs-meter-val" style={{ color: hoursRemaining <= 0 ? "var(--danger)" : hoursRemaining <= 2 ? "var(--warning)" : "var(--success)" }}>
+                        {fmtHrs(userDayHrs)} / {dayLimitFor(form.date)} hrs
                       </span>
                     </div>
                     <div className="ts-hrs-bar-bg">
                       <div
                         className="ts-hrs-bar-fill"
                         style={{
-                          width: `${Math.min(100, (userDayHrs / 8) * 100)}%`,
-                          background: hoursRemaining <= 0 ? "#DC2626" : hoursRemaining <= 2 ? "#D97706" : "#059669",
+                          width: `${Math.min(100, (userDayHrs / dayLimitFor(form.date)) * 100)}%`,
+                          background: hoursRemaining <= 0 ? "var(--danger)" : hoursRemaining <= 2 ? "var(--warning)" : "var(--success)",
                         }}
                       />
                     </div>
@@ -612,7 +668,7 @@ export default function AdminTimesheetList() {
                 )}
 
                 {/* Error */}
-                {formError && (
+                {formError && !leaveBlocked && (
                   <div className="ts-form-error">
                     <i className="bi bi-exclamation-circle" /> {formError}
                   </div>
@@ -627,7 +683,8 @@ export default function AdminTimesheetList() {
                       onChange={(val) => {
                         setForm((prev) => ({ ...prev, user: val, project: "", task: "" }));
                         setProjects([]); setTasks([]);
-                        if (val) loadProjects(val);
+                        if (val) { loadProjects(val); loadLeaveDates(val); }
+                        else setLeaveDates({});
                         recomputeHours(val, form.date, data);
                       }}
                       options={users.map((u) => ({ value: u.id, label: u.name }))}
@@ -640,13 +697,18 @@ export default function AdminTimesheetList() {
                     <label className="ts-label">Date <span className="ts-required">*</span></label>
                     <SharedDatePicker
                       value={form.date}
-                      onChange={(val) => {
-                        setForm((prev) => ({ ...prev, date: val }));
-                        recomputeHours(form.user, val, data);
-                      }}
+                      onChange={handleDateChange}
                       max={new Date().toISOString().split("T")[0]}
                       className="ts-input"
                     />
+                    {form.date && !leaveBlocked && leaveDates[form.date] && (
+                      <p className="ts-field-hint" style={{ color: leaveDates[form.date].half_day ? "var(--warning)" : "var(--danger)", fontWeight: 600 }}>
+                        <i className="bi bi-exclamation-triangle" />{" "}
+                        {leaveDates[form.date].half_day
+                          ? "Half-day leave: max 4 hrs allowed."
+                          : "Approved leave: no timesheet entry allowed."}
+                      </p>
+                    )}
                   </div>
 
                   {/* Type */}
@@ -756,14 +818,14 @@ export default function AdminTimesheetList() {
                       disabled={form.entry_type === "permission"}
                     />
                     {form.entry_type === "permission" && form.start_time && (
-                      <span style={{ fontSize: "11px", color: "#5048E5", fontWeight: 600 }}>
+                      <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: 600 }}>
                         Auto: Start + 15 min
                       </span>
                     )}
                   </div>
                 </div>
 
-                {form.entry_type === "project" && (
+                {!leaveBlocked && form.entry_type === "project" && (
                   <div className="ts-field">
                     <label className="ts-label">Work Description</label>
                     <textarea
@@ -776,14 +838,14 @@ export default function AdminTimesheetList() {
                   </div>
                 )}
 
-                {form.entry_type === "permission" && (
-                  <div className="ts-field-hint" style={{ color: "#5048E5", fontWeight: 600, fontSize: "12px" }}>
+                {!leaveBlocked && form.entry_type === "permission" && (
+                  <div className="ts-field-hint" style={{ color: "var(--primary)", fontWeight: 600, fontSize: "12px" }}>
                     <i className="bi bi-info-circle" /> Permission mode: 15 minutes auto-assigned
                   </div>
                 )}
 
-                {form.start_time && form.end_time && (
-                  <div style={{ fontSize: "12px", color: calcHoursFromTimes(form.start_time, form.end_time) > 0 ? "#059669" : "#DC2626", fontWeight: 600 }}>
+                {!leaveBlocked && form.start_time && form.end_time && (
+                  <div style={{ fontSize: "12px", color: calcHoursFromTimes(form.start_time, form.end_time) > 0 ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
                     <i className="bi bi-clock" /> {fmtHrs(calcHoursFromTimes(form.start_time, form.end_time))} will be logged
                   </div>
                 )}
@@ -795,7 +857,7 @@ export default function AdminTimesheetList() {
 
               <div className="ul-modal-footer">
                 <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="ul-btn ul-btn-primary" onClick={handleSave}>
+                <button className="ul-btn ul-btn-primary" onClick={handleSave} disabled={leaveBlocked}>
                   <i className="bi bi-send" /> Save Timesheet
                 </button>
               </div>
@@ -854,8 +916,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: ts-fade-in 0.2s ease;
   }
-  .ts-toast-success { background: #ECFDF5; color: #059669; }
-  .ts-toast-error   { background: #FEF2F2; color: #DC2626; }
+  .ts-toast-success { background: var(--success-soft); color: var(--success); }
+  .ts-toast-error   { background: var(--danger-soft); color: var(--danger); }
   .ts-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* Page header */
@@ -907,7 +969,7 @@ const styles = `
   .ts-sort-icon { margin-left: 4px; font-size: 9px; }
   .ts-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   .ts-tr { transition: background 0.1s; }
-  .ts-tr:hover td { background: #fafbff; }
+  .ts-tr:hover td { background: var(--bg-hover); }
   .ts-tr:last-child td { border-bottom: none; }
   .ts-td-muted { color: var(--t-muted); font-size: 12.5px; }
   .ts-center { text-align: center; }
@@ -915,16 +977,16 @@ const styles = `
   .ts-task-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-base); font-weight: 500; }
 
   /* Chips */
-  .ts-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #EEF2FF; color: #5048E5; white-space: nowrap; }
-  .ts-user-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; background: #F0FDF4; color: #15803D; border-radius: 20px; white-space: nowrap; }
+  .ts-project-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: var(--primary-soft); color: var(--primary); white-space: nowrap; }
+  .ts-user-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; background: var(--success-soft); color: var(--success); border-radius: 20px; white-space: nowrap; }
   .ts-user-chip i { font-size: 11px; }
-  .ts-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: #FFF7ED; color: #C2410C; border-radius: 20px; white-space: nowrap; }
+  .ts-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: var(--orange-soft); color: var(--orange); border-radius: 20px; white-space: nowrap; }
   .ts-hrs-pill i { font-size: 11px; }
 
   /* Actions */
   .ts-action-btn { width: 30px; height: 30px; border-radius: var(--radius); border: none; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all 0.15s; }
-  .ts-action-delete { background: #FEF2F2; color: #DC2626; }
-  .ts-action-delete:hover { background: #DC2626; color: #fff; }
+  .ts-action-delete { background: var(--danger-soft); color: var(--danger); }
+  .ts-action-delete:hover { background: var(--danger); color: #fff; }
 
   /* States */
   .ts-state-cell { padding: 0 !important; border: none !important; }
@@ -948,7 +1010,7 @@ const styles = `
   .ts-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 20px; }
   @media (max-width: 560px) { .ts-form-grid { grid-template-columns: 1fr; } }
   .ts-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .ts-required { color: #DC2626; }
+  .ts-required { color: var(--danger); }
   .ts-input, .ts-select {
     width: 100%; padding: 9px 12px;
     border: none; border-radius: var(--radius);
@@ -975,7 +1037,14 @@ const styles = `
   .ts-select-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .ts-select-wrap .ts-select { padding-left: 32px; }
   .ts-field-hint { font-size: 11.5px; color: var(--t-muted); margin: 0; }
-  .ts-form-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #FEF2F2; color: #DC2626; border-radius: var(--radius); font-size: 12.5px; font-weight: 600; }
+  /* Leave day block banner */
+  .ts-leave-block { display: flex; gap: 12px; align-items: flex-start; padding: 14px; background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: var(--radius); }
+  .ts-leave-block i { font-size: 22px; line-height: 1; color: var(--danger); margin-top: 2px; }
+  .ts-leave-block strong { display: block; font-size: 13px; color: var(--danger); }
+  .ts-leave-block p { margin: 4px 0 0; font-size: 12.5px; color: var(--danger); font-weight: 600; }
+  .ts-body-locked .ts-form-grid .ts-field:not(:nth-child(1)):not(:nth-child(2)) { opacity: 0.45; pointer-events: none; }
+  .ul-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .ts-form-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--danger-soft); color: var(--danger); border-radius: var(--radius); font-size: 12.5px; font-weight: 600; }
 
   /* Hours picker */
   .ts-hrs-options { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -985,7 +1054,7 @@ const styles = `
     color: var(--t-muted); font-size: 12.5px; font-weight: 600;
     cursor: pointer; transition: all 0.15s; font-family: var(--font);
   }
-  .ts-hrs-btn:hover:not(.disabled) { color: var(--primary); background: #EEF2FF; }
+  .ts-hrs-btn:hover:not(.disabled) { color: var(--primary); background: var(--primary-soft); }
   .ts-hrs-btn.active { background: var(--primary); color: #fff; }
   .ts-hrs-btn.disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -997,12 +1066,12 @@ const styles = `
   .ts-hrs-bar-bg { width: 100%; height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
   .ts-hrs-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background 0.3s ease; }
   .ts-hrs-hint { font-size: 11px; color: var(--t-muted); margin: 0; }
-  .ts-hrs-warning { font-size: 11px; color: #DC2626; font-weight: 600; margin: 0; }
+  .ts-hrs-warning { font-size: 11px; color: var(--danger); font-weight: 600; margin: 0; }
 
 
   /* Delete confirm */
   .ts-delete-warn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; text-align: center; }
-  .ts-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: #FEF2F2; color: #DC2626; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+  .ts-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--danger-soft); color: var(--danger); font-size: 22px; display: flex; align-items: center; justify-content: center; }
   .ts-delete-msg { font-size: 14px; font-weight: 600; color: var(--t-base); margin: 0; }
   .ts-delete-detail { font-size: 12.5px; color: var(--t-muted); margin: 0; max-width: 280px; }
 

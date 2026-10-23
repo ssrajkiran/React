@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../api";
 import StatusBadge from "../ui/StatusBadge";
 import EmptyState from "../ui/EmptyState";
+import { PageLoader } from "../ui/Loader";
 import { fmtHrs, fmtDate, getInitials } from "../../utils";
 
 export default function ModuleDetailModal({ moduleId, onClose, onNavigate }) {
@@ -43,7 +44,7 @@ export default function ModuleDetailModal({ moduleId, onClose, onNavigate }) {
               {loading ? <i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> : <i className="bi bi-list-task" />}
             </div>
             <div>
-              <h6 className="ul-modal-title">{loading ? "Loading…" : mod?.module_name || "Module Details"}</h6>
+              <h6 className="ul-modal-title">{loading ? "Module Details" : mod?.module_name || "Module Details"}</h6>
               <p className="ul-modal-sub">
                 {mod?.project_name && <><i className="bi bi-folder" style={{ marginRight: 4 }} />{mod.project_name}</>}
                 {mod?.module_status && <> • <StatusBadge status={mod.module_status} /></>}
@@ -59,7 +60,7 @@ export default function ModuleDetailModal({ moduleId, onClose, onNavigate }) {
         {/* Loading */}
         {loading && (
           <div className="ul-modal-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
-            <i className="bi bi-arrow-repeat" style={{ fontSize: 24, color: "var(--primary)", animation: "spin 1s linear infinite" }} />
+            <PageLoader message="Unpacking module details" />
           </div>
         )}
 

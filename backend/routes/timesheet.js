@@ -67,19 +67,29 @@ router.get("/employee/tasks/:projectId", verifyToken, (req, res) => {
 });
 
 router.delete("/delete/:id", verifyToken, (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Admins only" });
-  }
-
   const id = req.params.id;
-  const sql = "DELETE FROM timesheet WHERE id = ?";
 
-  db.query(sql, [id], (err, result) => {
+  db.query("SELECT created_by FROM timesheet WHERE id = ?", [id], (err, rows) => {
     if (err) {
-      console.error("Delete error:", err);
+      console.error("Delete lookup error:", err);
       return res.status(500).json({ message: "Database error" });
     }
-    res.json({ message: "Timesheet deleted successfully" });
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Timesheet not found" });
+    }
+
+    // Admin can delete any entry; employee can delete only their own
+    if (req.user.role !== "admin" && Number(rows[0].created_by) !== Number(req.user.id)) {
+      return res.status(403).json({ message: "You can only delete your own timesheet entries" });
+    }
+
+    db.query("DELETE FROM timesheet WHERE id = ?", [id], (err2, result) => {
+      if (err2) {
+        console.error("Delete error:", err2);
+        return res.status(500).json({ message: "Database error" });
+      }
+      res.json({ message: "Timesheet deleted successfully" });
+    });
   });
 });
 
@@ -206,6 +216,78 @@ router.get("/tasks/project/:projectId", verifyToken, (req, res) => {
     res.json(results);
   });
 });
+/* ==============================
+   APPROVED LEAVE DATES FOR A USER
+   (used by timesheet form to block entries on leave dates)
+=============================== */
+router.get("/leave-dates", verifyToken, (req, res) => {
+  const userId = req.query.user_id || req.user.id;
+
+  if (String(userId) !== String(req.user.id) && req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admins only" });
+  }
+
+  const sql = `
+    SELECT DATE_FORMAT(from_date, '%Y-%m-%d') AS from_date,
+           DATE_FORMAT(to_date, '%Y-%m-%d') AS to_date,
+           type, days, half_day_type
+    FROM leaves
+    WHERE user_id = ?
+      AND status = 'approved'
+      AND type IN ('leave', 'compoff')
+  `;
+
+  db.query(sql, [userId], (err, rows) => {
+    if (err) {
+      console.error("Leave dates error:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    const map = {};
+    rows.forEach((r) => {
+      const isHalf = Number(r.days) < 1 || (r.half_day_type && r.half_day_type !== "full");
+      const start = new Date(`${r.from_date}T00:00:00`);
+      const end = new Date(`${r.to_date}T00:00:00`);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        if (!map[key] || (map[key].half_day && !isHalf)) {
+          map[key] = { date: key, type: r.type, half_day: !!isHalf };
+        }
+      }
+    });
+
+    res.json(Object.values(map).sort((a, b) => (a.date < b.date ? -1 : 1)));
+  });
+});
+
+/* ==============================
+   APPROVED LEAVE FOR USER ON A DATE
+=============================== */
+function getLeaveOnDate(userId, dateStr, cb) {
+  const sql = `
+    SELECT id, type, days, half_day_type
+    FROM leaves
+    WHERE user_id = ?
+      AND status = 'approved'
+      AND type IN ('leave', 'compoff')
+      AND ? BETWEEN DATE(from_date) AND DATE(to_date)
+    ORDER BY id DESC
+    LIMIT 1
+  `;
+
+  db.query(sql, [userId, dateStr], (err, rows) => {
+    if (err) return cb(err);
+    if (!rows.length) return cb(null, null);
+
+    const row = rows[0];
+    cb(null, {
+      id: row.id,
+      type: row.type,
+      halfDay: Number(row.days) < 1 || (row.half_day_type && row.half_day_type !== "full"),
+    });
+  });
+}
+
 router.post("/", verifyToken, (req, res) => {
   const { task, date, start_time, end_time, man_hrs, created_by, work_description, entry_type } = req.body;
   const isPermission = entry_type === "permission";
@@ -285,72 +367,89 @@ router.post("/", verifyToken, (req, res) => {
 
   function proceedAfterValidation() {
 
-    // Step 1: Check total hours already logged for that user on that date
-    const checkSql = `
-      SELECT COALESCE(SUM(man_hrs), 0) AS total_hours
-      FROM timesheet
-      WHERE DATE(date) = ? AND created_by = ?
-    `;
-
-    db.query(checkSql, [normalizedDate, created_by], (err, results) => {
-      if (err) {
-        console.error("Check timesheet hours error:", err);
+    // Step 0: No timesheet entry allowed on an approved leave date
+    getLeaveOnDate(created_by, normalizedDate, (leaveErr, leaveInfo) => {
+      if (leaveErr) {
+        console.error("Leave check error:", leaveErr);
         return res.status(500).json({ message: "Database error" });
       }
 
-      const totalHours = Number(results[0].total_hours) || 0;
-      const remaining = 8 - totalHours;
-
-      if (totalHours + hoursToAdd > 8) {
+      if (leaveInfo && !leaveInfo.halfDay) {
         return res.status(400).json({
-          message: `Only ${remaining} hr${remaining !== 1 ? "s" : ""} remaining for ${displayDate}. Cannot add ${hoursToAdd} hr${hoursToAdd !== 1 ? "s" : ""}.`,
+          message: `Timesheet entry is not allowed for ${displayDate}. Approved leave exists on this date.`,
         });
       }
 
-      // Step 2: Check for overlapping time entries on same date for same user
-      if (dbStartTime && dbEndTime) {
-        const overlapSql = `
-          SELECT id, start_time, end_time, task
-          FROM timesheet
-          WHERE DATE(date) = ? AND created_by = ?
-          AND start_time IS NOT NULL AND end_time IS NOT NULL
-          AND start_time < ? AND end_time > ?
-        `;
+      // Half-day leave → only half day (4 hrs) can be logged
+      const dayLimit = leaveInfo && leaveInfo.halfDay ? 4 : 8;
 
-        db.query(overlapSql, [normalizedDate, created_by, dbEndTime, dbStartTime], (err, overlapResults) => {
-          if (err) {
-            console.error("Check overlap error:", err);
-            return res.status(500).json({ message: "Database error" });
-          }
+      // Step 1: Check total hours already logged for that user on that date
+      const checkSql = `
+        SELECT COALESCE(SUM(man_hrs), 0) AS total_hours
+        FROM timesheet
+        WHERE DATE(date) = ? AND created_by = ?
+      `;
 
-          if (overlapResults.length > 0) {
-            const overlap = overlapResults[0];
-            const overlapStart = formatTimeAMPM(overlap.start_time);
-            const overlapEnd = formatTimeAMPM(overlap.end_time);
-            return res.status(400).json({
-              message: `Time overlap detected! You already have an entry from ${overlapStart} to ${overlapEnd} on ${displayDate}. Please choose a different time slot.`,
-            });
-          }
+      db.query(checkSql, [normalizedDate, created_by], (err, results) => {
+        if (err) {
+          console.error("Check timesheet hours error:", err);
+          return res.status(500).json({ message: "Database error" });
+        }
 
-          // No overlap - proceed with insert
+        const totalHours = Number(results[0].total_hours) || 0;
+        const remaining = dayLimit - totalHours;
+
+        if (totalHours + hoursToAdd > dayLimit) {
+          return res.status(400).json({
+            message: `Only ${remaining} hr${remaining !== 1 ? "s" : ""} remaining for ${displayDate}. Cannot add ${hoursToAdd} hr${hoursToAdd !== 1 ? "s" : ""}.`,
+          });
+        }
+
+        // Step 2: Check for overlapping time entries on same date for same user
+        if (dbStartTime && dbEndTime) {
+          const overlapSql = `
+            SELECT id, start_time, end_time, task
+            FROM timesheet
+            WHERE DATE(date) = ? AND created_by = ?
+            AND start_time IS NOT NULL AND end_time IS NOT NULL
+            AND start_time < ? AND end_time > ?
+          `;
+
+          db.query(overlapSql, [normalizedDate, created_by, dbEndTime, dbStartTime], (err, overlapResults) => {
+            if (err) {
+              console.error("Check overlap error:", err);
+              return res.status(500).json({ message: "Database error" });
+            }
+
+            if (overlapResults.length > 0) {
+              const overlap = overlapResults[0];
+              const overlapStart = formatTimeAMPM(overlap.start_time);
+              const overlapEnd = formatTimeAMPM(overlap.end_time);
+              return res.status(400).json({
+                message: `Time overlap detected! You already have an entry from ${overlapStart} to ${overlapEnd} on ${displayDate}. Please choose a different time slot.`,
+              });
+            }
+
+            // No overlap - proceed with insert
+            insertTimesheet();
+          });
+        } else {
           insertTimesheet();
-        });
-      } else {
-        insertTimesheet();
-      }
+        }
 
-      function insertTimesheet() {
-        const insertSql = "INSERT INTO timesheet (task, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        function insertTimesheet() {
+          const insertSql = "INSERT INTO timesheet (task, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-        db.query(insertSql, [task, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, work_description || null, created_by], (err, result) => {
-          if (err) {
-            console.error("Insert timesheet error:", err);
-            return res.status(500).json({ message: "Database error" });
-          }
+          db.query(insertSql, [task, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, work_description || null, created_by], (err, result) => {
+            if (err) {
+              console.error("Insert timesheet error:", err);
+              return res.status(500).json({ message: "Database error" });
+            }
 
-          res.json({ message: "Timesheet added successfully", timesheet_id: result.insertId });
-        });
-      }
+            res.json({ message: "Timesheet added successfully", timesheet_id: result.insertId });
+          });
+        }
+      });
     });
   }
 });
