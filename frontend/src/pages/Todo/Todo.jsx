@@ -4,6 +4,7 @@ import api from "../../api";
 import { Link } from "react-router-dom";
 import SharedDatePicker from "../../components/SharedDatePicker";
 import SharedSelect from "../../components/SharedSelect";
+import { fmtDate } from "../../utils";
 
 // ─── helpers ─────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -480,6 +481,11 @@ export default function Todo() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {search && (
+            <button className="tl-search-clear" title="Clear search" onClick={() => setSearch("")}>
+              <i className="bi bi-x" />
+            </button>
+          )}
         </div>
         <div className="tl-filter-tabs">
           {["All", "Active", "Completed"].map((f) => (
@@ -492,6 +498,7 @@ export default function Todo() {
             </button>
           ))}
         </div>
+        <span className="tl-count-pill">{todos.length} todo{todos.length !== 1 ? "s" : ""}</span>
         <button className="tl-add-btn" onClick={openCreate}>
           <i className="bi bi-plus-lg" /> New Todo
         </button>
@@ -516,7 +523,11 @@ export default function Todo() {
             {loading ? (
               <tr><td colSpan={7 + extraCols.length} className="tl-empty">Loading...</td></tr>
             ) : todos.length === 0 ? (
-              <tr><td colSpan={7 + extraCols.length} className="tl-empty">No todos found.</td></tr>
+              <tr><td colSpan={7 + extraCols.length} className="tl-empty">
+                {search || filter !== "All"
+                  ? `No todos match${filter !== "All" ? ` ${filter.toLowerCase()}` : ""}${search ? ` “${search}”` : ""}`
+                  : "No todos found."}
+              </td></tr>
             ) : todos.map((todo) => {
               const overdue = todo.due_date && todo.due_date < t && !todo.completed;
               return (
@@ -548,7 +559,7 @@ export default function Todo() {
                   </td>
                   <td>
                     <span className={`tl-due ${overdue ? "overdue" : ""}`}>
-                      {todo.due_date || "---"}{overdue && " !"}
+                      {todo.due_date ? fmtDate(todo.due_date) : "---"}{overdue && " !"}
                     </span>
                   </td>
                   {extraCols.map((c) => (
@@ -557,7 +568,7 @@ export default function Todo() {
                     </td>
                   ))}
                   <td>
-                    <span className="tl-due">{todo.created_at?.slice(0, 10)}</span>
+                    <span className="tl-due">{fmtDate(todo.created_at)}</span>
                   </td>
                   <td>
                     <div className="tl-actions">
@@ -616,7 +627,7 @@ const styles = `
     font-family:var(--font);outline:none;
     transition:box-shadow .15s;
   }
-  .sr-input:focus{box-shadow:0 0 0 3px rgba(80,72,229,.18)}
+  .sr-input:focus{box-shadow:0 0 0 3px var(--primary-ring)}
   .cu-select{appearance:none;padding-right:34px;cursor:pointer}
   .cu-select-arrow{position:absolute;right:11px;color:var(--t-muted);font-size:11px;pointer-events:none}
   .cu-input-error{box-shadow:0 0 0 3px rgba(239,68,68,.1)!important}
@@ -645,6 +656,15 @@ const styles = `
   .tl-stat-label{font-size:11px;font-weight:700;color:var(--t-muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px}
   .tl-stat-val{font-size:22px;font-weight:700;margin:0}
   .tl-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .tl-search-clear{
+    position:absolute;right:9px;background:none;border:none;color:var(--t-muted);
+    cursor:pointer;font-size:13px;padding:0;display:flex;align-items:center
+  }
+  .tl-search-clear:hover{color:var(--t-base)}
+  .tl-count-pill{
+    font-size:12px;font-weight:600;color:var(--t-muted);background:var(--bg-card);
+    box-shadow:var(--shadow-sm);border-radius:20px;padding:4px 11px;white-space:nowrap
+  }
   .tl-filter-tabs{display:flex;gap:3px;background:var(--bg-muted);border-radius:8px;padding:3px}
   .tl-filter-tab{
     padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;
@@ -703,13 +723,13 @@ const styles = `
   .tl-icon-btn.tl-del:hover{color: var(--danger);background: var(--danger-soft)}
   .tl-empty{text-align:center;padding:48px;color:var(--t-muted);font-size:13px}
 
-  .cd-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);backdrop-filter:blur(2px);z-index:50}
+  .cd-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);backdrop-filter:blur(8px);z-index:1000}
   .cd-dialog{
     position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    z-index:51;width:80%;max-width:520px;max-height:calc(100vh - 32px);
+    z-index:1001;width:80vw;height:80vh;max-height:80vh;
     background:var(--bg-card);
     border-radius:var(--radius-lg);box-shadow:var(--shadow-card),0 24px 60px -30px rgba(15,23,42,.20);
-    animation:cd-center-in .2s ease;overflow:visible;
+    animation:cd-center-in .2s ease;overflow:hidden;display:flex;flex-direction:column;
   }
   @keyframes cd-center-in{from{opacity:0;transform:translate(-50%,-50%) scale(.96)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
   .cd-head{display:flex;align-items:center;gap:14px;padding:20px 24px 16px}
@@ -728,7 +748,7 @@ const styles = `
   }
   .cd-close:hover{background: var(--bg-hover)}
   .cd-divider{border:none;border-top:1px solid var(--border-soft);margin:0 0 20px}
-  .cd-body{padding:0 24px;overflow-y:auto;max-height:calc(100vh - 160px)}
+  .cd-body{padding:0 24px;overflow-y:auto;flex:1;min-height:0}
   .cd-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin-bottom:20px}
   .cd-field{display:flex;flex-direction:column;gap:6px}
   .cd-full{grid-column:1/-1}

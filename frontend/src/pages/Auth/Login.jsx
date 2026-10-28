@@ -401,7 +401,10 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      const r = await api.post("/auth/login", { email, password });
+      // Send the token this browser is currently using so the backend can
+      // destroy the previous account's session on this login.
+      const prevToken = localStorage.getItem("token") || undefined;
+      const r = await api.post("/auth/login", { email, password, prevToken });
       localStorage.setItem("token", r.data.token);
       sessionStorage.removeItem("bdayModalSeen");
       if (r.data.permissions) {
@@ -662,7 +665,7 @@ export default function Login() {
         <div
           style={{
             position: "fixed", inset: 0, background: "rgba(17,24,39,0.45)",
-            backdropFilter: "blur(2px)", zIndex: 1100, display: "flex",
+            backdropFilter: "blur(8px)", zIndex: 1100, display: "flex",
             alignItems: "center", justifyContent: "center", padding: 16,
           }}
           onClick={() => setShowIntercom(false)}
@@ -671,7 +674,7 @@ export default function Login() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#fff", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-              width: "90%", maxWidth: 700, maxHeight: "85vh", display: "flex",
+              width: "80vw", height: "80vh", maxHeight: "80vh", display: "flex",
               flexDirection: "column", overflow: "hidden", animation: "ic-modal-in 0.2s ease",
             }}
           >

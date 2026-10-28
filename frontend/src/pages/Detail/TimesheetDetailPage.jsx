@@ -5,6 +5,7 @@ import AppLayout from "../../components/layout/AppLayout";
 import StatusBadge from "../../components/ui/StatusBadge";
 import EmptyState from "../../components/ui/EmptyState";
 import { PageLoader } from "../../components/ui/Loader";
+import { fmtDateLong as fmtDateLongShared, fmtDateTime } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -15,10 +16,7 @@ const fmtHrs = (hrs) => {
   return `${m}m`;
 };
 
-const fmtDate = (d) => {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-};
+const fmtDate = (d) => fmtDateLongShared(d);
 
 export default function TimesheetDetailPage() {
   const { id } = useParams();
@@ -130,7 +128,7 @@ export default function TimesheetDetailPage() {
               )}
               <div className="info-item">
                 <div className="info-label">Created At</div>
-                <div className="info-value">{data.created_at ? new Date(data.created_at).toLocaleString() : "—"}</div>
+                <div className="info-value">{data.created_at ? fmtDateTime(data.created_at) : "—"}</div>
               </div>
             </div>
           </div>

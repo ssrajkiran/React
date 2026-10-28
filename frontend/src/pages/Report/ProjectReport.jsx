@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
 import SharedSelect from "../../components/SharedSelect";
+import { fmtDate as fmtDateShared } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -15,7 +16,7 @@ const fmtHrs = (hrs) => {
 
 const fmtDate = (iso) => {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return fmtDateShared(iso);
 };
 
 const initials = (name) =>
@@ -37,6 +38,7 @@ export default function ProjectReport() {
   const [loadingProject, setLoadingProject] = useState(false);
   const [loadingModules, setLoadingModules] = useState(true);
   const [openGroups, setOpenGroups] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     api.get("/reports/projects")
@@ -65,10 +67,36 @@ export default function ProjectReport() {
     setLoadingProject(!!value);
   };
 
+  const searchQ = searchQuery.trim().toLowerCase();
+
+  const filteredProjectModules = useMemo(() => {
+    if (!projectData) return [];
+    if (!searchQ) return projectData.modules;
+    const out = [];
+    for (const m of projectData.modules) {
+      const headHit = `${m.module_name || ""} ${m.status || ""}`.toLowerCase().includes(searchQ);
+      if (headHit) { out.push(m); continue; }
+      const entries = (m.entries || []).filter((e) =>
+        `${e.work_description || ""} ${e.person || ""} ${fmtDate(e.date)}`.toLowerCase().includes(searchQ)
+      );
+      if (entries.length > 0) out.push({ ...m, entries });
+    }
+    return out;
+  }, [projectData, searchQ]);
+
+  const filteredModuleRows = useMemo(() => {
+    if (!searchQ) return moduleRows;
+    return moduleRows.filter((r) =>
+      `${r.module_name || ""} ${r.project_name || ""} ${r.status || ""} ${(r.persons || []).join(" ")}`
+        .toLowerCase()
+        .includes(searchQ)
+    );
+  }, [moduleRows, searchQ]);
+
   const moduleGroups = useMemo(() => {
     const groups = [];
     const index = {};
-    moduleRows.forEach((r) => {
+    filteredModuleRows.forEach((r) => {
       if (!index[r.project_id]) {
         index[r.project_id] = {
           project_id: r.project_id,
@@ -85,7 +113,7 @@ export default function ProjectReport() {
       ...g,
       total_hours: Math.round(g.total_hours * 100) / 100,
     }));
-  }, [moduleRows]);
+  }, [filteredModuleRows]);
 
   const allClosed =
     moduleGroups.length > 0 &&
@@ -116,22 +144,44 @@ export default function ProjectReport() {
         <p className="rp-sub">Timesheet work split by project and by module</p>
       </div>
 
-      <div className="rp-tabs">
-        <button
-          className={`rp-tab ${tab === "project" ? "active" : ""}`}
-          onClick={() => setTab("project")}
-        >
-          <i className="bi bi-folder2-open" /> Project-wise
-        </button>
-        <button
-          className={`rp-tab ${tab === "module" ? "active" : ""}`}
-          onClick={() => {
-            setTab("module");
-            setOpenGroups({});
-          }}
-        >
-          <i className="bi bi-grid-3x3-gap" /> Module-wise
-        </button>
+      <div className="rp-toolbar">
+        <div className="rp-tabs">
+          <button
+            className={`rp-tab ${tab === "project" ? "active" : ""}`}
+            onClick={() => setTab("project")}
+          >
+            <i className="bi bi-folder2-open" /> Project-wise
+          </button>
+          <button
+            className={`rp-tab ${tab === "module" ? "active" : ""}`}
+            onClick={() => {
+              setTab("module");
+              setOpenGroups({});
+            }}
+          >
+            <i className="bi bi-grid-3x3-gap" /> Module-wise
+          </button>
+        </div>
+        <div className="rp-search">
+          <i className="bi bi-search" />
+          <input
+            type="text"
+            placeholder={tab === "project" ? "Search modules, work, person…" : "Search project, module, person…"}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery ? (
+            <button className="rp-search-clear" title="Clear search" onClick={() => setSearchQuery("")}>
+              <i className="bi bi-x-lg" />
+            </button>
+          ) : (
+            <span className="rp-search-count">
+              {tab === "project"
+                ? `${projectData ? filteredProjectModules.length : 0} modules`
+                : `${filteredModuleRows.length} modules`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ══════════ PROJECT-WISE ══════════ */}
@@ -193,9 +243,14 @@ export default function ProjectReport() {
                 <div className="rp-empty">
                   <p className="rp-empty-title">No modules in this project</p>
                 </div>
+              ) : filteredProjectModules.length === 0 ? (
+                <div className="rp-empty">
+                  <p className="rp-empty-title">No results for “{searchQuery}”</p>
+                  <p className="rp-empty-sub">Try a different module, work description or person name</p>
+                </div>
               ) : (
                 <div className="rp-modules">
-                  {projectData.modules.map((m, mi) => (
+                  {filteredProjectModules.map((m, mi) => (
                     <div className="rp-module" key={m.task_id}>
                       <div className="rp-module-head">
                         <div className="rp-module-title">
@@ -242,6 +297,12 @@ export default function ProjectReport() {
             <div className="rp-empty">
               <i className="bi bi-grid-3x3-gap rp-empty-icon" />
               <p className="rp-empty-title">No modules found</p>
+            </div>
+          ) : moduleGroups.length === 0 ? (
+            <div className="rp-empty">
+              <i className="bi bi-search rp-empty-icon" />
+              <p className="rp-empty-title">No results for “{searchQuery}”</p>
+              <p className="rp-empty-sub">Try a different project, module or person name</p>
             </div>
           ) : (
             <>
@@ -332,6 +393,27 @@ const styles = `
   .rp-sub { font-size: 13px; color: var(--t-muted); margin: 5px 0 0; }
 
   /* ── Tabs ── */
+  .rp-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+  .rp-toolbar .rp-tabs { margin-bottom:0; }
+  .rp-search {
+    display:flex; align-items:center; gap:8px; background:var(--bg-card);
+    border:1px solid var(--border); border-radius:20px; padding:7px 14px;
+    min-width:270px; box-shadow:var(--shadow-sm); transition:border-color 0.15s;
+  }
+  .rp-search:focus-within { border-color:var(--primary); }
+  .rp-search > i { font-size:12px; color:var(--t-muted); }
+  .rp-search input {
+    flex:1; min-width:0; border:none; outline:none; background:transparent;
+    font-family:var(--font); font-size:12.5px; color:var(--t-base);
+  }
+  .rp-search input::placeholder { color:var(--t-muted); }
+  .rp-search-clear {
+    display:flex; align-items:center; justify-content:center; border:none; background:var(--bg-muted);
+    color:var(--t-muted); width:17px; height:17px; border-radius:50%; font-size:9px; cursor:pointer; padding:0;
+  }
+  .rp-search-clear:hover { background:var(--danger-soft); color:var(--danger); }
+  .rp-search-count { font-size:11px; font-weight:700; color:var(--t-muted); white-space:nowrap; }
+  @media (max-width: 768px) { .rp-search { min-width:180px; flex:1; } }
   .rp-tabs {
     display: flex; gap: 4px; margin-bottom: 18px;
     background: var(--bg-muted); border-radius: 10px; padding: 4px;
@@ -370,7 +452,7 @@ const styles = `
   .rp-overall {
     display: flex; align-items: flex-start; justify-content: space-between;
     gap: 20px; flex-wrap: wrap;
-    background: linear-gradient(120deg, rgba(80, 72, 229, 0.07), rgba(236, 72, 153, 0.06));
+    background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 7%, transparent), rgba(236, 72, 153, 0.06));
     border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 18px;
   }
   .rp-overall-eyebrow {
@@ -399,7 +481,7 @@ const styles = `
   .rp-person-avatar, .rp-name-chip-avatar {
     width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
     display: grid; place-items: center;
-    font-size: 10px; font-weight: 700; color: #fff;
+    font-size: 10px; font-weight: 700; color: var(--on-primary);
     background: linear-gradient(135deg, var(--primary), #EC4899);
   }
   .rp-person-name { font-size: 12.5px; font-weight: 600; color: var(--t-base); }

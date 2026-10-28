@@ -42,4 +42,36 @@ api.interceptors.response.use(
   }
 );
 
+// ── Cross-tab session sync ──
+// The token lives in one shared localStorage key. When another tab logs in
+// with a *different* account (or logs out), this tab's session is gone —
+// restart it at the login screen instead of silently continuing as the new user.
+function decodeTokenId(token) {
+  try {
+    const json = atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json).id;
+  } catch {
+    return undefined; // undecidable → let server-side revocation handle it
+  }
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== "token") return;
+
+  // Logged out in another tab → follow.
+  if (!event.newValue) {
+    if (window.location.pathname !== "/") window.location.href = "/";
+    return;
+  }
+
+  // Different account logged in on this browser → this session is destroyed.
+  const prevId = decodeTokenId(event.oldValue);
+  const nextId = decodeTokenId(event.newValue);
+  if (prevId !== undefined && nextId !== undefined && prevId !== nextId) {
+    sessionStorage.setItem(SESSION_EXPIRED_FLAG, "1");
+    if (window.location.pathname !== "/") window.location.href = "/";
+    else window.location.reload();
+  }
+});
+
 export default api;

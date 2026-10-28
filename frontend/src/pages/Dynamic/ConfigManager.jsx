@@ -501,7 +501,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .cfg-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
+  .cfg-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
   .cfg-count-pill {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; font-weight: 600; color: var(--t-muted);
@@ -589,8 +589,8 @@ const styles = `
     transition: all 0.15s; font-family: var(--font); white-space: nowrap; border: none;
   }
   .cfg-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .cfg-btn-primary { background: var(--primary); color: #fff; }
-  .cfg-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); color: #fff; }
+  .cfg-btn-primary { background: var(--primary); color: var(--on-primary); }
+  .cfg-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); color: var(--on-primary); }
   .cfg-btn-danger { background: var(--danger); color: #fff; }
   .cfg-btn-danger:hover:not(:disabled) { background: #b91c1c; }
   .cfg-btn-outline { background: var(--bg-card); border: 1px solid var(--border); color: var(--t-muted); }
@@ -599,18 +599,18 @@ const styles = `
 
   /* ── Overlay + Modal ── */
   .cfg-overlay {
-    position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px);
+    position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(8px);
     z-index: 1000; display: flex; align-items: center; justify-content: center;
     animation: cfg-fade-in 0.15s ease; padding: 16px;
   }
   .cfg-modal {
     background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    padding: 28px; width: 90%; max-height: calc(100vh - 32px);
+    padding: 28px; width: 80vw; height: 80vh; max-height: 80vh;
     animation: cfg-modal-in 0.2s ease; text-align: left; overflow-y: auto;
   }
-  .cfg-modal-xl { max-width: 900px; }
-  .cfg-modal-sm { max-width: 400px; text-align: center; }
+  .cfg-modal-xl { width: 80vw; height: 80vh; max-height: 80vh; }
+  .cfg-modal-sm { width: min(480px, 92vw); height: auto; max-height: 80vh; text-align: center; }
   .cfg-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 0; }
   .cfg-modal-close {
     background: none; border: none; cursor: pointer; color: var(--t-muted);
@@ -644,7 +644,7 @@ const styles = `
     font-family: var(--font); outline: none; cursor: pointer;
     transition: border-color 0.15s, box-shadow 0.15s; appearance: none; -webkit-appearance: none;
   }
-  .cfg-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
+  .cfg-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
   .cfg-select-arrow { position: absolute; right: 11px; color: var(--t-muted); font-size: 11px; pointer-events: none; }
 
   /* ── Toggle ── */

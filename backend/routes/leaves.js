@@ -114,41 +114,76 @@ function auth(req, res, next) {
   });
 }
 
+// ================= Admin: Manual trigger for the daily leave report =================
+router.get("/daily-report/run", auth, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).json({ error: "Admin only" });
+  const result = await require("../utils/dailyLeaveEmail").sendDailyLeaveEmail();
+  res.json(result);
+});
+
 // ================= Admin: Employee Leave Summary =================
+// Optional query params: from, to (YYYY-MM-DD). Default = current financial year (Apr 1 → Mar 31).
 router.get("/employee-summary", auth, async (req, res) => {
   if (req.user.role !== "admin") return res.status(403).json({ error: "Admin only" });
   try {
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const now = new Date();
+    const defaultFyStartYear = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+    const pad = (n) => String(n).padStart(2, "0");
+    const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+
+    let from = null;
+    let to = null;
+    if (DATE_RE.test(req.query.from || "") && DATE_RE.test(req.query.to || "")) {
+      from = req.query.from;
+      to = req.query.to;
+      if (from > to) [from, to] = [to, from];
+    } else {
+      // Current financial year: Apr 1 → Mar 31 next year
+      from = iso(defaultFyStartYear, 4, 1);
+      to = iso(defaultFyStartYear + 1, 3, 31);
+    }
+
     const [rows] = await db.promise().query(`
     SELECT
   u.id, u.name, u.email,
 
-  -- Leaves used (approved, type='leave')
+  -- Leaves used (approved, type='leave', current FY)
   COALESCE((SELECT SUM(l.days) FROM leaves l
     WHERE l.user_id = u.id AND l.status = 'approved'
-    AND l.type = 'leave'), 0) AS leaves_used,
+    AND l.type = 'leave'
+    AND l.from_date >= m.fy_start AND l.from_date <= m.fy_end), 0)
+    AS leaves_used,
 
-  -- Comp-off used
-  COALESCE((SELECT COUNT(*) FROM leaves l
+  -- Comp-off used (approved, current FY)
+  COALESCE((SELECT SUM(COALESCE(l.days, 1)) FROM leaves l
     WHERE l.user_id = u.id AND l.status = 'approved'
-    AND l.type = 'compoff'), 0) AS compoff_used,
+    AND l.type = 'compoff'
+    AND l.from_date >= m.fy_start AND l.from_date <= m.fy_end), 0)
+    AS compoff_used,
 
-  -- Permission: total hours used
+  -- Permission: total hours used (approved, current FY)
   COALESCE((SELECT SUM(p.hours) FROM permission p
-    WHERE p.user_id = u.id AND p.status = 'approved'), 0)
+    WHERE p.user_id = u.id AND p.status = 'approved'
+    AND p.date >= m.fy_start AND p.date <= m.fy_end), 0)
     AS permission_used,
 
-  -- Present on holiday (comp-off earned)
+  -- Present on holiday (approved, current FY)
   COALESCE((SELECT COUNT(*) FROM present_on_holiday ph
-    WHERE ph.user_id = u.id AND ph.status = 'approved'), 0)
+    WHERE ph.user_id = u.id AND ph.status = 'approved'
+    AND ph.date >= m.fy_start AND ph.date <= m.fy_end), 0)
     AS present_on_holiday,
 
-  -- Pending counts
+  -- Pending counts (all pending requests, regardless of period, so nothing
+  -- awaiting approval ever disappears from the summary)
   COALESCE((SELECT COUNT(*) FROM leaves l
     WHERE l.user_id = u.id AND l.status = 'pending'
-    AND l.type = 'leave'), 0) AS leaves_pending,
+    AND l.type = 'leave'), 0)
+    AS leaves_pending,
   COALESCE((SELECT COUNT(*) FROM leaves l
     WHERE l.user_id = u.id AND l.status = 'pending'
-    AND l.type = 'compoff'), 0) AS compoff_pending,
+    AND l.type = 'compoff'), 0)
+    AS compoff_pending,
   COALESCE((SELECT COUNT(*) FROM permission p
     WHERE p.user_id = u.id AND p.status = 'pending'), 0)
     AS permission_pending,
@@ -156,7 +191,7 @@ router.get("/employee-summary", auth, async (req, res) => {
     WHERE ph.user_id = u.id AND ph.status = 'pending'), 0)
     AS present_pending,
 
-  -- Total pending
+  -- Total pending (all pending requests, regardless of period)
   COALESCE((SELECT COUNT(*) FROM leaves l
     WHERE l.user_id = u.id AND l.status = 'pending'), 0) +
   COALESCE((SELECT COUNT(*) FROM permission p
@@ -165,63 +200,38 @@ router.get("/employee-summary", auth, async (req, res) => {
     WHERE ph.user_id = u.id AND ph.status = 'pending'), 0)
     AS total_pending,
 
-  -- ✅ FIXED: Months elapsed since April of current FY
-  
-ROUND(
-    GREATEST(
-      (YEAR(CURDATE()) - CASE
-        WHEN MONTH(CURDATE()) >= 4 THEN YEAR(CURDATE())
-        ELSE YEAR(CURDATE()) - 1
-      END) * 12
-      + MONTH(CURDATE()) - 4
-      + CASE WHEN MONTH(CURDATE()) >= 4 THEN 0 ELSE 12 END
-      + 1,
-    0) * 2.5,
-  1) AS leave_accrued,
+  -- Leave accrued: 2.5 days/month since current FY start (April)
+  ROUND(m.months_elapsed * 2.5, 1) AS leave_accrued,
 
+  -- Permission allocated: 2 hrs/month since current FY start (April)
+  ROUND(m.months_elapsed * 2, 1) AS permission_allocated,
 
-  -- ✅ FIXED: Permission allocated = 2 hrs × months elapsed in FY
-  
-ROUND(
-    GREATEST(
-      (YEAR(CURDATE()) - CASE
-        WHEN MONTH(CURDATE()) >= 4 THEN YEAR(CURDATE())
-        ELSE YEAR(CURDATE()) - 1
-      END) * 12
-      + MONTH(CURDATE()) - 4
-      + CASE WHEN MONTH(CURDATE()) >= 4 THEN 0 ELSE 12 END
-      + 1,
-    0) * 2,
-  1) AS permission_allocated,
-
-
-  -- ✅ FIXED: Leave balance uses same corrected accrual
-  
-ROUND(
-    GREATEST(
-      (YEAR(CURDATE()) - CASE
-        WHEN MONTH(CURDATE()) >= 4 THEN YEAR(CURDATE())
-        ELSE YEAR(CURDATE()) - 1
-      END) * 12
-      + MONTH(CURDATE()) - 4
-      + CASE WHEN MONTH(CURDATE()) >= 4 THEN 0 ELSE 12 END
-      + 1,
-    0) * 2.5
+  -- Leave balance = accrued + approved present-on-holiday bonus - approved leave - approved comp-off
+  ROUND(
+    m.months_elapsed * 2.5
     + COALESCE((SELECT COUNT(*) FROM present_on_holiday ph
-        WHERE ph.user_id = u.id AND ph.status = 'approved'), 0)
+        WHERE ph.user_id = u.id AND ph.status = 'approved'
+        AND ph.date >= m.fy_start AND ph.date <= m.fy_end), 0)
     - COALESCE((SELECT SUM(l.days) FROM leaves l
         WHERE l.user_id = u.id AND l.status = 'approved'
-        AND l.type = 'leave'), 0)
-    - COALESCE((SELECT COUNT(*) FROM leaves l
+        AND l.type = 'leave'
+        AND l.from_date >= m.fy_start AND l.from_date <= m.fy_end), 0)
+    - COALESCE((SELECT SUM(COALESCE(l.days, 1)) FROM leaves l
         WHERE l.user_id = u.id AND l.status = 'approved'
-        AND l.type = 'compoff'), 0),
+        AND l.type = 'compoff'
+        AND l.from_date >= m.fy_start AND l.from_date <= m.fy_end), 0),
   1) AS leave_balance
 
-
 FROM users u
+CROSS JOIN (
+  SELECT
+    CAST(? AS DATE) AS fy_start,
+    CAST(? AS DATE) AS fy_end,
+    GREATEST(TIMESTAMPDIFF(MONTH, CAST(? AS DATE), LEAST(CAST(? AS DATE), CURDATE())) + 1, 0) AS months_elapsed
+) m
 WHERE u.role = 'employee'
 ORDER BY u.name ASC
-    `);
+    `, [from, to, from, to]);
     res.json(rows);
   } catch (err) {
     console.error("employee-summary error:", err);
@@ -270,14 +280,34 @@ router.get("/holidays", auth, async (req, res) => {
 });
 
 // ================= FETCH ELIGIBLE COMP-OFF DATES =================
+// Returns which half-slots are still open per worked holiday so the form can
+// disable already-availed options and auto-select the remaining half.
+// exclude_id: id of the request being edited (its own half must not count as used).
 router.get("/compoff-eligible", auth, (req, res) => {
   const user_id = req.query.user_id || req.user.id;
   if (req.user.role !== "admin" && String(user_id) !== String(req.user.id)) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
+  const excludeId = /^\d+$/.test(String(req.query.exclude_id || "")) ? Number(req.query.exclude_id) : null;
+  const excl = excludeId ? `AND l.id != ${excludeId}` : "";
+
   const query = `
-    SELECT p.id AS present_id, DATE_FORMAT(p.date, '%Y-%m-%d') AS date_str, p.holiday_name
+    SELECT p.id AS present_id, DATE_FORMAT(p.date, '%Y-%m-%d') AS date_str, p.holiday_name,
+      EXISTS (
+        SELECT 1 FROM leaves l
+        WHERE l.user_id = p.user_id AND l.type = 'compoff'
+          AND DATE(l.comp_off_date) = DATE(p.date)
+          AND l.status IN ('approved', 'pending')
+          AND l.half_day_type = 'first_half' ${excl}
+      ) AS first_taken,
+      EXISTS (
+        SELECT 1 FROM leaves l
+        WHERE l.user_id = p.user_id AND l.type = 'compoff'
+          AND DATE(l.comp_off_date) = DATE(p.date)
+          AND l.status IN ('approved', 'pending')
+          AND l.half_day_type = 'second_half' ${excl}
+      ) AS second_taken
     FROM present_on_holiday p
     WHERE p.user_id = ? AND p.status = 'approved'
       AND NOT EXISTS (
@@ -285,7 +315,7 @@ router.get("/compoff-eligible", auth, (req, res) => {
         WHERE l.user_id = p.user_id AND l.type = 'compoff'
           AND DATE(l.comp_off_date) = DATE(p.date)
           AND l.status IN ('approved', 'pending')
-          AND COALESCE(l.half_day_type, 'full') = 'full'
+          AND COALESCE(l.half_day_type, 'full') = 'full' ${excl}
       )
       AND NOT (
         EXISTS (
@@ -293,14 +323,14 @@ router.get("/compoff-eligible", auth, (req, res) => {
           WHERE l.user_id = p.user_id AND l.type = 'compoff'
             AND DATE(l.comp_off_date) = DATE(p.date)
             AND l.status IN ('approved', 'pending')
-            AND l.half_day_type = 'first_half'
+            AND l.half_day_type = 'first_half' ${excl}
         )
         AND EXISTS (
           SELECT 1 FROM leaves l
           WHERE l.user_id = p.user_id AND l.type = 'compoff'
             AND DATE(l.comp_off_date) = DATE(p.date)
             AND l.status IN ('approved', 'pending')
-            AND l.half_day_type = 'second_half'
+            AND l.half_day_type = 'second_half' ${excl}
         )
       )
     ORDER BY p.date DESC
@@ -658,26 +688,44 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-// ================= Admin: Get all leaves + permissions =================
+// ================= Admin: Get all leaves + permissions + presents =================
 router.get("/alladmin", auth, (req, res) => {
   if (req.user.role !== "admin") return res.status(403).json({ error: "Admin only" });
 
   const leavesQuery = `
     SELECT l.id, l.user_id, u.name, l.from_date AS start, l.to_date AS end,
-      l.days, l.type, l.half_day_type, l.remarks, l.status
+      l.days, l.type, l.half_day_type, l.remarks, l.status, l.created_at
     FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.id DESC
   `;
   const permissionsQuery = `
     SELECT p.id, p.user_id, u.name, p.date AS start, p.hours, p.slot,
-      p.remarks, p.status, 'permission' AS type
+      p.remarks, p.status, 'permission' AS type, p.created_at
     FROM permission p JOIN users u ON p.user_id = u.id ORDER BY p.id DESC
+  `;
+  const presentsQuery = `
+    SELECT ph.id, ph.user_id, u.name, ph.date AS start, NULL AS days,
+      'present' AS type, ph.remarks, ph.status, ph.created_at, ph.holiday_name
+    FROM present_on_holiday ph JOIN users u ON ph.user_id = u.id ORDER BY ph.id DESC
   `;
 
   db.query(leavesQuery, (err, leaves) => {
     if (err) return res.status(500).json({ error: err });
     db.query(permissionsQuery, (err, permissions) => {
       if (err) return res.status(500).json({ error: err });
-      res.json([...leaves, ...permissions.map(p => ({ ...p, end: p.start }))]);
+      db.query(presentsQuery, (err, presents) => {
+        if (err) {
+          console.warn("alladmin presents query failed:", err.message);
+          presents = [];
+        }
+        const merged = [
+          ...leaves,
+          ...permissions.map(p => ({ ...p, end: p.start })),
+          ...presents.map(p => ({ ...p, end: p.start })),
+        ];
+        // Newest application first across all types
+        merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        res.json(merged);
+      });
     });
   });
 });
@@ -697,15 +745,15 @@ router.get("/my", auth, (req, res) => {
     SELECT id, user_id,
       DATE_FORMAT(from_date,'%Y-%m-%d') as from_date, DATE_FORMAT(to_date,'%Y-%m-%d') as to_date,
       DATE_FORMAT(comp_off_date,'%Y-%m-%d') as comp_off_date,
-      days, type, half_day_type, remarks, status
+      days, type, half_day_type, remarks, status, created_at
     FROM leaves WHERE user_id=? ORDER BY id DESC
   `;
   const permissionsQuery = `
-    SELECT id, user_id, DATE_FORMAT(date,'%Y-%m-%d') as date, hours, slot, remarks, status
+    SELECT id, user_id, DATE_FORMAT(date,'%Y-%m-%d') as date, hours, slot, remarks, status, created_at
     FROM permission WHERE user_id=? ORDER BY id DESC
   `;
   const presentQuery = `
-    SELECT id, user_id, DATE_FORMAT(date,'%Y-%m-%d') as date, holiday_name, remarks, status
+    SELECT id, user_id, DATE_FORMAT(date,'%Y-%m-%d') as date, holiday_name, remarks, status, created_at
     FROM present_on_holiday WHERE user_id=? ORDER BY id DESC
   `;
 
@@ -725,18 +773,23 @@ router.get("/my", auth, (req, res) => {
             end: new Date(new Date(l.to_date).setHours(23, 59, 59, 999)),
             days: l.days, type: l.type, half_day_type: l.half_day_type,
             remarks: l.remarks, comp_off_date: l.comp_off_date, status: l.status,
+            created_at: l.created_at,
           })),
           ...permissions.map(p => ({
             id: p.id, title: `PERMISSION - ${p.status.toUpperCase()}`,
             start: new Date(p.date), end: new Date(p.date),
             type: "permission", hours: p.hours, slot: p.slot, remarks: p.remarks, status: p.status,
+            created_at: p.created_at,
           })),
           ...presents.map(p => ({
             id: p.id, title: `PRESENT (${p.holiday_name || "Holiday"}) - ${p.status.toUpperCase()}`,
             start: new Date(p.date), end: new Date(p.date),
             type: "present", holiday_name: p.holiday_name, remarks: p.remarks, status: p.status,
+            created_at: p.created_at,
           })),
         ];
+        // Newest application first across leaves, permissions and presents
+        events.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
         res.json(events);
       });
     });
@@ -749,24 +802,37 @@ router.delete("/delete/:id", auth, async (req, res) => {
   const type = req.query.type || "leave";
   const table = type === "permission" ? "permission" : type === "present" ? "present_on_holiday" : "leaves";
   const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+  const isAdmin = req.user.role === "admin";
 
   try {
     const [rows] = await db.promise().query(`SELECT user_id, status FROM ${table} WHERE id=?`, [id]);
     if (!rows.length) return res.status(404).json({ error: `${type} not found` });
 
     const entry = rows[0];
-    if (entry.user_id !== req.user.id) return res.status(403).json({ error: `You can only delete your own ${type}` });
-    if (entry.status !== "pending") return res.status(400).json({ error: `Only pending ${type} can be deleted` });
+
+    if (!isAdmin) {
+      if (entry.user_id !== req.user.id) return res.status(403).json({ error: `You can only delete your own ${type}` });
+      if (entry.status !== "pending") return res.status(400).json({ error: `Only pending ${type} can be deleted` });
+    }
 
     await db.promise().query(`DELETE FROM ${table} WHERE id=?`, [id]);
 
-    const [uRows] = await db.promise().query("SELECT name FROM users WHERE id=?", [entry.user_id]);
-    await notifyAdmins({
-      title: `${typeLabel} request withdrawn`,
-      message: `${uRows[0]?.name || "An employee"} withdrew their pending ${type} request.`,
-      type: "info",
-      link: "/admin/leaves",
-    });
+    if (isAdmin && entry.user_id !== req.user.id) {
+      await notify(entry.user_id, {
+        title: `${typeLabel} request removed`,
+        message: `Your ${type} request was removed by an admin.`,
+        type: "danger",
+        link: "/employee/leaves",
+      });
+    } else {
+      const [uRows] = await db.promise().query("SELECT name FROM users WHERE id=?", [entry.user_id]);
+      await notifyAdmins({
+        title: `${typeLabel} request withdrawn`,
+        message: `${uRows[0]?.name || "An employee"} withdrew their pending ${type} request.`,
+        type: "info",
+        link: "/admin/leaves",
+      });
+    }
 
     res.json({ message: `${typeLabel} deleted successfully` });
   } catch (err) {

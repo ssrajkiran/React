@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
+const { taskNameSql, taskStatusSql, projectJoinSql } = require("../utils/freezedModules");
 
 const router = express.Router();
 
@@ -126,15 +127,15 @@ router.get("/report/timesheet", verifyToken, (req, res) => {
       ts.start_time,
       ts.end_time,
       t.id AS task_id,
-      t.task AS module_name,
-      t.status AS module_status,
+      ${taskNameSql()} AS module_name,
+      ${taskStatusSql()} AS module_status,
       t.assigned_to,
       p.id AS project_id,
       p.project_name,
       u.name AS user_name
     FROM timesheet ts
     LEFT JOIN task t ON t.id = ts.task
-    LEFT JOIN projects p ON p.id = t.project_id
+    ${projectJoinSql()}
     LEFT JOIN users u ON u.id = ts.created_by
     WHERE 1=1
   `;
@@ -142,21 +143,21 @@ router.get("/report/timesheet", verifyToken, (req, res) => {
   const params = [];
 
   if (project_id) {
-    sql += ` AND t.project_id = ?`;
+    sql += ` AND COALESCE(t.project_id, ts.project_id) = ?`;
     params.push(project_id);
   }
 
   if (assigned_to) {
-    sql += ` AND FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))`;
-    params.push(assigned_to);
+    sql += ` AND (FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', '')) OR (ts.task LIKE 'FV::%' AND ts.created_by = ?))`;
+    params.push(assigned_to, assigned_to);
   }
 
   if (status) {
-    sql += ` AND t.status = ?`;
+    sql += ` AND ${taskStatusSql()} = ?`;
     params.push(status);
   }
 
-  sql += ` ORDER BY p.project_name ASC, t.task ASC, ts.date DESC`;
+  sql += ` ORDER BY p.project_name ASC, ${taskNameSql()} ASC, ts.date DESC`;
 
   db.query(sql, params, (err, rows) => {
     if (err) {

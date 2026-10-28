@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
+const { taskStatusSql, taskRowStatusSql } = require("../utils/freezedModules");
 
 const router = express.Router();
 
@@ -35,17 +36,26 @@ router.get("/project-wise", verifyToken, (req, res) => {
     if (!projRows.length) return res.status(404).json({ message: "Project not found" });
 
     const sql = `
-      SELECT t.id AS task_id, t.task AS module_name, t.status AS module_status,
+      SELECT t.id AS task_id, t.task AS module_name, ${taskStatusSql()} AS module_status,
              ts.work_description, ts.man_hrs, ts.date, u.name AS person_name
       FROM task t
       JOIN projects p ON p.id = t.project_id
       LEFT JOIN timesheet ts ON ts.task = t.id
       LEFT JOIN users u ON u.id = ts.created_by
       WHERE p.id = ?
-      ORDER BY t.task ASC, ts.date DESC
+
+      UNION ALL
+
+      SELECT NULL AS task_id, SUBSTRING(ts.task, 5) AS module_name, 'Completed' AS module_status,
+             ts.work_description, ts.man_hrs, ts.date, u.name AS person_name
+      FROM timesheet ts
+      LEFT JOIN users u ON u.id = ts.created_by
+      WHERE ts.project_id = ? AND ts.task LIKE 'FV::%'
+
+      ORDER BY module_name ASC, date DESC
     `;
 
-    db.query(sql, [project_id], (err2, rows) => {
+    db.query(sql, [project_id, project_id], (err2, rows) => {
       if (err2) return res.status(500).json({ message: "Database error" });
 
       const personsMap = {};
@@ -53,7 +63,7 @@ router.get("/project-wise", verifyToken, (req, res) => {
       let totalHours = 0;
 
       rows.forEach((r) => {
-        const key = r.task_id;
+        const key = r.task_id !== null && r.task_id !== undefined ? r.task_id : `fv:${r.module_name}`;
         if (!modulesMap[key]) {
           modulesMap[key] = {
             task_id: r.task_id,
@@ -96,7 +106,7 @@ router.get("/project-wise", verifyToken, (req, res) => {
 router.get("/module-wise", verifyToken, (req, res) => {
   const sql = `
     SELECT p.id AS project_id, p.project_name,
-           t.id AS task_id, t.task AS module_name, t.status AS module_status,
+           t.id AS task_id, t.task AS module_name, ${taskRowStatusSql()} AS module_status,
            ts.created_by, u.name AS person_name,
            IFNULL(SUM(ts.man_hrs), 0) AS total_hours,
            COUNT(ts.id) AS entry_count
@@ -105,7 +115,21 @@ router.get("/module-wise", verifyToken, (req, res) => {
     LEFT JOIN timesheet ts ON ts.task = t.id
     LEFT JOIN users u ON u.id = ts.created_by
     GROUP BY p.id, t.id, ts.created_by
-    ORDER BY p.project_name ASC, t.task ASC
+
+    UNION ALL
+
+    SELECT p.id AS project_id, p.project_name,
+           NULL AS task_id, SUBSTRING(ts.task, 5) AS module_name, 'Completed' AS module_status,
+           ts.created_by, u.name AS person_name,
+           IFNULL(SUM(ts.man_hrs), 0) AS total_hours,
+           COUNT(ts.id) AS entry_count
+    FROM timesheet ts
+    JOIN projects p ON p.id = ts.project_id
+    LEFT JOIN users u ON u.id = ts.created_by
+    WHERE ts.task LIKE 'FV::%'
+    GROUP BY p.id, p.project_name, SUBSTRING(ts.task, 5), ts.created_by, u.name
+
+    ORDER BY project_name ASC, module_name ASC
   `;
 
   db.query(sql, (err, rows) => {
@@ -113,7 +137,7 @@ router.get("/module-wise", verifyToken, (req, res) => {
 
     const merged = {};
     rows.forEach((r) => {
-      const key = r.task_id;
+      const key = r.task_id !== null && r.task_id !== undefined ? r.task_id : `fv:${r.project_id}:${r.module_name}`;
       if (!merged[key]) {
         merged[key] = {
           project_id: r.project_id,

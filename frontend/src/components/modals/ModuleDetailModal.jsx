@@ -1,28 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "../../api";
 import StatusBadge from "../ui/StatusBadge";
 import EmptyState from "../ui/EmptyState";
 import { PageLoader } from "../ui/Loader";
-import { fmtHrs, fmtDate, getInitials } from "../../utils";
+import { fmtHrs, fmtDate } from "../../utils";
 
-export default function ModuleDetailModal({ moduleId, onClose, onNavigate }) {
+export default function ModuleDetailModal({ moduleId, fvKey, projectId, onClose, onNavigate }) {
   const [tab, setTab] = useState("overview");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { if (moduleId) loadDetail(); }, [moduleId]);
-
-  const loadDetail = async () => {
+  const loadDetail = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/timesheet/detail/module/${moduleId}`);
+      const url = fvKey && projectId
+        ? `/timesheet/detail/module/${moduleId}?fv=${encodeURIComponent(fvKey)}&project_id=${projectId}`
+        : `/timesheet/detail/module/${moduleId}`;
+      const res = await api.get(url);
       setData(res.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [moduleId, fvKey, projectId]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (moduleId) loadDetail(); }, [loadDetail, moduleId]);
 
   if (!moduleId) return null;
 
@@ -36,7 +40,7 @@ export default function ModuleDetailModal({ moduleId, onClose, onNavigate }) {
 
   return (
     <div className="ul-overlay" onClick={onClose}>
-      <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+      <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="ul-modal-header">
           <div className="ul-modal-header-left">
@@ -149,7 +153,7 @@ export default function ModuleDetailModal({ moduleId, onClose, onNavigate }) {
                         <tr key={m.id} className="data-table-clickable" onClick={() => onNavigate?.("user", m.id)}>
                           <td>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11 }}>
+                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary)", color: "var(--on-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11 }}>
                                 {m.name?.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 2)}
                               </div>
                               <span style={{ fontWeight: 600, fontSize: 13 }}>{m.name}</span>

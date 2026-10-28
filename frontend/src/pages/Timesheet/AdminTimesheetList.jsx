@@ -5,6 +5,8 @@ import api from "../../api";
 import SharedDatePicker from "../../components/SharedDatePicker";
 import SharedSelect from "../../components/SharedSelect";
 import TimesheetDetailModal from "../../components/modals/TimesheetDetailModal";
+import { buildModuleOptions } from "../../utils/freezedModules";
+import { fmtDate as fmtDateShared, defaultSortOrderFor } from "../../utils";
 
 // ── Helper: normalize any date value to "YYYY-MM-DD" (IST-safe) ──
 const toDateStr = (d) => {
@@ -46,9 +48,8 @@ const fmtHrs = (hrs) => {
   return `${m}m`;
 };
 
-// ── "YYYY-MM-DD" → "22 Oct 2026" ──
-const fmtDateLabel = (d) =>
-  new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+// ── "YYYY-MM-DD" → "22-10-2026" ──
+const fmtDateLabel = (d) => (d ? fmtDateShared(d) : "—");
 
 // ── Inline AM/PM Time Picker ──
 function AmpmTimePicker({ value, onChange, minTime, disabled }) {
@@ -119,9 +120,12 @@ export default function AdminTimesheetList() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const prefillTaskId = searchParams.get("task");
+  const prefillProjectId = searchParams.get("project");
+  const prefillUserId = searchParams.get("user");
   const [data, setData]               = useState([]);
   const [loading, setLoading]         = useState(false);
   const [searchText, setSearchText]   = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortField, setSortField]     = useState("timesheet_date");
   const [sortOrder, setSortOrder]     = useState("desc");
   const [page, setPage]               = useState(1);
@@ -273,11 +277,22 @@ export default function AdminTimesheetList() {
 
   // ================= FORM HANDLERS =================
   const openModal = (prefillTaskIdFromUrl) => {
-    setForm({ user: "", date: "", entry_type: "project", project: "", task: prefillTaskIdFromUrl || "", start_time: "", end_time: "", work_description: "" });
+    // ids arrive as strings from the URL - keep numbers numeric so selects match options
+    const uid = prefillUserId ? Number(prefillUserId) : "";
+    const pid = prefillProjectId ? Number(prefillProjectId) : "";
+    const tid = prefillTaskIdFromUrl && !isNaN(Number(prefillTaskIdFromUrl))
+      ? Number(prefillTaskIdFromUrl)
+      : (prefillTaskIdFromUrl || "");
+    setForm({ user: uid, date: "", entry_type: "project", project: pid, task: tid, start_time: "", end_time: "", work_description: "" });
     setProjects([]); setTasks([]);
     setLeaveDates({});
     setUserDayHrs(0); setFormError("");
     setShowModal(true);
+    if (uid) {
+      loadProjects(uid);
+      loadLeaveDates(uid);
+      if (pid) loadTasks(pid, uid);
+    }
   };
 
   const handleDateChange = (val) => {
@@ -373,6 +388,7 @@ export default function AdminTimesheetList() {
       await api.post("/timesheet",
         {
           task: isPermission ? null : form.task,
+          project: isPermission ? null : form.project,
           entry_type: form.entry_type,
           date: form.date,
           start_time: form.start_time,
@@ -410,15 +426,28 @@ export default function AdminTimesheetList() {
   };
 
   // ================= TABLE =================
+  const statusConfig = {
+    completed:    { color: "var(--success)", bg: "var(--success-soft)", border: "color-mix(in srgb, var(--success) 35%, transparent)", label: "Completed" },
+    "in progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)", label: "In Progress" },
+    "in-progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)", label: "In Progress" },
+  };
+
+  const statusOptions = useMemo(() => {
+    const statuses = [...new Set(data.map((r) => (r.task_status || "").trim()).filter(Boolean))].sort();
+    return [{ value: "all", label: "All Statuses" }, ...statuses.map((s) => ({ value: s, label: s }))];
+  }, [data]);
+
   const filtered = useMemo(() => {
     const t = searchText.toLowerCase();
-    return data.filter((row) =>
-      !t ||
+    return data.filter((row) => {
+      if (statusFilter !== "all" && (row.task_status || "").toLowerCase() !== statusFilter.toLowerCase()) return false;
+      return !t ||
       (row.task_name || "").toLowerCase().includes(t) ||
       (row.project_name || "").toLowerCase().includes(t) ||
-      (row.created_by_name || "").toLowerCase().includes(t)
-    );
-  }, [data, searchText]);
+      (row.created_by_name || "").toLowerCase().includes(t) ||
+      (row.task_status || "").toLowerCase().includes(t);
+    });
+  }, [data, searchText, statusFilter]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -436,7 +465,7 @@ export default function AdminTimesheetList() {
 
   const handleSort = (field) => {
     if (sortField === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    else { setSortField(field); setSortOrder("asc"); }
+    else { setSortField(field); setSortOrder(defaultSortOrderFor(field)); }
     setPage(1);
   };
 
@@ -498,7 +527,16 @@ export default function AdminTimesheetList() {
               </button>
             )}
           </div>
-          <span className="ts-count">{filtered.length} records</span>
+          <div className="ts-status-filter">
+            <SharedSelect
+              value={statusFilter}
+              onChange={(v) => { setStatusFilter(v || "all"); setPage(1); }}
+              options={statusOptions}
+              placeholder="All Statuses"
+              isClearable={false}
+            />
+          </div>
+          <span className="ts-count">{filtered.length} of {data.length} records</span>
         </div>
 
         {/* Table */}
@@ -512,6 +550,7 @@ export default function AdminTimesheetList() {
                   { key: "created_by_name", label: "User" },
                   { key: "project_name",    label: "Project" },
                   { key: "task_name",       label: "Module" },
+                  { key: "task_status",     label: "Status" },
                   { key: "work_description", label: "Work Description" },
                   { key: "man_hrs",         label: "Time" },
                   { key: "man_hrs",         label: "Hours" },
@@ -525,15 +564,20 @@ export default function AdminTimesheetList() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="ts-state-cell">
+                <tr><td colSpan={10} className="ts-state-cell">
                   <div className="ts-loading"><i className="bi bi-arrow-repeat ts-spin" /> Loading timesheets…</div>
                 </td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={9} className="ts-state-cell">
-                  <div className="ts-empty"><i className="bi bi-clock-history" /><span>No timesheets found</span></div>
+                <tr><td colSpan={10} className="ts-state-cell">
+                  <div className="ts-empty"><i className="bi bi-clock-history" /><span>
+                    {data.length > 0
+                      ? `No results${statusFilter !== "all" ? ` for status “${statusFilter}”` : ""}${searchText ? ` matching “${searchText}”` : ""}`
+                      : "No timesheets found"}
+                  </span></div>
                 </td></tr>
               ) : paginated.map((row, idx) => {
                 const canDelete = role === "admin" || row.timesheet_created_by === loggedUserId;
+                const sc = statusConfig[(row.task_status || "").toLowerCase()];
                 const rowHours = hoursForEntry(row);
                 const startTime = row.start_time ? formatAMPM(row.start_time) : null;
                 const endTime = row.end_time ? formatAMPM(row.end_time) : null;
@@ -542,7 +586,7 @@ export default function AdminTimesheetList() {
                     <td className="ts-td-muted ts-center">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                     <td className="ts-td-muted ts-nowrap">
                       {row.timesheet_date
-                        ? new Date(row.timesheet_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                        ? fmtDateShared(row.timesheet_date)
                         : "—"}
                     </td>
                     <td>
@@ -557,6 +601,16 @@ export default function AdminTimesheetList() {
                     </td>
                     <td className="ts-task-cell" title={row.task_name || row.work_description}>
                       {row.task_name || row.work_description || "—"}
+                    </td>
+                    <td>
+                      <span
+                        className="ts-status-pill"
+                        style={sc
+                          ? { background: sc.bg, color: sc.color, borderColor: sc.border }
+                          : { background: "var(--bg-muted)", color: "var(--t-muted)", borderColor: "var(--border)" }}
+                      >
+                        {sc ? sc.label : (row.task_status || "Pending")}
+                      </span>
                     </td>
                     <td className="ts-td-muted" title={row.work_description} style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "12px" }}>
                       {row.work_description || "—"}
@@ -644,7 +698,7 @@ export default function AdminTimesheetList() {
                   <div className="ts-hrs-meter">
                     <div className="ts-hrs-meter-top">
                       <span className="ts-hrs-meter-label">
-                        Hours used on {new Date(form.date + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        Hours used on {fmtDateShared(form.date)}
                         {form.user && users.find(u => String(u.id) === String(form.user)) &&
                           <> · <strong>{users.find(u => String(u.id) === String(form.user)).name}</strong></>}
                       </span>
@@ -776,7 +830,7 @@ export default function AdminTimesheetList() {
                       <SharedSelect
                         value={form.task}
                         onChange={(val) => setForm({ ...form, task: val })}
-                        options={tasks.map((t) => ({ value: t.id, label: t.task }))}
+                        options={buildModuleOptions(tasks)}
                         placeholder="— Select Module —"
                         isDisabled={!form.project}
                       />
@@ -932,7 +986,7 @@ const styles = `
   .ts-breadcrumb i { font-size: 10px; opacity: 0.5; }
   .ts-add-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: var(--primary); color: #fff;
+    padding: 9px 18px; background: var(--primary); color: var(--on-primary);
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font);
@@ -953,10 +1007,11 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .ts-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .ts-search:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .ts-search-clear { position: absolute; right: 8px; background: none; border: none; color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px; display: flex; align-items: center; }
   .ts-search-clear:hover { color: var(--t-base); }
   .ts-count { font-size: 12px; font-weight: 600; color: var(--t-muted); background: var(--bg-card); box-shadow: var(--shadow-sm); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+  .ts-status-filter { min-width: 165px; flex: 0 0 auto; }
 
   /* Table */
   .ts-table-wrap { overflow-x: auto; }
@@ -981,6 +1036,7 @@ const styles = `
   .ts-user-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; background: var(--success-soft); color: var(--success); border-radius: 20px; white-space: nowrap; }
   .ts-user-chip i { font-size: 11px; }
   .ts-hrs-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; background: var(--orange-soft); color: var(--orange); border-radius: 20px; white-space: nowrap; }
+  .ts-status-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; border: 1px solid transparent; }
   .ts-hrs-pill i { font-size: 11px; }
 
   /* Actions */
@@ -1001,7 +1057,7 @@ const styles = `
   .ts-page-btns { display: flex; gap: 4px; }
   .ts-page-btn { width: 30px; height: 30px; border-radius: var(--radius); border: none; background: var(--bg-muted); color: var(--t-muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-family: var(--font); }
   .ts-page-btn:hover:not(:disabled) { color: var(--primary); }
-  .ts-page-btn.active { background: var(--primary); color: #fff; }
+  .ts-page-btn.active { background: var(--primary); color: var(--on-primary); }
   .ts-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 
@@ -1018,7 +1074,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .ts-input:focus, .ts-select:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .ts-input:focus, .ts-select:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .ts-input:disabled, .ts-select:disabled { background: var(--bg); color: var(--t-muted); cursor: not-allowed; opacity: 0.6; }
   .ts-textarea {
     width: 100%; padding: 9px 12px;
@@ -1027,7 +1083,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s; resize: none; line-height: 1.5;
   }
-  .ts-textarea:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .ts-textarea:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .ts-select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
@@ -1055,7 +1111,7 @@ const styles = `
     cursor: pointer; transition: all 0.15s; font-family: var(--font);
   }
   .ts-hrs-btn:hover:not(.disabled) { color: var(--primary); background: var(--primary-soft); }
-  .ts-hrs-btn.active { background: var(--primary); color: #fff; }
+  .ts-hrs-btn.active { background: var(--primary); color: var(--on-primary); }
   .ts-hrs-btn.disabled { opacity: 0.35; cursor: not-allowed; }
 
   /* Hours meter */

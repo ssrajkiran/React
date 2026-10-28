@@ -103,6 +103,16 @@ export default function Topbar({
   }, []);
 
   const handleLogout = () => {
+    // Revoke the session server-side; keepalive keeps the request alive
+    // through the page navigation below.
+    const token = localStorage.getItem("token");
+    if (token) {
+      fetch("/api/auth/logout", {
+        method: "POST",
+        keepalive: true,
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      }).catch(() => {});
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("permissions");
     window.location.href = "/";

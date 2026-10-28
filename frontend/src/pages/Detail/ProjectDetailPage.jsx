@@ -6,6 +6,7 @@ import Tabs from "../../components/ui/Tabs";
 import StatusBadge from "../../components/ui/StatusBadge";
 import EmptyState from "../../components/ui/EmptyState";
 import { PageLoader } from "../../components/ui/Loader";
+import { fmtDate as fmtDateShared } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -16,10 +17,7 @@ const fmtHrs = (hrs) => {
   return `${m}m`;
 };
 
-const fmtDate = (d) => {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-};
+const fmtDate = (d) => fmtDateShared(d);
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -119,7 +117,7 @@ export default function ProjectDetailPage() {
                 <thead><tr><th>Module</th><th>Status</th><th>Assigned To</th><th>Hours</th></tr></thead>
                 <tbody>
                   {modules.map((m) => (
-                    <tr key={m.id} className="data-table-clickable" onClick={() => navigate(`/admin/modules/${m.id}`)}>
+                    <tr key={m.id} className={m.id > 0 ? "data-table-clickable" : ""} onClick={() => { if (m.id > 0) navigate(`/admin/modules/${m.id}`); }}>
                       <td style={{ fontWeight: 600 }}>{m.module_name}</td>
                       <td><StatusBadge status={m.module_status} /></td>
                       <td style={{ fontSize: 12, color: "var(--t-muted)" }}>{m.assigned_names || "—"}</td>

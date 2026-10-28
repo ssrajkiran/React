@@ -32,7 +32,7 @@ router.get("/list", verifyToken, (req, res) => {
 
 // GET /api/roles - List all roles
 router.get("/", verifyToken, isAdmin, (req, res) => {
-  db.query("SELECT * FROM roles", (err, roles) => {
+  db.query("SELECT * FROM roles ORDER BY id DESC", (err, roles) => {
     if (err) return res.status(500).json({ message: "Database query failed" });
 
     if (!roles || !roles.length) {

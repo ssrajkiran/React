@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import SelectImport from "react-select";
 import SharedSelect from "../../components/SharedSelect";
 import ModuleDetailModal from "../../components/modals/ModuleDetailModal";
+import { fmtDate, defaultSortOrderFor } from "../../utils";
 
 const AppLayout = AppLayoutImport?.default || AppLayoutImport;
 const Select = SelectImport?.default || SelectImport;
@@ -26,6 +27,7 @@ export default function TaskList() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -37,6 +39,7 @@ export default function TaskList() {
   const [page, setPage] = useState(1);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [detailModuleId, setDetailModuleId] = useState(null);
+  const [detailFv, setDetailFv] = useState(null); // { key, projectId } for virtual freezed modules
   const PAGE_SIZE = 10;
 
   // Auth
@@ -94,6 +97,24 @@ export default function TaskList() {
   };
 
   // ================= EDIT =================
+  const openDetail = (task) => {
+    setDetailModuleId(task.id);
+    setDetailFv(task.virtual ? { key: task.fv_key, projectId: task.project_id } : null);
+  };
+
+  const timesheetUrl = (task) => {
+    const base = isAdmin ? "/admin/timesheet" : "/employee/timesheet";
+    if (task.virtual) {
+      let url = `${base}?task=${encodeURIComponent(task.fv_key)}&project=${task.project_id}`;
+      if (isAdmin) {
+        const contributor = (task.user_hours || []).find((uh) => uh.user_id);
+        if (contributor) url += `&user=${contributor.user_id}`;
+      }
+      return url;
+    }
+    return `${base}?task=${task.id}`;
+  };
+
   const openEditModal = (task) => {
     setSelectedTask(task);
     const ids = task.assigned_to ? task.assigned_to.split(",").map(Number) : [];
@@ -106,12 +127,22 @@ export default function TaskList() {
     if (!selectedTask) return;
     try {
       const ids = editFormData.assigned_to.map((u) => u.value).join(",");
-      await api.put(`/tasks-project/${selectedTask.id}`, {
-        task: editFormData.task,
-        project_id: selectedTask.project_id,
-        assigned_to: ids,
-        status: editFormData.status,
-      });
+      if (selectedTask.virtual) {
+        await api.put(`/tasks-project/${selectedTask.id}`, {
+          fv_key: selectedTask.fv_key,
+          project_id: selectedTask.project_id,
+          task: editFormData.task,
+          assigned_to: ids,
+          status: editFormData.status,
+        });
+      } else {
+        await api.put(`/tasks-project/${selectedTask.id}`, {
+          task: editFormData.task,
+          project_id: selectedTask.project_id,
+          assigned_to: ids,
+          status: editFormData.status,
+        });
+      }
       await loadTasks();
       setShowEditModal(false);
     } catch (err) { alert("Failed to update module."); }
@@ -150,24 +181,36 @@ export default function TaskList() {
   };
 
   // ================= DELETE =================
-  const handleDelete = async (id) => {
+  const handleDelete = async (task) => {
     try {
-      await api.delete(`/tasks-project/${id}`);
-      setTasks(tasks.filter((t) => t.id !== id));
+      if (task.virtual) {
+        await api.delete(
+          `/tasks-project/${task.id}?fv=${encodeURIComponent(task.fv_key)}&project=${task.project_id}`
+        );
+      } else {
+        await api.delete(`/tasks-project/${task.id}`);
+      }
+      setTasks(tasks.filter((t) => t.id !== task.id));
       setDeleteConfirm(null);
     } catch (err) { alert("Failed to delete module."); }
   };
 
+  const statusOptions = useMemo(() => {
+    const statuses = [...new Set(tasks.map((t) => (t.status || "").trim()).filter(Boolean))].sort();
+    return [{ value: "all", label: "All Statuses" }, ...statuses.map((s) => ({ value: s, label: s }))];
+  }, [tasks]);
+
   const filtered = useMemo(() => {
     const t = searchText.toLowerCase();
-    return tasks.filter((task) =>
-      !t ||
+    return tasks.filter((task) => {
+      if (statusFilter !== "all" && (task.status || "") !== statusFilter) return false;
+      return !t ||
       (task.task || "").toLowerCase().includes(t) ||
       (task.project_name || "").toLowerCase().includes(t) ||
       (task.assigned_to_names || "").toLowerCase().includes(t) ||
-      (task.created_by_name || "").toLowerCase().includes(t)
-    );
-  }, [tasks, searchText]);
+      (task.created_by_name || "").toLowerCase().includes(t);
+    });
+  }, [tasks, searchText, statusFilter]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -184,7 +227,7 @@ export default function TaskList() {
 
   const handleSort = (field) => {
     if (sortField === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    else { setSortField(field); setSortOrder("asc"); }
+    else { setSortField(field); setSortOrder(defaultSortOrderFor(field)); }
     setPage(1);
   };
 
@@ -236,7 +279,16 @@ export default function TaskList() {
               </button>
             )}
           </div>
-          <span className="tl-count">{filtered.length} modules</span>
+          <div className="tl-status-filter">
+            <SharedSelect
+              value={statusFilter}
+              onChange={(v) => { setStatusFilter(v || "all"); setPage(1); }}
+              options={statusOptions}
+              placeholder="All Statuses"
+              isClearable={false}
+            />
+          </div>
+          <span className="tl-count">{filtered.length} of {tasks.length} modules</span>
         </div>
 
         {/* Table */}
@@ -275,20 +327,24 @@ export default function TaskList() {
                 </td></tr>
               ) : paginated.length === 0 ? (
                 <tr><td colSpan={9} className="tl-state-cell">
-                  <div className="tl-empty"><i className="bi bi-inbox" /><span>No modules found</span></div>
+                  <div className="tl-empty"><i className="bi bi-inbox" /><span>
+                    {tasks.length > 0
+                      ? `No results${statusFilter !== "all" ? ` for status “${statusFilter}”` : ""}${searchText ? ` matching “${searchText}”` : ""}`
+                      : "No modules found"}
+                  </span></div>
                 </td></tr>
               ) : paginated.map((task, idx) => {
                 const assignees = task.assigned_to_names ? task.assigned_to_names.split(",").map((u) => u.trim()) : [];
-                const canEdit = isAdmin || task.created_by === loggedInUserId;
+                const canEdit = task.virtual ? isAdmin : (isAdmin || task.created_by === loggedInUserId);
                 const sc = statusConfig[task.status] || statusConfig["In Progress"];
                 return (
                   <tr key={task.id} className="tl-tr">
                     <td className="tl-td-muted">{(page - 1) * PAGE_SIZE + idx + 1}</td>
-                    <td className="tl-td-muted tl-nowrap">{new Date(task.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                    <td className="tl-td-muted tl-nowrap">{fmtDate(task.created_at)}</td>
                     <td>
                       <span className="tl-project-pill">{task.project_name || "—"}</span>
                     </td>
-                    <td className="tl-task-cell" title={task.task} style={{ cursor: "pointer", color: "var(--primary)", fontWeight: 500 }} onClick={() => setDetailModuleId(task.id)}>{task.task}</td>
+                    <td className="tl-task-cell" title={task.task} style={{ cursor: "pointer", color: "var(--primary)", fontWeight: 500 }} onClick={() => openDetail(task)}>{task.task}</td>
                     <td>
                       <div className="tl-assignees">
                         {assignees.slice(0, 3).map((name, i) => (
@@ -333,7 +389,7 @@ export default function TaskList() {
                       <div className="tl-actions">
                         <button
                           className="tl-action-btn tl-action-timesheet"
-                          onClick={() => navigate(isAdmin ? `/admin/timesheet?task=${task.id}` : `/employee/timesheet?task=${task.id}`)}
+                          onClick={() => navigate(timesheetUrl(task))}
                           title="Add Timesheet"
                         >
                           <i className="bi bi-clock-history" />
@@ -388,10 +444,18 @@ export default function TaskList() {
               <div className="ul-modal-body" style={{ padding: "28px 24px", textAlign: "center" }}>
                 <div className="ul-delete-icon"><i className="bi bi-exclamation-triangle" /></div>
                 <p className="ul-delete-title">Delete Module?</p>
-                <p className="ul-delete-sub">Are you sure you want to delete <strong>"{deleteConfirm.task}"</strong>? This action cannot be undone.</p>
+                {deleteConfirm.virtual ? (
+                  <p className="ul-delete-sub">
+                    This will permanently delete <strong>{deleteConfirm.entry_count}</strong>{" "}
+                    {deleteConfirm.entry_count === 1 ? "entry" : "entries"} ({fmtHrs(deleteConfirm.total_man_hrs)})
+                    from all users for <strong>"{deleteConfirm.task}"</strong>. This action cannot be undone.
+                  </p>
+                ) : (
+                  <p className="ul-delete-sub">Are you sure you want to delete <strong>"{deleteConfirm.task}"</strong>? This action cannot be undone.</p>
+                )}
                 <div className="ul-delete-actions">
                   <button className="ul-btn ul-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                  <button className="ul-btn ul-btn-danger" onClick={() => handleDelete(deleteConfirm.id)}>
+                  <button className="ul-btn ul-btn-danger" onClick={() => handleDelete(deleteConfirm)}>
                     <i className="bi bi-trash" /> Delete
                   </button>
                 </div>
@@ -422,7 +486,7 @@ export default function TaskList() {
                 <div className="ul-form-grid">
                   <div className="ul-field">
                     <label className="ul-label">Date</label>
-                    <input className="ul-input" value={new Date(selectedTask.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} disabled />
+                    <input className="ul-input" value={fmtDate(selectedTask.created_at)} disabled />
                   </div>
                   <div className="ul-field">
                     <label className="ul-label">Project</label>
@@ -434,13 +498,18 @@ export default function TaskList() {
                   </div>
                 </div>
                 <div className="ul-field">
-                  <label className="ul-label">Module Description</label>
-                  <textarea
-                    className="ul-textarea"
-                    rows={3}
+                  <label className="ul-label">Module Name</label>
+                  {selectedTask.virtual && (
+                    <p style={{ fontSize: 11.5, color: "var(--t-muted)", margin: "0 0 6px" }}>
+                      Renaming converts this freezed module into a normal module of the project.
+                    </p>
+                  )}
+                  <input
+                    className="ul-input"
+                    type="text"
                     value={editFormData.task}
                     onChange={(e) => setEditFormData({ ...editFormData, task: e.target.value })}
-                    placeholder="Describe the module…"
+                    placeholder="Enter module name…"
                   />
                 </div>
                 <div className="ul-form-grid">
@@ -511,7 +580,7 @@ export default function TaskList() {
                 <div className="ul-form-grid">
                   <div className="ul-field">
                     <label className="ul-label">Date</label>
-                    <input className="ul-input" value={new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} disabled />
+                    <input className="ul-input" value={fmtDate(new Date())} disabled />
                   </div>
                   <div className="ul-field" style={{ gridColumn: "span 2" }}>
                     <label className="ul-label">Project</label>
@@ -567,11 +636,11 @@ export default function TaskList() {
                       </div>
                       <div className="ul-form-grid">
                         <div className="ul-field" style={{ gridColumn: "span 2" }}>
-                          <label className="ul-label">Description</label>
-                          <textarea
-                            className="ul-textarea"
-                            rows={2}
-                            placeholder="Describe the module…"
+                          <label className="ul-label">Module Name</label>
+                          <input
+                            className="ul-input"
+                            type="text"
+                            placeholder="Enter module name…"
                             value={t.task}
                             onChange={(e) => handleCreateTaskChange(idx, "task", e.target.value)}
                           />
@@ -618,9 +687,12 @@ export default function TaskList() {
       {detailModuleId && (
         <ModuleDetailModal
           moduleId={detailModuleId}
-          onClose={() => setDetailModuleId(null)}
+          fvKey={detailFv?.key}
+          projectId={detailFv?.projectId}
+          onClose={() => { setDetailModuleId(null); setDetailFv(null); }}
           onNavigate={(type, id) => {
             setDetailModuleId(null);
+            setDetailFv(null);
             if (type === "project") navigate(`/admin/projects/${id}`);
             else if (type === "module") setDetailModuleId(id);
             else if (type === "user") navigate(`/admin/users/${id}`);
@@ -680,7 +752,7 @@ const selectStyles = {
   multiValueRemove: (base) => ({
     ...base,
     color: "var(--primary)",
-    "&:hover": { backgroundColor: "var(--primary)", color: "#fff" },
+    "&:hover": { backgroundColor: "var(--primary)", color: "var(--on-primary)" },
   }),
   placeholder: (base) => ({ ...base, color: "var(--t-light)", fontSize: "13px" }),
   singleValue: (base) => ({ ...base, color: "var(--t-base)", fontWeight: 500 }),
@@ -710,7 +782,7 @@ const styles = `
   .tl-breadcrumb i { font-size: 10px; opacity: 0.5; }
   .tl-add-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: var(--primary); color: #fff;
+    padding: 9px 18px; background: var(--primary); color: var(--on-primary);
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font);
@@ -742,7 +814,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .tl-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .tl-search:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .tl-search-clear {
     position: absolute; right: 8px; background: none; border: none;
     color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px;
@@ -754,6 +826,7 @@ const styles = `
     background: var(--bg-card); box-shadow: var(--shadow-sm);
     border-radius: 20px; padding: 3px 10px; white-space: nowrap;
   }
+  .tl-status-filter { min-width: 165px; flex: 0 0 auto; }
 
   /* Table */
   .tl-table-wrap { overflow-x: auto; }
@@ -811,7 +884,7 @@ const styles = `
   .tl-hrs-avatar {
     width: 20px; height: 20px; border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--primary-light));
-    color: #fff; font-size: 9px; font-weight: 700;
+    color: var(--on-primary); font-size: 9px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .tl-hrs-user { font-size: 11px; font-weight: 500; color: var(--t-muted); }
@@ -834,7 +907,7 @@ const styles = `
     font-size: 12px; cursor: pointer; transition: all 0.15s;
   }
   .tl-action-edit { background: var(--primary-soft); color: var(--primary); }
-  .tl-action-edit:hover { background: var(--primary); color: #fff; }
+  .tl-action-edit:hover { background: var(--primary); color: var(--on-primary); }
   .tl-action-timesheet { background: var(--success-soft); color: var(--success); }
   .tl-action-timesheet:hover { background: var(--success); color: #fff; }
   .tl-action-delete { background: var(--danger-soft); color: var(--danger); }
@@ -865,7 +938,7 @@ const styles = `
     font-family: var(--font);
   }
   .tl-page-btn:hover:not(:disabled) { color: var(--primary); }
-  .tl-page-btn.active { background: var(--primary); color: #fff; }
+  .tl-page-btn.active { background: var(--primary); color: var(--on-primary); }
   .tl-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
   /* ── MODALS ── */
@@ -943,7 +1016,7 @@ const styles = `
     transition: box-shadow 0.15s;
   }
   .tl-input:focus, .tl-textarea:focus, .tl-select:focus {
-    box-shadow: 0 0 0 3px rgba(80,72,229,0.18);
+    box-shadow: 0 0 0 3px var(--primary-ring);
   }
   .tl-input:disabled { background: var(--bg); color: var(--t-muted); cursor: default; }
   .tl-textarea { resize: none; line-height: 1.5; }
@@ -1024,7 +1097,7 @@ const styles = `
     font-family: var(--font); white-space: nowrap;
   }
   .tl-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .tl-btn-primary { background: var(--primary); color: #fff; }
+  .tl-btn-primary { background: var(--primary); color: var(--on-primary); }
   .tl-btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
   .tl-btn-ghost { background: var(--bg-muted); border-color: transparent; color: var(--t-muted); }
   .tl-btn-ghost:hover { background: var(--bg); }

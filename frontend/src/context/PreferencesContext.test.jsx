@@ -54,6 +54,18 @@ describe("PreferencesContext", () => {
     expect(result.current.theme).toBe("light");
   });
 
+  it("setAccentColor switches to the custom accent with the picked hex", () => {
+    const { result } = renderPrefs();
+    act(() => result.current.setAccentColor("#123456"));
+    expect(result.current).toMatchObject({ accent: "custom", accentColor: "#123456" });
+    const stored = JSON.parse(localStorage.getItem(PREFS_KEY));
+    expect(stored).toMatchObject({ accent: "custom", accentColor: "#123456" });
+    // picked color is applied to <html> as inline vars
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#123456");
+    act(() => result.current.resetPrefs());
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("");
+  });
+
   it("persists changes to localStorage (both keys)", () => {
     const { result } = renderPrefs();
     act(() => {

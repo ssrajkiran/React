@@ -2,6 +2,7 @@ const router = require("express").Router();
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const sessions = require("../utils/sessions");
 
 require("dotenv").config();
 
@@ -238,9 +239,12 @@ router.delete("/:id", verifyToken, (req, res) => {
 
 /* ==============================
    LOGIN
+   prevToken (optional): the token this browser is currently using.
+   It is revoked here, so when another account logs in on the same
+   browser the previous account's session is destroyed everywhere.
 =============================== */
 router.post("/login", (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, prevToken } = req.body;
 
   db.query("SELECT * FROM users WHERE email=?", [email], (err, result) => {
     if (err) return res.sendStatus(500);
@@ -249,18 +253,20 @@ router.post("/login", (req, res) => {
     const valid = bcrypt.compareSync(password, result[0].password);
     if (!valid) return res.sendStatus(401);
 
-    db.query(
-      `SELECT rp.menu_key, rp.can_view, rp.can_create, rp.can_edit, rp.can_delete 
-       FROM role_permissions rp 
-       JOIN roles r ON rp.role_id = r.id 
-       WHERE r.name = ?`,
-      [result[0].role],
-      (err2, dbPermissions) => {
-        const token = jwt.sign(
-          { id: result[0].id, name: result[0].name, role: result[0].role },
-          "secret",
-          { expiresIn: "30d" }
-        );
+    sessions.cleanupExpired(db);
+    sessions.revokeToken(db, prevToken, () => {
+      db.query(
+        `SELECT rp.menu_key, rp.can_view, rp.can_create, rp.can_edit, rp.can_delete 
+         FROM role_permissions rp 
+         JOIN roles r ON rp.role_id = r.id 
+         WHERE r.name = ?`,
+        [result[0].role],
+        (err2, dbPermissions) => {
+          const token = sessions.issueToken({
+            id: result[0].id,
+            name: result[0].name,
+            role: result[0].role,
+          });
 
         // Merge with full menu key list to ensure all keys are present
         const ALL_MENU_KEYS = [
@@ -288,8 +294,21 @@ router.post("/login", (req, res) => {
           role: result[0].role,
           permissions,
         });
-      }
-    );
+        }
+      );
+    });
+  });
+});
+
+/* ==============================
+   LOGOUT — revokes the session token so it dies server-side too
+=============================== */
+router.post("/logout", (req, res) => {
+  const header = req.headers.authorization || "";
+  const raw = header.startsWith("Bearer ") ? header.slice(7) : null;
+  sessions.revokeToken(db, raw, (err) => {
+    if (err) return res.status(500).json({ error: "Could not end session" });
+    res.json({ ok: true });
   });
 });
 
@@ -347,7 +366,7 @@ router.get("/users", verifyToken, (req, res) => {
   }
 
   db.query(
-    "SELECT id, name, email, role, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users",
+    "SELECT id, name, email, role, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users ORDER BY created_at DESC, id DESC",
     (err, result) => {
       if (err) {
         return res.status(500).json({ message: "Database query failed" });

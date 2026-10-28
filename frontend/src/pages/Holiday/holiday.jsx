@@ -3,12 +3,9 @@ import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link } from "react-router-dom";
 import SharedDatePicker from "../../components/SharedDatePicker";
+import { fmtDate as fmtDateShared } from "../../utils";
 
-const formatDate = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
-};
+const formatDate = (iso) => fmtDateShared(iso);
 
 const getDayName = (iso) => {
   if (!iso) return "—";
@@ -93,7 +90,7 @@ export default function Holiday() {
       .sort(([a], [b]) => Number(b) - Number(a))
       .map(([year, items]) => ({
         year: Number(year),
-        holidays: items.sort((a, b) => new Date(a.date) - new Date(b.date)),
+        holidays: items.sort((a, b) => new Date(b.date) - new Date(a.date)),
       }));
   }, [filtered]);
 
@@ -431,7 +428,7 @@ const styles = `
   .sr-input-wrap { position: relative; display: flex; align-items: center; }
   .sr-input-icon { position: absolute; left: 11px; color: var(--t-muted); font-size: 13px; pointer-events: none; z-index: 1; }
   .sr-input, .ul-search { width: 100%; padding: 8px 32px 8px 34px; border: none; border-radius: var(--radius); background: var(--bg-muted); font-size: 13px; color: var(--t-base); font-family: var(--font); outline: none; transition: box-shadow 0.15s; }
-  .sr-input:focus, .ul-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .sr-input:focus, .ul-search:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
 
   .ul-clear-btn { position: absolute; right: 9px; background: none; border: none; cursor: pointer; color: var(--t-muted); font-size: 15px; display: flex; align-items: center; padding: 0; transition: color 0.15s; }
   .ul-clear-btn:hover { color: var(--t-base); }
@@ -444,7 +441,7 @@ const styles = `
   .sh-actions { display: flex; align-items: center; gap: 6px; }
   .sh-action-btn { width: 30px; height: 30px; border: none; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; transition: all 0.15s; }
   .sh-action-edit { background: var(--primary-soft); color: var(--primary); }
-  .sh-action-edit:hover { background: var(--primary); color: #fff; }
+  .sh-action-edit:hover { background: var(--primary); color: var(--on-primary); }
   .sh-action-delete { background: var(--danger-soft); color: var(--danger); }
   .sh-action-delete:hover { background: var(--danger); color: #fff; }
 
@@ -475,7 +472,7 @@ const styles = `
   .sh-page-numbers { display: flex; align-items: center; gap: 4px; }
   .sh-page-num { width: 32px; height: 32px; border-radius: var(--radius); border: none; background: var(--bg-muted); font-size: 12.5px; font-weight: 600; color: var(--t-base); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-family: var(--font); }
   .sh-page-num:hover { color: var(--primary); background: var(--primary-soft); }
-  .sh-page-num-active { background: var(--primary); color: #fff; }
+  .sh-page-num-active { background: var(--primary); color: var(--on-primary); }
 
   /* ── Buttons ── */
   .cu-save-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; background: var(--success); color: #fff; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.15s, transform 0.15s; font-family: var(--font); white-space: nowrap; }
@@ -484,10 +481,10 @@ const styles = `
   .cu-back-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; background: var(--bg-muted); border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--t-muted); cursor: pointer; transition: color 0.15s, background 0.15s; font-family: var(--font); }
   .cu-back-btn:hover { color: var(--primary); background: var(--primary-soft); }
 
-  /* ── Overlay / Modal ── */
-  .ul-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px); z-index: 1000; display: flex; align-items: center; justify-content: center; animation: sr-fade-in 0.15s ease; padding: 16px; }
-  .ul-modal { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); padding: 28px; width: 80%; max-width: 460px; max-height: calc(100vh - 32px); animation: ul-modal-center-in 0.2s ease; text-align: center; }
-  .ul-modal-sm { max-width: 460px; text-align: left; }
+  /* ── Overlay / Modal (size comes from the global standard in App.css) ── */
+  .ul-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; animation: sr-fade-in 0.15s ease; padding: 16px; }
+  .ul-modal { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); padding: 28px; animation: ul-modal-center-in 0.2s ease; text-align: center; }
+  .ul-modal-sm { text-align: left; }
   @keyframes ul-modal-center-in { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
   .ul-modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
   .ul-modal-close { background: none; border: none; cursor: pointer; color: var(--t-muted); font-size: 16px; padding: 4px; border-radius: var(--radius); transition: color 0.15s, background 0.15s; display: flex; align-items: center; flex-shrink: 0; }

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
+import { fmtDate as fmtDateShared, fmtDateLong as fmtDateLongShared } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -15,7 +16,7 @@ const fmtHrs = (hrs) => {
 
 const fmtDate = (iso) => {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return fmtDateShared(iso);
 };
 
 const fmtDay = (iso) => {
@@ -125,7 +126,7 @@ export default function MainDashboard() {
   };
 
   const today = new Date();
-  const dateStr = today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const dateStr = fmtDateLongShared(today);
 
   const isAdmin = role === "admin";
   const todayHours = summary?.todayHours?.total_hours || 0;
@@ -240,7 +241,9 @@ export default function MainDashboard() {
         </div>
 
         <div className="md-rail">
-          <div className="md-rail-tile md-tint-info">
+          <div className="md-rail-tile md-tint-info md-rail-clickable" role="button" tabIndex={0}
+            onClick={() => navigate(isAdmin ? "/admin/timesheet" : "/employee/timesheet")}
+            onKeyDown={(e) => e.key === "Enter" && navigate(isAdmin ? "/admin/timesheet" : "/employee/timesheet")}>
             <span className="md-rail-icon">
               <i className="bi bi-calendar-week" />
             </span>
@@ -248,7 +251,9 @@ export default function MainDashboard() {
             <span className="md-rail-label">This week</span>
             <span className="md-rail-sub">{weekEntries} entries</span>
           </div>
-          <div className="md-rail-tile md-tint-warning">
+          <div className="md-rail-tile md-tint-warning md-rail-clickable" role="button" tabIndex={0}
+            onClick={() => navigate("/tasks")}
+            onKeyDown={(e) => e.key === "Enter" && navigate("/tasks")}>
             <span className="md-rail-icon">
               <i className="bi bi-list-task" />
             </span>
@@ -256,7 +261,9 @@ export default function MainDashboard() {
             <span className="md-rail-label">Active modules</span>
             <span className="md-rail-sub">in progress</span>
           </div>
-          <div className="md-rail-tile md-tint-danger">
+          <div className="md-rail-tile md-tint-danger md-rail-clickable" role="button" tabIndex={0}
+            onClick={() => navigate(isAdmin ? "/admin/leaves?status=pending" : "/employee/leaves?status=pending")}
+            onKeyDown={(e) => e.key === "Enter" && navigate(isAdmin ? "/admin/leaves?status=pending" : "/employee/leaves?status=pending")}>
             <span className="md-rail-icon">
               <i className="bi bi-calendar-x" />
             </span>
@@ -266,7 +273,9 @@ export default function MainDashboard() {
           </div>
           {isAdmin && (
             <>
-              <div className="md-rail-tile md-tint-success">
+              <div className="md-rail-tile md-tint-success md-rail-clickable" role="button" tabIndex={0}
+                onClick={() => navigate("/admin/timesheet")}
+                onKeyDown={(e) => e.key === "Enter" && navigate("/admin/timesheet")}>
                 <span className="md-rail-icon">
                   <i className="bi bi-people" />
                 </span>
@@ -274,7 +283,9 @@ export default function MainDashboard() {
                 <span className="md-rail-label">Team active today</span>
                 <span className="md-rail-sub">{fmtHrs(teamToday.total_hours || 0)} logged</span>
               </div>
-              <div className="md-rail-tile md-tint-purple">
+              <div className="md-rail-tile md-tint-purple md-rail-clickable" role="button" tabIndex={0}
+                onClick={() => navigate("/admin/timesheet")}
+                onKeyDown={(e) => e.key === "Enter" && navigate("/admin/timesheet")}>
                 <span className="md-rail-icon">
                   <i className="bi bi-bar-chart" />
                 </span>
@@ -363,7 +374,7 @@ export default function MainDashboard() {
                     <div className="md-todo-content">
                       <span className="md-todo-title">{todo.title}</span>
                       {todo.due_date && (
-                        <span className="md-todo-due">Due: {new Date(todo.due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
+                        <span className="md-todo-due">Due: {fmtDate(todo.due_date)}</span>
                       )}
                     </div>
                     <span className={`md-todo-priority md-todo-priority-${(todo.priority || "").toLowerCase()}`}>
@@ -426,19 +437,25 @@ export default function MainDashboard() {
                 <span>Admin Overview</span>
               </div>
               <div className="md-admin-stats">
-                <div className="md-admin-row">
+                <div className="md-admin-row md-admin-clickable" role="button" tabIndex={0}
+                  onClick={() => navigate("/employee/userslist")}
+                  onKeyDown={(e) => e.key === "Enter" && navigate("/employee/userslist")}>
                   <span className="md-admin-label">Total Employees</span>
-                  <span className="md-admin-val">{totalEmployees}</span>
+                  <span className="md-admin-val">{totalEmployees} <i className="bi bi-chevron-right" /></span>
                 </div>
-                <div className="md-admin-row">
+                <div className="md-admin-row md-admin-clickable" role="button" tabIndex={0}
+                  onClick={() => navigate(isAdmin ? "/admin/leaves?status=pending" : "/employee/leaves?status=pending")}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(isAdmin ? "/admin/leaves?status=pending" : "/employee/leaves?status=pending")}>
                   <span className="md-admin-label">Pending Approvals</span>
                   <span className="md-admin-val" style={{ color: pendingApprovals > 0 ? "var(--warning)" : "var(--t-muted)" }}>
-                    {pendingApprovals}
+                    {pendingApprovals} <i className="bi bi-chevron-right" />
                   </span>
                 </div>
-                <div className="md-admin-row">
+                <div className="md-admin-row md-admin-clickable" role="button" tabIndex={0}
+                  onClick={() => navigate(isAdmin ? "/admin/timesheet" : "/employee/timesheet")}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(isAdmin ? "/admin/timesheet" : "/employee/timesheet")}>
                   <span className="md-admin-label">Team Hours (Week)</span>
-                  <span className="md-admin-val">{fmtHrs(teamWeek.total_hours || 0)}</span>
+                  <span className="md-admin-val">{fmtHrs(teamWeek.total_hours || 0)} <i className="bi bi-chevron-right" /></span>
                 </div>
               </div>
             </div>
@@ -507,7 +524,7 @@ const styles = `
   .md-bday-avatar {
     width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
     display: grid; place-items: center;
-    font-size: 10px; font-weight: 700; color: #fff;
+    font-size: 10px; font-weight: 700; color: var(--on-primary);
     background: linear-gradient(135deg, var(--primary), #EC4899);
   }
   .md-bday-strip-wish {
@@ -643,7 +660,7 @@ const styles = `
         color-mix(in srgb, var(--primary) 82%, #020617) 55%,
         color-mix(in srgb, var(--primary) 95%, #020617) 140%);
     border-radius: var(--radius-lg); padding: 22px 24px;
-    color: #fff; display: flex; flex-direction: column; gap: 14px;
+    color: var(--on-primary); display: flex; flex-direction: column; gap: 14px;
     box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 30%, transparent);
   }
   .md-hero::after {
@@ -810,6 +827,12 @@ const styles = `
   .md-admin-row { display: flex; align-items: center; justify-content: space-between; }
   .md-admin-label { font-size: 12.5px; color: var(--t-muted); }
   .md-admin-val { font-size: 14px; font-weight: 700; color: var(--t-base); }
+  .md-admin-val i { font-size: 11px; color: var(--t-muted); margin-left: 2px; }
+  .md-admin-clickable { cursor: pointer; border-radius: var(--radius); padding: 7px 8px; margin: -7px -8px; transition: background 0.15s; }
+  .md-admin-clickable:hover { background: var(--bg-muted); }
+  .md-admin-clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .md-rail-clickable { cursor: pointer; }
+  .md-rail-clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
   /* ── Empty / Loading ── */
   .md-loading { text-align: center; color: var(--t-muted); padding: 40px 0; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }

@@ -1,10 +1,19 @@
 const express=require("express");
 const cors=require("cors");
+const db=require("./config/db");
+const sessions=require("./utils/sessions");
 
 const app=express();
 
 app.use(cors());
 app.use(express.json());
+
+// Session revocation: rejects tokens whose jti was revoked (logout, or a
+// different account logging in on the same browser with prevToken).
+sessions.ensureTable(db, (err) => {
+  if (err) console.error("Session table migration failed:", err.message || err);
+});
+app.use(sessions.revocationGate(db));
 
 app.use("/api/auth",require("./routes/auth"));
 
@@ -46,6 +55,14 @@ app.use("/api/crud", require("./routes/crud"));
 app.use("/api/intercom", require("./routes/intercom"));
 
 app.use("/api/notifications", require("./routes/notifications"));
+
+// Schema migration: timesheet.project_id + cleanup of legacy freezed module rows
+require("./utils/freezedModules").runFreezedMigrations((err) => {
+  if (err) console.error("Freezed modules migration failed:", err.message || err);
+});
+
+// Daily 8:00 AM email: everyone on approved leave today
+require("./utils/dailyLeaveEmail").scheduleDailyLeaveEmail();
 
 app.listen(5000,()=>console.log("Backend running"));
 

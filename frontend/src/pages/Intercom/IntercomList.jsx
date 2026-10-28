@@ -405,7 +405,7 @@ const styles = `
     color: var(--t-base); font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .ic-input:focus, .ic-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .ic-input:focus, .ic-search:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .ic-clear-btn {
     position: absolute; right: 9px; background: none; border: none;
     cursor: pointer; color: var(--t-muted); font-size: 15px;
@@ -498,20 +498,20 @@ const styles = `
     font-family: var(--font); transition: all 0.15s;
   }
   .ic-page-num:hover { color: var(--primary); background: var(--primary-soft); }
-  .ic-page-num.ic-active { background: var(--primary); color: #fff; }
+  .ic-page-num.ic-active { background: var(--primary); color: var(--on-primary); }
 
   .ic-overlay {
     position: fixed; inset: 0; background: rgba(17,24,39,0.45);
-    backdrop-filter: blur(2px); z-index: 1000; display: flex;
+    backdrop-filter: blur(8px); z-index: 1000; display: flex;
     align-items: center; justify-content: center; padding: 16px;
   }
   .ic-modal {
     background: var(--bg-card); border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); width: 90%;
-    max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+    box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); width: 80vw;
+    height: 80vh; max-height: 80vh; display: flex; flex-direction: column;
     overflow: hidden; animation: ic-modal-in 0.2s ease;
   }
-  .ic-modal-lg { max-width: 800px; }
+  .ic-modal-lg { width: 80vw; height: 80vh; max-height: 80vh; }
   @keyframes ic-modal-in { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
   .ic-modal-header {
     display: flex; align-items: flex-start; justify-content: space-between;
@@ -548,7 +548,7 @@ const styles = `
     padding: 8px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     font-family: var(--font); cursor: pointer; transition: all 0.15s; border: none; white-space: nowrap;
   }
-  .ic-btn-primary { background: var(--primary); color: #fff; }
+  .ic-btn-primary { background: var(--primary); color: var(--on-primary); }
   .ic-btn-primary:hover { background: var(--primary-dark); }
   .ic-btn-ghost { background: var(--bg-muted); color: var(--t-muted); border: none; }
   .ic-btn-ghost:hover { color: var(--primary); background: var(--primary-soft); }

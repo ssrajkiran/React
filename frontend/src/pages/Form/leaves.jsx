@@ -1,13 +1,14 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import api from "../../api";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import AppLayout from "../../components/layout/AppLayout";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import enUS from "date-fns/locale/en-US";
 import SharedDatePicker from "../../components/SharedDatePicker";
 import SharedSelect from "../../components/SharedSelect";
+import { fmtDate, fmtDateLong, fmtDays, defaultSortOrderFor } from "../../utils";
 
 const locales = { "en-US": enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -122,10 +123,32 @@ export default function Leaves() {
     compoff_date: "", half_day_type: "full", hours: 0, slot: "morning", status: "", holiday_name: "",
   });
 
+  // ── STATUS FILTER (deep-linkable: /employee/leaves?status=pending) ─────────
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawStatus = searchParams.get("status");
+  const statusFilter = ["pending", "approved", "rejected"].includes(rawStatus) ? rawStatus : "all";
+  const setStatusFilter = (s) => {
+    const p = new URLSearchParams(searchParams);
+    if (s === "all") p.delete("status");
+    else p.set("status", s);
+    setSearchParams(p, { replace: true });
+  };
+  const [searchQuery, setSearchQuery] = useState("");
+
   const fetchLeaves = async () => {
     try {
       const res = await api.get("/leaves/my");
-      setEvents(res.data.map((ev) => ({ ...ev, start: new Date(ev.start), end: new Date(ev.end) })));
+      setEvents(res.data.map((ev) => {
+        const baseTitle = ev.title || `${(ev.type || "leave").toUpperCase()} - ${(ev.status || "").toUpperCase()}`;
+        return {
+          ...ev,
+          start: new Date(ev.start),
+          end: new Date(ev.end),
+          title: ev.half_day_type && ev.half_day_type !== "full"
+            ? `${baseTitle} · ${ev.half_day_type === "first_half" ? "1st Half" : "2nd Half"}`
+            : baseTitle,
+        };
+      }));
     } catch (err) { console.error(err); }
   };
   const fetchPermissionRemaining = async () => {
@@ -135,16 +158,21 @@ export default function Leaves() {
   const fetchHolidays = async () => {
     try { const res = await api.get("/leaves/holidays"); setHolidays(res.data); } catch (err) { console.error(err); }
   };
-  const fetchCompoffEligible = async () => {
+  const fetchCompoffEligible = async (excludeId) => {
     setCompoffLoading(true);
-    try { const res = await api.get("/leaves/compoff-eligible"); setCompoffEligible(res.data); }
+    try {
+      const res = await api.get(`/leaves/compoff-eligible${excludeId ? `?exclude_id=${excludeId}` : ""}`);
+      setCompoffEligible(res.data);
+    }
     catch { setCompoffEligible([]); } finally { setCompoffLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchLeaves(); fetchPermissionRemaining(); fetchHolidays(); }, []);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (formData.leave_type === "compoff" && !formData.id) { fetchCompoffEligible(); setFormData((prev) => ({ ...prev, compoff_date: "" })); }
-  }, [formData.leave_type]);
+  }, [formData.leave_type, formData.id]);
 
   const toCalendarDate = (date) => { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
   const calculateDays = (start, end) => {
@@ -189,22 +217,52 @@ export default function Leaves() {
     const viewOnly = event.status === "approved";
     setFormData({
       id: event.id, leave_type: event.type || "leave", start_date: toCalendarDate(event.start), end_date: toCalendarDate(event.end),
-      reason: event.remarks || "", days: calculateDays(event.start, event.end), compoff_date: event.comp_off_date || "",
+      reason: event.remarks || "", days: event.days != null ? Number(event.days) : calculateDays(event.start, event.end), compoff_date: event.comp_off_date || "",
       half_day_type: event.half_day_type || "full", hours: event.hours || permissionRemaining, slot: event.slot || "morning",
       status: event.status, holiday_name: event.holiday_name || "",
     });
-    if (event.type === "compoff" && event.status !== "approved") fetchCompoffEligible();
+    if (event.type === "compoff" && event.status !== "approved") fetchCompoffEligible(event.id);
     setIsViewMode(viewOnly); setShowModal(true);
   };
 
   useEffect(() => {
     if (formData.leave_type !== "leave") return;
     const total = calculateDays(formData.start_date, formData.end_date);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFormData((prev) => ({
       ...prev,
       days: formData.start_date === formData.end_date && formData.half_day_type !== "full" ? 0.5 : total,
     }));
   }, [formData.start_date, formData.end_date, formData.half_day_type, formData.leave_type]);
+
+  // ── COMPOFF HALF-SLOT GUARD ──────────────────────────────────────────────
+  // One worked holiday = one full day OR first-half + second-half. If a slot is
+  // already availed, keep the form on the remaining half and hide the used one.
+  const compoffSlot = formData.leave_type === "compoff" && formData.compoff_date
+    ? compoffEligible.find((h) => h.date_str === formData.compoff_date)
+    : null;
+  const compoffAvail = compoffSlot
+    ? {
+        full: !compoffSlot.first_taken && !compoffSlot.second_taken,
+        first_half: !compoffSlot.first_taken,
+        second_half: !compoffSlot.second_taken,
+      }
+    : { full: true, first_half: true, second_half: true };
+
+  useEffect(() => {
+    if (formData.leave_type !== "compoff" || !formData.compoff_date) return;
+    const slot = compoffEligible.find((h) => h.date_str === formData.compoff_date);
+    if (!slot) return;
+    const avail = {
+      full: !slot.first_taken && !slot.second_taken,
+      first_half: !slot.first_taken,
+      second_half: !slot.second_taken,
+    };
+    if (avail[formData.half_day_type]) return;
+    const next = !avail.first_half ? "second_half" : !avail.second_half ? "first_half" : "full";
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFormData((prev) => ({ ...prev, half_day_type: next }));
+  }, [formData.leave_type, formData.compoff_date, formData.half_day_type, compoffEligible]);
 
   const handleSubmit = async () => {
     if (isViewMode) return;
@@ -237,17 +295,17 @@ export default function Leaves() {
     } catch (err) { alert(err.response?.data?.error || "Something went wrong"); setLoading(false); }
   };
 
-  const typeConfig = {
+  const typeConfig = useMemo(() => ({
     leave: { label: "Leave", color: "var(--primary)", bg: "var(--primary-soft)" },
     compoff: { label: "Comp Off", color: "var(--info)", bg: "var(--info-soft)" },
     permission: { label: "Permission", color: "var(--warning)", bg: "var(--warning-soft)" },
     present: { label: "Present on Holiday", color: "var(--success)", bg: "var(--success-soft)" },
-  };
-  const statusConfig = {
+  }), []);
+  const statusConfig = useMemo(() => ({
     approved: { label: "Approved", color: "var(--success)", bg: "var(--success-soft)" },
     pending: { label: "Pending", color: "var(--warning)", bg: "var(--warning-soft)" },
     rejected: { label: "Rejected", color: "var(--danger)", bg: "var(--danger-soft)" },
-  };
+  }), []);
   const typeIcons = { leave: "bi-calendar-x", compoff: "bi-arrow-left-right", permission: "bi-clock", present: "bi-person-check" };
   const modalTitle = isViewMode ? `${typeConfig[formData.leave_type]?.label || "Leave"} Details` : formData.id ? "Edit Request" : "New Request";
 
@@ -264,9 +322,25 @@ export default function Leaves() {
 
   const handleSort = (field) => {
     if (sortField === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    else { setSortField(field); setSortOrder("asc"); }
+    else { setSortField(field); setSortOrder(defaultSortOrderFor(field)); }
   };
-  const sortedEvents = [...events].sort((a, b) => {
+  const filteredEvents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return events.filter((ev) => {
+      if (statusFilter !== "all" && ev.status !== statusFilter) return false;
+      if (!q) return true;
+      const hay = [
+        typeConfig[ev.type]?.label, ev.type,
+        statusConfig[ev.status]?.label, ev.status,
+        ev.remarks, ev.holiday_name, ev.half_day_type, ev.slot,
+        fmtDate(ev.start), fmtDate(ev.end),
+        ev.comp_off_date ? fmtDate(ev.comp_off_date) : "",
+        ev.hours ?? "",
+      ].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [events, statusFilter, searchQuery, typeConfig, statusConfig]);
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
     let valA, valB;
     if (sortField === "start") { valA = a.start; valB = b.start; }
     else if (sortField === "type") { valA = a.type; valB = b.type; }
@@ -277,7 +351,7 @@ export default function Leaves() {
     return 0;
   });
 
-  const formatDate = (d) => { try { return format(new Date(d), "dd MMM yyyy"); } catch { return "—"; } };
+  const formatDate = (d) => fmtDate(d);
 
   return (
     <AppLayout>
@@ -305,11 +379,40 @@ export default function Leaves() {
             </button>
           </div>
           <div className="lv-toolbar-right">
-            <span className="lv-count">{events.length} record{events.length === 1 ? "" : "s"}</span>
+            <div className="lv-search">
+              <i className="bi bi-search" />
+              <input
+                type="text"
+                placeholder="Search type, reason, date…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="lv-search-clear" title="Clear search" onClick={() => setSearchQuery("")}>
+                  <i className="bi bi-x-lg" />
+                </button>
+              )}
+            </div>
+            <span className="lv-count">{filteredEvents.length} record{filteredEvents.length === 1 ? "" : "s"}{statusFilter !== "all" && ` of ${events.length}`}</span>
             <button className="lv-apply-btn" onClick={() => { setFormData(blankForm()); setCompoffEligible([]); setIsViewMode(false); setShowModal(true); }}>
               <i className="bi bi-plus-lg" /> Apply Leave
             </button>
           </div>
+        </div>
+        <div className="lv-status-pills">
+          {[{ key: "all", label: "All", n: events.length },
+            { key: "pending", label: "Pending", n: events.filter((e) => e.status === "pending").length },
+            { key: "approved", label: "Approved", n: events.filter((e) => e.status === "approved").length },
+            { key: "rejected", label: "Rejected", n: events.filter((e) => e.status === "rejected").length },
+          ].map((p) => (
+            <button
+              key={p.key}
+              className={`lv-status-pill-btn ${statusFilter === p.key ? "active" : ""} ${p.key}`}
+              onClick={() => setStatusFilter(p.key)}
+            >
+              {p.label} <span className="lv-status-pill-n">{p.n}</span>
+            </button>
+          ))}
         </div>
         {viewMode === "calendar" ? (
           <>
@@ -324,7 +427,7 @@ export default function Leaves() {
               <span className="lv-legend-hint"><i className="bi bi-info-circle" /> Click a date to apply · Click an event to view</span>
             </div>
             <div className="lv-calendar-wrap">
-              <Calendar selectable localizer={localizer} events={events} startAccessor="start" endAccessor="end"
+              <Calendar selectable localizer={localizer} events={filteredEvents} startAccessor="start" endAccessor="end"
                 style={{ height: 600 }} onSelectSlot={handleSelectSlot} onSelectEvent={handleSelectEvent}
                 eventPropGetter={(event) => {
                   const color = event.status === "approved" ? "var(--success)" : event.status === "rejected" ? "var(--danger)" : "var(--warning)";
@@ -338,8 +441,12 @@ export default function Leaves() {
             {sortedEvents.length === 0 ? (
               <div className="lv-empty-state">
                 <i className="bi bi-calendar-x lv-empty-icon" />
-                <h3>No Attendance Records</h3>
-                <p>You haven't applied for any leaves yet. Click "Apply Leave" to get started.</p>
+                <h3>{events.length > 0 ? "No Matching Records" : "No Attendance Records"}</h3>
+                <p>{events.length > 0
+                  ? (searchQuery
+                    ? `No records match “${searchQuery}”${statusFilter !== "all" ? ` in ${statusFilter}` : ""}. Try a different search or filter.`
+                    : `No ${statusFilter} requests found. Try a different status filter.`)
+                  : `You haven't applied for any leaves yet. Click "Apply Leave" to get started.`}</p>
               </div>
             ) : (
               <table className="lv-table">
@@ -372,11 +479,28 @@ export default function Leaves() {
                       <td>
                         <div className="lv-date-cell">
                           <span className="lv-date-main">{formatDate(ev.start)}</span>
-                          {ev.start !== ev.end && <span className="lv-date-sub">to {formatDate(ev.end)}</span>}
+                          {formatDate(ev.start) !== formatDate(ev.end) && <span className="lv-date-sub">to {formatDate(ev.end)}</span>}
+                          {ev.type === "compoff" && ev.comp_off_date && (
+                            <span className="lv-date-sub">Worked: {fmtDate(ev.comp_off_date)}</span>
+                          )}
                         </div>
                       </td>
                       <td className="lv-duration">
-                        {ev.type === "permission" ? `${ev.hours || "-"}h` : ev.type === "present" ? "—" : `${ev.days || 1}d`}
+                        <div className="lv-dur-cell">
+                          <span className="lv-dur-main">
+                            {ev.type === "permission" ? `${ev.hours || "-"}h`
+                              : ev.type === "present" ? "Full Day"
+                              : fmtDays(ev.days || 1)}
+                          </span>
+                          {(ev.type === "leave" || ev.type === "compoff") && ev.half_day_type && ev.half_day_type !== "full" && (
+                            <span className="lv-dur-sub">
+                              {ev.half_day_type === "first_half" ? "1st Half" : "2nd Half"}
+                            </span>
+                          )}
+                          {ev.type === "permission" && ev.slot && (
+                            <span className="lv-dur-sub" style={{ textTransform: "capitalize" }}>{ev.slot}</span>
+                          )}
+                        </div>
                       </td>
                       <td className="lv-reason">{ev.remarks || <span className="lv-muted">—</span>}</td>
                       <td>
@@ -443,15 +567,19 @@ export default function Leaves() {
                         <>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Start Date</span>
-                            <span className="lv-view-value">{formData.start_date || "—"}</span>
+                            <span className="lv-view-value">{fmtDate(formData.start_date)}</span>
                           </div>
                           <div className="lv-view-item">
                             <span className="lv-view-label">End Date</span>
-                            <span className="lv-view-value">{formData.end_date || "—"}</span>
+                            <span className="lv-view-value">{fmtDate(formData.end_date)}</span>
                           </div>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Duration</span>
-                            <span className="lv-view-value lv-view-highlight">{formData.days} {formData.days === 1 ? "day" : "days"}</span>
+                            <span className="lv-view-value lv-view-highlight">
+                              {formData.half_day_type !== "full" && formData.start_date === formData.end_date
+                                ? `Half Day (${formData.half_day_type === "first_half" ? "First Half" : "Second Half"})`
+                                : `${formData.days} ${formData.days === 1 ? "day" : "days"}`}
+                            </span>
                           </div>
                           {formData.half_day_type !== "full" && (
                             <div className="lv-view-item">
@@ -465,11 +593,11 @@ export default function Leaves() {
                         <>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Leave Date</span>
-                            <span className="lv-view-value">{formData.start_date || "—"}</span>
+                            <span className="lv-view-value">{fmtDate(formData.start_date)}</span>
                           </div>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Holiday Worked</span>
-                            <span className="lv-view-value">{formData.compoff_date || "—"}</span>
+                            <span className="lv-view-value">{fmtDate(formData.compoff_date)}</span>
                           </div>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Duration</span>
@@ -483,7 +611,7 @@ export default function Leaves() {
                         <>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Holiday Date</span>
-                            <span className="lv-view-value">{formData.start_date || "—"}</span>
+                            <span className="lv-view-value">{fmtDate(formData.start_date)}</span>
                           </div>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Holiday Name</span>
@@ -495,7 +623,7 @@ export default function Leaves() {
                         <>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Date</span>
-                            <span className="lv-view-value">{formData.start_date || "—"}</span>
+                            <span className="lv-view-value">{fmtDate(formData.start_date)}</span>
                           </div>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Hours</span>
@@ -579,21 +707,37 @@ export default function Leaves() {
                           ) : (
                             <SharedSelect value={formData.compoff_date}
                               onChange={(val) => setFormData({ ...formData, compoff_date: val })}
-                              options={compoffEligible.map((h) => ({ value: h.date_str, label: `${h.holiday_name} — ${h.date_str}` }))}
+                              options={compoffEligible.map((h) => ({
+                                value: h.date_str,
+                                label: `${h.holiday_name} — ${fmtDate(h.date_str)}${h.first_taken ? " · 2nd half only" : h.second_taken ? " · 1st half only" : ""}`,
+                              }))}
                               placeholder="— Select Holiday Worked —" />
                           )}
                         </div>
                         <div className="lv-field lv-field-full">
                           <label className="lv-label">Duration</label>
                           <div className="lv-radio-group">
-                            {[["full", "Full Day"], ["first_half", "1st Half"], ["second_half", "2nd Half"]].map(([val, lbl]) => (
-                              <label key={val} className={`lv-radio-btn ${formData.half_day_type === val ? "active" : ""}`}>
-                                <input type="radio" name="compoff_half" value={val} checked={formData.half_day_type === val}
-                                  onChange={(e) => setFormData({ ...formData, half_day_type: e.target.value })} />
-                                {lbl}
-                              </label>
-                            ))}
+                            {[["full", "Full Day"], ["first_half", "1st Half"], ["second_half", "2nd Half"]].map(([val, lbl]) => {
+                              const unavailable = !compoffAvail[val];
+                              return (
+                                <label key={val} className={`lv-radio-btn ${formData.half_day_type === val ? "active" : ""}${unavailable ? " disabled" : ""}`}>
+                                  <input type="radio" name="compoff_half" value={val} checked={formData.half_day_type === val}
+                                    disabled={unavailable}
+                                    title={unavailable ? "Already availed for this holiday" : ""}
+                                    onChange={(e) => setFormData({ ...formData, half_day_type: e.target.value })} />
+                                  {lbl}
+                                </label>
+                              );
+                            })}
                           </div>
+                          {compoffSlot && !compoffAvail.full && (
+                            <p className="lv-hint-text">
+                              <i className="bi bi-exclamation-circle" />
+                              {!compoffAvail.first_half
+                                ? "1st half already availed for this holiday — only 2nd half is available."
+                                : "2nd half already availed for this holiday — only 1st half is available."}
+                            </p>
+                          )}
                           {formData.half_day_type !== "full" && (
                             <p className="lv-hint-text"><i className="bi bi-info-circle" /> Half day comp off consumes 0.5 day.</p>
                           )}
@@ -610,7 +754,7 @@ export default function Leaves() {
                           <div className="lv-selected-date-chip">
                             <i className="bi bi-calendar-check" />
                             <span>
-                              {new Date(formData.start_date).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                              {fmtDateLong(formData.start_date)}
                               {selectedHolidayName !== "—" && ` — ${selectedHolidayName}`}
                             </span>
                           </div>
@@ -707,7 +851,7 @@ const styles = `
   .lv-breadcrumb a { color:var(--primary); text-decoration:none; font-weight:500; }
   .lv-breadcrumb a:hover { text-decoration:underline; }
   .lv-breadcrumb i { font-size:10px; opacity:0.5; }
-  .lv-apply-btn { display:flex; align-items:center; gap:7px; padding:9px 18px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s, transform 0.15s; font-family:var(--font); }
+  .lv-apply-btn { display:flex; align-items:center; gap:7px; padding:9px 18px; background:var(--primary); color: var(--on-primary); border:none; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s, transform 0.15s; font-family:var(--font); }
   .lv-apply-btn:hover { background:var(--primary-dark); transform:translateY(-1px); }
   .lv-apply-btn i { font-size:14px; }
 
@@ -715,11 +859,43 @@ const styles = `
   .lv-card { background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); overflow:hidden; }
   .lv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border-soft); gap:12px; }
   .lv-count { font-size:12px; font-weight:600; color:var(--t-muted); background:var(--bg-card); box-shadow:var(--shadow-sm); border-radius:20px; padding:3px 10px; white-space:nowrap; }
-  .lv-toolbar-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
+  .lv-search {
+    display:flex; align-items:center; gap:7px; min-width:220px;
+    background:var(--bg-card); border:1px solid var(--border); border-radius:20px;
+    padding:6px 12px; box-shadow:var(--shadow-sm); transition:border-color 0.15s;
+  }
+  .lv-search:focus-within { border-color:var(--primary); }
+  .lv-search i { font-size:12px; color:var(--t-muted); }
+  .lv-search input {
+    flex:1; min-width:0; border:none; outline:none; background:transparent;
+    font-family:var(--font); font-size:12.5px; color:var(--t-base);
+  }
+  .lv-search input::placeholder { color:var(--t-muted); }
+  .lv-search-clear {
+    display:flex; align-items:center; justify-content:center; border:none; background:var(--bg-muted);
+    color:var(--t-muted); width:16px; height:16px; border-radius:50%; font-size:9px; cursor:pointer; padding:0;
+  }
+  .lv-search-clear:hover { background:var(--danger-soft); color:var(--danger); }
+  @media (max-width: 768px) { .lv-search { min-width:150px; flex:1; } }
+  .lv-toolbar-right { display:flex; align-items:center; gap:12px; margin-left:auto; flex-wrap:wrap; }
+  .lv-status-pills { display:flex; align-items:center; gap:8px; padding:10px 20px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; }
+  .lv-status-pill-btn {
+    display:inline-flex; align-items:center; gap:6px; padding:5px 13px;
+    border:1px solid var(--border); border-radius:20px; background:var(--bg-card);
+    font-family:var(--font); font-size:12px; font-weight:600; color:var(--t-muted);
+    cursor:pointer; transition:all 0.15s;
+  }
+  .lv-status-pill-btn:hover { border-color:var(--primary); color:var(--primary); }
+  .lv-status-pill-btn.active { background:var(--primary); border-color:var(--primary); color:var(--on-primary); }
+  .lv-status-pill-btn.active.pending { background:var(--warning); border-color:var(--warning); color:#fff; }
+  .lv-status-pill-btn.active.approved { background:var(--success); border-color:var(--success); color:#fff; }
+  .lv-status-pill-btn.active.rejected { background:var(--danger); border-color:var(--danger); color:#fff; }
+  .lv-status-pill-n { font-size:11px; font-weight:700; opacity:0.85; background:rgba(0,0,0,0.06); border-radius:10px; padding:1px 6px; }
+  .lv-status-pill-btn.active .lv-status-pill-n { background:rgba(255,255,255,0.22); }
   .lv-view-toggle { display:flex; gap:4px; background:var(--bg-muted); border-radius:var(--radius); padding:3px; }
   .lv-toggle-btn { display:flex; align-items:center; gap:6px; padding:6px 14px; border:none; background:transparent; border-radius:6px; font-size:12.5px; font-weight:600; color:var(--t-muted); cursor:pointer; transition:all 0.15s; font-family:var(--font); }
   .lv-toggle-btn:hover:not(.active) { color:var(--primary); background:var(--bg-hover); }
-  .lv-toggle-btn.active { background:var(--primary); color:#fff; box-shadow:var(--shadow-sm); }
+  .lv-toggle-btn.active { background:var(--primary); color: var(--on-primary); box-shadow:var(--shadow-sm); }
   .lv-toggle-btn i { font-size:13px; }
   .lv-legend { display:flex; align-items:center; gap:16px; padding:12px 20px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; }
   .lv-calendar-wrap { padding:14px 20px 20px; }
@@ -755,6 +931,9 @@ const styles = `
   .lv-date-main { font-size:13px; font-weight:500; }
   .lv-date-sub { font-size:11.5px; color:var(--t-muted); }
   .lv-duration { font-size:13px; font-weight:600; color:var(--t-base); }
+  .lv-dur-cell { display:flex; flex-direction:column; gap:2px; }
+  .lv-dur-main { font-size:13px; font-weight:600; color:var(--t-base); }
+  .lv-dur-sub { font-size:10.5px; font-weight:600; color:var(--warning); }
   .lv-reason { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; color:var(--t-muted); }
   .lv-muted { color:var(--t-muted); }
   .lv-type-pill, .lv-status-pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:0.02em; white-space:nowrap; }
@@ -763,7 +942,7 @@ const styles = `
   .lv-actions { display:flex; align-items:center; gap:6px; }
   .lv-action-btn { width:30px; height:30px; border:none; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; transition:all 0.15s; }
   .lv-view-btn { background:var(--primary-soft); color:var(--primary); }
-  .lv-view-btn:hover { background:var(--primary); color:#fff; }
+  .lv-view-btn:hover { background:var(--primary); color: var(--on-primary); }
   .lv-edit-btn { background:var(--danger-soft); color:var(--danger); }
   .lv-edit-btn:hover { background:var(--danger); color:#fff; }
   .lv-empty-state { text-align:center; padding:48px 24px; }
@@ -777,7 +956,7 @@ const styles = `
   .lv-label { font-size:13px; font-weight:600; color:var(--t-muted); display:flex; align-items:center; gap:5px; }
   .lv-label-hint { font-size:11.5px; font-weight:500; color:var(--t-muted); }
   .lv-input, .lv-textarea { width:100%; padding:10px 12px; border:none; border-radius:var(--radius); background:var(--bg-muted); font-size:14px; color:var(--t-base); font-family:var(--font); transition:box-shadow 0.15s; outline:none; box-sizing:border-box; height:40px; }
-  .lv-input:focus, .lv-textarea:focus { box-shadow:0 0 0 3px rgba(80,72,229,0.18); }
+  .lv-input:focus, .lv-textarea:focus { box-shadow:0 0 0 3px var(--primary-ring); }
   .lv-input:disabled, .lv-textarea:disabled { background:var(--bg); color:var(--t-muted); cursor:default; }
   .lv-input-readonly { background:var(--bg); color:var(--t-muted); cursor:default; height:40px; display:flex; align-items:center; }
   .lv-textarea { resize:none; line-height:1.5; height:auto; }
@@ -828,7 +1007,7 @@ const styles = `
   .hcal-day-cell { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:7px; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.12s; gap:2px; }
   .hcal-day-cell:hover:not(.hcal-disabled):not(.hcal-selected) { filter:brightness(0.92); transform:scale(1.06); }
   .hcal-disabled { cursor:default !important; }
-  .hcal-selected { background:var(--primary) !important; color:#fff !important; font-weight:700 !important; box-shadow:0 2px 8px rgba(80,72,229,0.3); transform:scale(1.06); }
+  .hcal-selected { background:var(--primary) !important; color: var(--on-primary) !important; font-weight:700 !important; box-shadow:0 2px 8px color-mix(in srgb, var(--primary) 30%, transparent); transform:scale(1.06); }
   .hcal-dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
   .hcal-legend { display:flex; gap:12px; flex-wrap:wrap; padding:8px 12px; border-top:1px solid var(--border-soft); background:var(--bg); }
   .hcal-leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--t-muted); font-weight:500; }

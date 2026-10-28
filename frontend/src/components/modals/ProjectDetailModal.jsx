@@ -37,7 +37,7 @@ export default function ProjectDetailModal({ projectId, onClose, onNavigate }) {
 
   return (
     <div className="ul-overlay" onClick={onClose}>
-      <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+      <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="ul-modal-header">
           <div className="ul-modal-header-left">
@@ -133,7 +133,7 @@ export default function ProjectDetailModal({ projectId, onClose, onNavigate }) {
                     <thead><tr><th>Module</th><th>Status</th><th>Assigned To</th><th>Hours</th></tr></thead>
                     <tbody>
                       {modules.map((m) => (
-                        <tr key={m.id} className="data-table-clickable" onClick={() => onNavigate?.("module", m.id)}>
+                        <tr key={m.id} className={m.id > 0 ? "data-table-clickable" : ""} onClick={() => { if (m.id > 0) onNavigate?.("module", m.id); }}>
                           <td style={{ fontWeight: 600 }}>{m.module_name}</td>
                           <td><StatusBadge status={m.module_status} /></td>
                           <td style={{ fontSize: 12, color: "var(--t-muted)" }}>{m.assigned_names || "—"}</td>
@@ -154,7 +154,7 @@ export default function ProjectDetailModal({ projectId, onClose, onNavigate }) {
                         <tr key={m.id} className="data-table-clickable" onClick={() => onNavigate?.("user", m.id)}>
                           <td>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11 }}>
+                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary)", color: "var(--on-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11 }}>
                                 {m.name?.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 2)}
                               </div>
                               <span style={{ fontWeight: 600, fontSize: 13 }}>{m.name}</span>

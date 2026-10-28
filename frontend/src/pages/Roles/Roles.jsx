@@ -350,7 +350,7 @@ export default function Roles() {
       {/* ── DELETE CONFIRM MODAL ── */}
       {deleteConfirm && (
         <div className="ul-overlay" onClick={() => setDeleteConfirm(null)}>
-          <div className="ul-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ul-modal ul-modal-sm" onClick={(e) => e.stopPropagation()}>
             <div className="ul-modal-icon ul-modal-icon-danger">
               <i className="bi bi-trash" />
             </div>
@@ -524,7 +524,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .sr-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .sr-input:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
 
   .ul-clear-btn {
     position: absolute; right: 9px; background: none; border: none;
@@ -585,7 +585,7 @@ const styles = `
   .ul-name-cell { display: flex; align-items: center; gap: 10px; }
   .ul-avatar {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-    background: var(--primary); color: #fff;
+    background: var(--primary); color: var(--on-primary);
     font-size: 13px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
@@ -616,7 +616,7 @@ const styles = `
     font-size: 12px; cursor: pointer; transition: all 0.15s;
   }
   .ul-action-edit { background: var(--primary-soft); color: var(--primary); }
-  .ul-action-edit:hover { background: var(--primary); color: #fff; }
+  .ul-action-edit:hover { background: var(--primary); color: var(--on-primary); }
   .ul-action-delete { background: var(--danger-soft); color: var(--danger); }
   .ul-action-delete:hover { background: var(--danger); color: #fff; }
 
@@ -642,7 +642,7 @@ const styles = `
     font-family: var(--font);
   }
   .sh-page-num:hover { color: var(--primary); background: var(--primary-soft); }
-  .sh-page-num-active { background: var(--primary); color: #fff; }
+  .sh-page-num-active { background: var(--primary); color: var(--on-primary); }
 
   /* ── Add Role btn (reuse cu-save-btn style) ── */
   .cu-save-btn {
@@ -666,20 +666,20 @@ const styles = `
   }
   .cu-back-btn:hover { color: var(--primary); background: var(--primary-soft); }
 
-  /* ── Overlay ── */
+  /* ── Overlay (size comes from the global standard in App.css) ── */
   .ul-overlay {
-    position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px);
+    position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(8px);
     z-index: 1000; display: flex; align-items: center; justify-content: center;
     animation: sr-fade-in 0.15s ease; padding: 16px;
   }
   .ul-modal {
     background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
-    padding: 28px; width: 80%; max-width: 420px; max-height: calc(100vh - 32px);
+    padding: 28px;
     animation: ul-modal-center-in 0.2s ease;
     text-align: center;
   }
-  .ul-modal-lg { max-width: 720px; text-align: left; overflow-y: auto; }
+  .ul-modal-lg { text-align: left; overflow-y: auto; }
 
   @keyframes ul-modal-center-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 

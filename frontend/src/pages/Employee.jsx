@@ -163,7 +163,7 @@ const card = { flex: 1, background: "var(--bg-card)", padding: 20, borderRadius:
 const grid = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 };
 const input = { width: "100%", padding: 10, marginTop: 5, border: "none", background: "var(--bg-muted)", borderRadius: "var(--radius)", outline: "none" };
 const textarea = { width: "100%", height: 80, marginTop: 15, border: "none", background: "var(--bg-muted)", borderRadius: "var(--radius)", outline: "none" };
-const btn = { marginTop: 15, width: "100%", padding: 10, background: "var(--primary)", color: "#fff", border: "none" };
+const btn = { marginTop: 15, width: "100%", padding: 10, background: "var(--primary)", color: "var(--on-primary)", border: "none" };
 const logout = { background: "#dc2626", color: "#fff", border: "none", padding: "5px 10px" };
 
 /* Table Styles */

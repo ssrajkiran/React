@@ -8,7 +8,7 @@ const db = require("../config/db");
 
 // GET /api/crud/admin/all  →  All configs (including inactive)
 router.get("/admin/all", (req, res) => {
-  db.query("SELECT * FROM form_configs ORDER BY id", (err, configs) => {
+  db.query("SELECT * FROM form_configs ORDER BY id DESC", (err, configs) => {
     if (err) return res.status(500).json({ message: "Query failed" });
     res.json(configs);
   });
@@ -301,7 +301,7 @@ router.get("/:module", (req, res) => {
       }
 
       const sortField = sort || "id";
-      const sortDir = order === "desc" ? "DESC" : "ASC";
+      const sortDir = order === "asc" ? "ASC" : "DESC";
       const validSort = fields.find((f) => f.field_key === sortField) || { field_key: "id" };
       query += ` ORDER BY \`${validSort.field_key}\` ${sortDir}`;
 

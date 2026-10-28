@@ -5,7 +5,7 @@ return(
  position:"fixed",
  inset:0,
  background:"rgba(17,24,39,0.45)",
- backdropFilter:"blur(2px)",
+ backdropFilter:"blur(8px)",
  display:"flex",
  alignItems:"center",
  justifyContent:"center",
@@ -15,9 +15,9 @@ return(
 
 <div style={{
  background:"var(--bg-card)",
- width:"80%",
- maxWidth:520,
- maxHeight:"calc(100vh - 32px)",
+ width:"80vw",
+ height:"80vh",
+ maxHeight:"80vh",
  borderRadius:12,
  boxShadow:"0 20px 60px rgba(0,0,0,0.18)",
  padding:24,

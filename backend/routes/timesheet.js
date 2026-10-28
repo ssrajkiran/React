@@ -1,6 +1,15 @@
 const router = require("express").Router();
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
+const {
+  FREEZED_PREFIX,
+  freezedLiterals,
+  fvValue,
+  parseFreezedValue,
+  taskNameSql,
+  taskStatusSql,
+  projectJoinSql,
+} = require("../utils/freezedModules");
 
 // Helper: format "HH:MM:SS" or "HH:MM" to "9:00 AM" style
 function formatTimeAMPM(timeStr) {
@@ -34,14 +43,21 @@ router.get("/employee/projects", verifyToken, (req, res) => {
 
   const sql = `
     SELECT DISTINCT p.id, p.project_name
-    FROM task t
-    JOIN projects p ON p.id = t.project_id
-    WHERE FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))
-    AND t.status = 'In Progress'
+    FROM (
+      SELECT t.project_id AS pid
+      FROM task t
+      WHERE FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))
+        AND t.status = 'In Progress'
+      UNION
+      SELECT ts.project_id AS pid
+      FROM timesheet ts
+      WHERE ts.created_by = ? AND ts.project_id IS NOT NULL
+    ) x
+    JOIN projects p ON p.id = x.pid
     ORDER BY p.project_name ASC
   `;
 
-  db.query(sql, [userId], (err, projects) => {
+  db.query(sql, [userId, userId], (err, projects) => {
     if (err) return res.status(500).json({ error: "Failed to fetch employee projects" });
     res.json(projects);
   });
@@ -113,16 +129,16 @@ router.get("/admin", verifyToken, (req, res) => {
       ts.created_by AS timesheet_created_by,
       ts.created_at AS timesheet_created_at,
       ts.updated_at AS timesheet_updated_at,
-      IFNULL(t.task, ts.work_description) AS task_name,
+      ${taskNameSql()} AS task_name,
       t.assigned_to AS task_assigned_to,
-      IFNULL(t.status, 'Permission') AS task_status,
+      ${taskStatusSql()} AS task_status,
       t.created_by AS task_created_by,
       p.id AS project_id,
       IFNULL(p.project_name, 'Permission') AS project_name,
       u.name AS created_by_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
-    LEFT JOIN projects p ON t.project_id = p.id
+    ${projectJoinSql()}
     LEFT JOIN users u ON ts.created_by = u.id
     ORDER BY ts.date DESC, u.name ASC, p.id ASC, ts.id ASC
   `;
@@ -152,15 +168,15 @@ router.get("/employee", verifyToken, (req, res) => {
       ts.created_by AS timesheet_created_by,
       ts.created_at AS timesheet_created_at,
       ts.updated_at AS timesheet_updated_at,
-      IFNULL(t.task, ts.work_description) AS task_name,
+      ${taskNameSql()} AS task_name,
       t.assigned_to AS task_assigned_to,
-      IFNULL(t.status, 'Permission') AS task_status,
+      ${taskStatusSql()} AS task_status,
       t.created_by AS task_created_by,
       p.id AS project_id,
       IFNULL(p.project_name, 'Permission') AS project_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
-    LEFT JOIN projects p ON t.project_id = p.id
+    ${projectJoinSql()}
     WHERE ts.created_by = ?
     ORDER BY ts.date DESC, p.id ASC, ts.id ASC
   `;
@@ -289,14 +305,19 @@ function getLeaveOnDate(userId, dateStr, cb) {
 }
 
 router.post("/", verifyToken, (req, res) => {
-  const { task, date, start_time, end_time, man_hrs, created_by, work_description, entry_type } = req.body;
+  const { task, date, start_time, end_time, man_hrs, created_by, work_description, entry_type, project } = req.body;
   const isPermission = entry_type === "permission";
+  const freezedName = parseFreezedValue(task);
+  const isVirtualFreezed = freezedName && String(task).startsWith(FREEZED_PREFIX);
 
   if (!date || !created_by) {
     return res.status(400).json({ message: "Date and user are required" });
   }
   if (!isPermission && !task) {
     return res.status(400).json({ message: "Task is required for project entries" });
+  }
+  if (isVirtualFreezed && !project) {
+    return res.status(400).json({ message: "Project is required for freezed module entries" });
   }
 
   // Calculate man_hrs from start_time/end_time if provided
@@ -341,14 +362,18 @@ router.post("/", verifyToken, (req, res) => {
   const normalizedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   const displayDate = `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
 
-  // For permission entries, skip task validation
-  if (isPermission) {
+  // For permission entries and virtual freezed modules, skip task validation
+  if (isPermission || isVirtualFreezed) {
     proceedAfterValidation();
   } else {
-    // Validate that the task is assigned to the target user
+    // Validate that the task is assigned to the target user.
+    // Freezed modules are open to everyone (no assignment needed).
     const validateSql = `
       SELECT id FROM task
-      WHERE id = ? AND FIND_IN_SET(?, REPLACE(assigned_to, ' ', ''))
+      WHERE id = ? AND (
+        task IN (${freezedLiterals()})
+        OR FIND_IN_SET(?, REPLACE(assigned_to, ' ', ''))
+      )
     `;
 
     db.query(validateSql, [task, created_by], (err, validationResults) => {
@@ -438,9 +463,11 @@ router.post("/", verifyToken, (req, res) => {
         }
 
         function insertTimesheet() {
-          const insertSql = "INSERT INTO timesheet (task, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
+          const taskValue = isPermission ? null : isVirtualFreezed ? fvValue(freezedName) : task;
+          const projectValue = isPermission ? null : (project || null);
+          const insertSql = "INSERT INTO timesheet (task, project_id, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-          db.query(insertSql, [task, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, work_description || null, created_by], (err, result) => {
+          db.query(insertSql, [taskValue, projectValue, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, work_description || null, created_by], (err, result) => {
             if (err) {
               console.error("Insert timesheet error:", err);
               return res.status(500).json({ message: "Database error" });
@@ -456,16 +483,24 @@ router.post("/", verifyToken, (req, res) => {
 
 
 // Projects assigned to a specific user (for admin modal) - only In Progress tasks
+// plus any project the user has timesheeted on (e.g. freezed virtual modules)
 router.get("/admin/projects/:userId", verifyToken, (req, res) => {
   const sql = `
     SELECT DISTINCT p.id, p.project_name
-    FROM task t
-    JOIN projects p ON p.id = t.project_id
-    WHERE FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))
-    AND t.status = 'In Progress'
+    FROM (
+      SELECT t.project_id AS pid
+      FROM task t
+      WHERE FIND_IN_SET(?, REPLACE(t.assigned_to, ' ', ''))
+        AND t.status = 'In Progress'
+      UNION
+      SELECT ts.project_id AS pid
+      FROM timesheet ts
+      WHERE ts.created_by = ? AND ts.project_id IS NOT NULL
+    ) x
+    JOIN projects p ON p.id = x.pid
     ORDER BY p.project_name ASC
   `;
-  db.query(sql, [req.params.userId], (err, rows) => {
+  db.query(sql, [req.params.userId, req.params.userId], (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch projects" });
     res.json(rows);
   });
@@ -548,10 +583,19 @@ router.get("/dashboard/summary", verifyToken, (req, res) => {
     });
   });
 
-  // 4. Pending leaves count
+  // 4. Pending requests awaiting approval (leaves + permissions + present-on-holiday).
+  // Admins see the whole team's queue; employees see only their own.
   queries.pendingLeaves = new Promise((resolve, reject) => {
-    const sql = `SELECT COUNT(*) AS count FROM leaves WHERE user_id = ? AND status = 'pending'`;
-    db.query(sql, [userId], (err, rows) => {
+    const scope = isAdmin ? "" : " AND user_id = ?";
+    const sql = `
+      SELECT (
+        (SELECT COUNT(*) FROM leaves WHERE status = 'pending' ${scope})
+        + (SELECT COUNT(*) FROM permission WHERE status = 'pending' ${scope})
+        + (SELECT COUNT(*) FROM present_on_holiday WHERE status = 'pending' ${scope})
+      ) AS count
+    `;
+    const params = isAdmin ? [] : [userId, userId, userId];
+    db.query(sql, params, (err, rows) => {
       if (err) return reject(err);
       resolve(rows[0] || { count: 0 });
     });
@@ -562,11 +606,11 @@ router.get("/dashboard/summary", verifyToken, (req, res) => {
     const sql = `
       SELECT ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time,
              ts.work_description,
-             IFNULL(t.task, ts.work_description) AS task_name,
+             ${taskNameSql()} AS task_name,
              IFNULL(p.project_name, 'Permission') AS project_name
       FROM timesheet ts
       LEFT JOIN task t ON ts.task = t.id
-      LEFT JOIN projects p ON t.project_id = p.id
+      ${projectJoinSql()}
       WHERE ts.created_by = ?
       ORDER BY ts.date DESC, ts.id DESC
       LIMIT 5
@@ -618,7 +662,14 @@ router.get("/dashboard/summary", verifyToken, (req, res) => {
     });
 
     queries.pendingApprovals = new Promise((resolve, reject) => {
-      db.query("SELECT COUNT(*) AS count FROM leaves WHERE status = 'pending'", (err, rows) => {
+      const sql = `
+        SELECT (
+          (SELECT COUNT(*) FROM leaves WHERE status = 'pending')
+          + (SELECT COUNT(*) FROM permission WHERE status = 'pending')
+          + (SELECT COUNT(*) FROM present_on_holiday WHERE status = 'pending')
+        ) AS count
+      `;
+      db.query(sql, (err, rows) => {
         if (err) return reject(err);
         resolve(rows[0] || { count: 0 });
       });
@@ -649,36 +700,48 @@ router.get("/dashboard/timesheet", verifyToken, (req, res) => {
 
   const queries = {};
 
-  // 1. KPIs
+  // 1. KPIs — honor the selected date range; default to the last 7 days
   queries.kpis = new Promise((resolve, reject) => {
     let sql;
     const params = [];
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const from = DATE_RE.test(dateFrom || "") ? dateFrom : null;
+    const to = DATE_RE.test(dateTo || "") ? dateTo : null;
+    const rangeSql = from && to
+      ? "DATE(ts.date) >= ? AND DATE(ts.date) <= ?"
+      : from
+        ? "DATE(ts.date) >= ?"
+        : to
+          ? "DATE(ts.date) <= ?"
+          : "DATE(ts.date) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+    const rangeParams = from && to ? [from, to] : from ? [from] : to ? [to] : [];
 
     if (isAdmin) {
       sql = `
         SELECT
           COUNT(DISTINCT DATE(ts.date)) AS active_days,
           COUNT(DISTINCT ts.created_by) AS active_employees,
-          COUNT(DISTINCT t.project_id) AS active_projects,
+          COUNT(DISTINCT COALESCE(t.project_id, ts.project_id)) AS active_projects,
           COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
           COUNT(*) AS total_entries
         FROM timesheet ts
         LEFT JOIN task t ON ts.task = t.id
-        WHERE DATE(ts.date) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        WHERE ${rangeSql}
       `;
+      params.push(...rangeParams);
     } else {
       sql = `
         SELECT
           COUNT(DISTINCT DATE(ts.date)) AS active_days,
-          COUNT(DISTINCT t.project_id) AS active_projects,
+          COUNT(DISTINCT COALESCE(t.project_id, ts.project_id)) AS active_projects,
           COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
           COUNT(*) AS total_entries
         FROM timesheet ts
         LEFT JOIN task t ON ts.task = t.id
         WHERE ts.created_by = ?
-        AND DATE(ts.date) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        AND ${rangeSql}
       `;
-      params.push(userId);
+      params.push(userId, ...rangeParams);
     }
 
     db.query(sql, params, (err, rows) => {
@@ -709,8 +772,29 @@ router.get("/dashboard/timesheet", verifyToken, (req, res) => {
         ${dateFrom ? "AND DATE(ts.date) >= ?" : ""}
         ${dateTo ? "AND DATE(ts.date) <= ?" : ""}
         GROUP BY p.id, p.project_name, t.id, t.task, t.status, t.assigned_to
-        ORDER BY p.project_name ASC, t.task ASC
+
+        UNION ALL
+
+        SELECT
+          p.id AS project_id,
+          p.project_name,
+          -ABS(CRC32(CONCAT(p.id, ':', ts.task))) AS module_id,
+          SUBSTRING(ts.task, 5) AS module_name,
+          'Completed' AS module_status,
+          '' AS assigned_to,
+          COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
+          COUNT(ts.id) AS entry_count
+        FROM timesheet ts
+        JOIN projects p ON p.id = ts.project_id
+        WHERE ts.task LIKE 'FV::%'
+        ${dateFrom ? "AND DATE(ts.date) >= ?" : ""}
+        ${dateTo ? "AND DATE(ts.date) <= ?" : ""}
+        GROUP BY p.id, p.project_name, ts.task
+
+        ORDER BY project_name ASC, module_name ASC
       `;
+      if (dateFrom) params.push(dateFrom);
+      if (dateTo) params.push(dateTo);
       if (dateFrom) params.push(dateFrom);
       if (dateTo) params.push(dateTo);
     } else {
@@ -721,6 +805,7 @@ router.get("/dashboard/timesheet", verifyToken, (req, res) => {
           t.id AS module_id,
           t.task AS module_name,
           t.status AS module_status,
+          '' AS assigned_to,
           COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
           COUNT(ts.id) AS entry_count
         FROM projects p
@@ -729,8 +814,30 @@ router.get("/dashboard/timesheet", verifyToken, (req, res) => {
         ${dateFrom ? "AND DATE(ts.date) >= ?" : ""}
         ${dateTo ? "AND DATE(ts.date) <= ?" : ""}
         GROUP BY p.id, p.project_name, t.id, t.task, t.status
-        ORDER BY p.project_name ASC, t.task ASC
+
+        UNION ALL
+
+        SELECT
+          p.id AS project_id,
+          p.project_name,
+          -ABS(CRC32(CONCAT(p.id, ':', ts.task))) AS module_id,
+          SUBSTRING(ts.task, 5) AS module_name,
+          'Completed' AS module_status,
+          '' AS assigned_to,
+          COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
+          COUNT(ts.id) AS entry_count
+        FROM timesheet ts
+        JOIN projects p ON p.id = ts.project_id
+        WHERE ts.task LIKE 'FV::%' AND ts.created_by = ?
+        ${dateFrom ? "AND DATE(ts.date) >= ?" : ""}
+        ${dateTo ? "AND DATE(ts.date) <= ?" : ""}
+        GROUP BY p.id, p.project_name, ts.task
+
+        ORDER BY project_name ASC, module_name ASC
       `;
+      params.push(userId);
+      if (dateFrom) params.push(dateFrom);
+      if (dateTo) params.push(dateTo);
       params.push(userId);
       if (dateFrom) params.push(dateFrom);
       if (dateTo) params.push(dateTo);
@@ -782,7 +889,7 @@ router.get("/dashboard/timesheet", verifyToken, (req, res) => {
     }
 
     if (projectId) {
-      whereClauses.push("t.project_id = ?");
+      whereClauses.push("COALESCE(t.project_id, ts.project_id) = ?");
       params.push(projectId);
     }
 
@@ -806,13 +913,13 @@ router.get("/dashboard/timesheet", verifyToken, (req, res) => {
         ts.start_time,
         ts.end_time,
         ts.work_description,
-        IFNULL(t.task, ts.work_description) AS module_name,
+        ${taskNameSql()} AS module_name,
         IFNULL(p.project_name, 'Permission') AS project_name,
-        IFNULL(t.status, 'Permission') AS module_status,
+        ${taskStatusSql()} AS module_status,
         u.name AS employee_name
       FROM timesheet ts
       LEFT JOIN task t ON ts.task = t.id
-      LEFT JOIN projects p ON t.project_id = p.id
+      ${projectJoinSql()}
       LEFT JOIN users u ON ts.created_by = u.id
       ${whereStr}
       ORDER BY ts.date DESC, ts.id DESC
@@ -908,11 +1015,11 @@ router.get("/detail/user/:id", verifyToken, (req, res) => {
   queries.timesheet = new Promise((resolve, reject) => {
     const sql = `
       SELECT ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time, ts.work_description,
-             IFNULL(t.task, ts.work_description) AS module_name,
+             ${taskNameSql()} AS module_name,
              IFNULL(p.project_name, 'Permission') AS project_name
       FROM timesheet ts
       LEFT JOIN task t ON ts.task = t.id
-      LEFT JOIN projects p ON t.project_id = p.id
+      ${projectJoinSql()}
       WHERE ts.created_by = ?
       ORDER BY ts.date DESC LIMIT 10
     `;
@@ -1009,7 +1116,34 @@ router.get("/detail/project/:id", verifyToken, (req, res) => {
     `;
     db.query(sql, [projectId], (err, rows) => {
       if (err) return reject(err);
-      resolve(rows || []);
+
+      // Freezed (virtual) modules only appear when entries exist for them
+      const fvSql = `
+        SELECT SUBSTRING(ts.task, 5) AS module_name,
+               'Completed' AS module_status,
+               COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
+               COUNT(ts.id) AS entry_count
+        FROM timesheet ts
+        WHERE ts.project_id = ? AND ts.task LIKE 'FV::%'
+        GROUP BY ts.task
+        ORDER BY module_name ASC
+      `;
+      db.query(fvSql, [projectId], (err2, fvRows) => {
+        if (err2) return reject(err2);
+        const fvModules = (fvRows || []).map((r, i) => ({
+          id: -(i + 1),
+          module_name: r.module_name,
+          module_status: r.module_status,
+          assigned_to: null,
+          assigned_names: null,
+          total_hours: r.total_hours,
+          entry_count: r.entry_count,
+        }));
+        const merged = [...(rows || []), ...fvModules].sort((a, b) =>
+          String(a.module_name).localeCompare(String(b.module_name))
+        );
+        resolve(merged);
+      });
     });
   });
 
@@ -1036,12 +1170,12 @@ router.get("/detail/project/:id", verifyToken, (req, res) => {
   queries.timesheet = new Promise((resolve, reject) => {
     const sql = `
       SELECT ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time, ts.work_description,
-             IFNULL(t.task, ts.work_description) AS module_name,
+             ${taskNameSql()} AS module_name,
              u.name AS employee_name
       FROM timesheet ts
       LEFT JOIN task t ON ts.task = t.id
       LEFT JOIN users u ON ts.created_by = u.id
-      WHERE t.project_id = ?
+      WHERE COALESCE(t.project_id, ts.project_id) = ?
       ORDER BY ts.date DESC LIMIT 10
     `;
     db.query(sql, [projectId], (err, rows) => {
@@ -1054,15 +1188,19 @@ router.get("/detail/project/:id", verifyToken, (req, res) => {
   queries.stats = new Promise((resolve, reject) => {
     const sql = `
       SELECT
-        COUNT(DISTINCT t.id) AS module_count,
+        COUNT(DISTINCT t.id) +
+          IFNULL((SELECT COUNT(DISTINCT task) FROM timesheet WHERE project_id = ? AND task LIKE 'FV::%'), 0)
+          AS module_count,
         COUNT(DISTINCT ts.created_by) AS contributor_count,
-        COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
+        COALESCE(SUM(ts.man_hrs), 0) +
+          IFNULL((SELECT COALESCE(SUM(fv.man_hrs), 0) FROM timesheet fv WHERE fv.project_id = ? AND fv.task LIKE 'FV::%'), 0)
+          AS total_hours,
         COUNT(DISTINCT DATE(ts.date)) AS active_days
       FROM task t
       LEFT JOIN timesheet ts ON ts.task = t.id
       WHERE t.project_id = ?
     `;
-    db.query(sql, [projectId], (err, rows) => {
+    db.query(sql, [projectId, projectId, projectId], (err, rows) => {
       if (err) return reject(err);
       resolve(rows[0] || {});
     });
@@ -1087,19 +1225,34 @@ router.get("/detail/project/:id", verifyToken, (req, res) => {
 =============================== */
 router.get("/detail/module/:id", verifyToken, (req, res) => {
   const moduleId = req.params.id;
+  // Virtual freezed modules are identified by fv=FV::<name>&project_id=<id>
+  // because their synthetic id cannot be reversed back to the value.
+  const fvKey = req.query.fv || "";
+  const fvProjectId = req.query.project_id || "";
+  const isFv = fvKey.startsWith("FV::") && fvProjectId !== "";
+  const fvParams = [fvKey, fvProjectId];
 
   const queries = {};
 
   // 1. Module info
   queries.module = new Promise((resolve, reject) => {
-    const sql = `
+    const sql = isFv
+      ? `
+        SELECT -ABS(CRC32(CONCAT(?, ':', ?))) AS id, SUBSTRING(?, 5) AS module_name,
+               'Completed' AS module_status, '' AS assigned_to,
+               p.id AS project_id, p.project_name
+        FROM projects p
+        WHERE p.id = ?
+      `
+      : `
       SELECT t.id, t.task AS module_name, t.status AS module_status, t.assigned_to,
              p.id AS project_id, p.project_name
       FROM task t
       LEFT JOIN projects p ON t.project_id = p.id
       WHERE t.id = ?
     `;
-    db.query(sql, [moduleId], (err, rows) => {
+    const values = isFv ? [fvProjectId, fvKey, fvKey, fvProjectId] : [moduleId];
+    db.query(sql, values, (err, rows) => {
       if (err) return reject(err);
       resolve(rows[0] || null);
     });
@@ -1107,7 +1260,18 @@ router.get("/detail/module/:id", verifyToken, (req, res) => {
 
   // 2. Team members assigned
   queries.team = new Promise((resolve, reject) => {
-    const sql = `
+    const sql = isFv
+      ? `
+        SELECT u.id, u.name, u.email,
+               IFNULL(SUM(ts.man_hrs), 0) AS total_hours,
+               COUNT(ts.id) AS entry_count
+        FROM timesheet ts
+        JOIN users u ON u.id = ts.created_by
+        WHERE ts.task = ? AND ts.project_id = ?
+        GROUP BY u.id, u.name, u.email
+        ORDER BY u.name ASC
+      `
+      : `
       SELECT u.id, u.name, u.email,
              COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
              COUNT(ts.id) AS entry_count
@@ -1118,7 +1282,7 @@ router.get("/detail/module/:id", verifyToken, (req, res) => {
       GROUP BY u.id, u.name, u.email
       ORDER BY u.name ASC
     `;
-    db.query(sql, [moduleId], (err, rows) => {
+    db.query(sql, isFv ? fvParams : [moduleId], (err, rows) => {
       if (err) return reject(err);
       resolve(rows || []);
     });
@@ -1126,7 +1290,16 @@ router.get("/detail/module/:id", verifyToken, (req, res) => {
 
   // 3. Timesheet entries
   queries.timesheet = new Promise((resolve, reject) => {
-    const sql = `
+    const sql = isFv
+      ? `
+        SELECT ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time, ts.work_description,
+               u.name AS employee_name
+        FROM timesheet ts
+        LEFT JOIN users u ON ts.created_by = u.id
+        WHERE ts.task = ? AND ts.project_id = ?
+        ORDER BY ts.date DESC LIMIT 15
+      `
+      : `
       SELECT ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time, ts.work_description,
              u.name AS employee_name
       FROM timesheet ts
@@ -1134,7 +1307,7 @@ router.get("/detail/module/:id", verifyToken, (req, res) => {
       WHERE ts.task = ?
       ORDER BY ts.date DESC LIMIT 15
     `;
-    db.query(sql, [moduleId], (err, rows) => {
+    db.query(sql, isFv ? fvParams : [moduleId], (err, rows) => {
       if (err) return reject(err);
       resolve(rows || []);
     });
@@ -1142,7 +1315,16 @@ router.get("/detail/module/:id", verifyToken, (req, res) => {
 
   // 4. Stats
   queries.stats = new Promise((resolve, reject) => {
-    const sql = `
+    const sql = isFv
+      ? `
+        SELECT
+          COUNT(DISTINCT ts.created_by) AS contributor_count,
+          IFNULL(SUM(ts.man_hrs), 0) AS total_hours,
+          COUNT(ts.id) AS entry_count,
+          COUNT(DISTINCT DATE(ts.date)) AS active_days
+        FROM timesheet ts WHERE ts.task = ? AND ts.project_id = ?
+      `
+      : `
       SELECT
         COUNT(DISTINCT ts.created_by) AS contributor_count,
         COALESCE(SUM(ts.man_hrs), 0) AS total_hours,
@@ -1150,7 +1332,7 @@ router.get("/detail/module/:id", verifyToken, (req, res) => {
         COUNT(DISTINCT DATE(ts.date)) AS active_days
       FROM timesheet ts WHERE ts.task = ?
     `;
-    db.query(sql, [moduleId], (err, rows) => {
+    db.query(sql, isFv ? fvParams : [moduleId], (err, rows) => {
       if (err) return reject(err);
       resolve(rows[0] || {});
     });
@@ -1180,12 +1362,14 @@ router.get("/detail/:id", verifyToken, (req, res) => {
     SELECT
       ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time, ts.work_description,
       ts.created_by, ts.created_at, ts.updated_at,
-      t.id AS module_id, t.task AS module_name, t.status AS module_status,
+      t.id AS module_id,
+      IFNULL(t.task, CASE WHEN ts.task LIKE 'FV::%' THEN SUBSTRING(ts.task, 5) END) AS module_name,
+      CASE WHEN ts.task LIKE 'FV::%' THEN 'Completed' ELSE t.status END AS module_status,
       p.id AS project_id, p.project_name,
       u.name AS employee_name, u.email AS employee_email
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
-    LEFT JOIN projects p ON t.project_id = p.id
+    LEFT JOIN projects p ON COALESCE(t.project_id, ts.project_id) = p.id
     LEFT JOIN users u ON ts.created_by = u.id
     WHERE ts.id = ?
   `;

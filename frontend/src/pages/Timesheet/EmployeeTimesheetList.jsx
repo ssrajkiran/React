@@ -5,6 +5,8 @@ import api from "../../api";
 import SharedDatePicker from "../../components/SharedDatePicker";
 import SharedSelect from "../../components/SharedSelect";
 import TimesheetDetailModal from "../../components/modals/TimesheetDetailModal";
+import { buildModuleOptions } from "../../utils/freezedModules";
+import { fmtDate as fmtDateShared, defaultSortOrderFor } from "../../utils";
 
 const AppLayout = AppLayoutImport?.default || AppLayoutImport;
 
@@ -48,9 +50,8 @@ const fmtHrs = (hrs) => {
   return `${m}m`;
 };
 
-// ── "YYYY-MM-DD" → "22 Oct 2026" ──
-const fmtDateLabel = (d) =>
-  new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+// ── "YYYY-MM-DD" → "22-10-2026" ──
+const fmtDateLabel = (d) => (d ? fmtDateShared(d) : "—");
 
 // ── Inline AM/PM Time Picker ──
 function AmpmTimePicker({ value, onChange, minTime, disabled }) {
@@ -121,9 +122,11 @@ export default function EmployeeTimesheetList() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const prefillTaskId = searchParams.get("task");
+  const prefillProjectId = searchParams.get("project");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortField, setSortField] = useState("timesheet_date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
@@ -238,8 +241,14 @@ export default function EmployeeTimesheetList() {
   };
 
   const openModal = (prefillTaskIdFromUrl) => {
-    setForm({ date: "", entry_type: "project", project: "", task: prefillTaskIdFromUrl || "", start_time: "", end_time: "", work_description: "" });
+    // ids arrive as strings from the URL - keep numbers numeric so selects match options
+    const pid = prefillProjectId ? Number(prefillProjectId) : "";
+    const tid = prefillTaskIdFromUrl && !isNaN(Number(prefillTaskIdFromUrl))
+      ? Number(prefillTaskIdFromUrl)
+      : (prefillTaskIdFromUrl || "");
+    setForm({ date: "", entry_type: "project", project: pid, task: tid, start_time: "", end_time: "", work_description: "" });
     setTasks([]);
+    if (pid) loadTasks(pid);
     setFormError("");
     setShowModal(true);
   };
@@ -318,6 +327,7 @@ export default function EmployeeTimesheetList() {
         "/timesheet",
         {
           task: isPermission ? null : form.task,
+          project: isPermission ? null : form.project,
           entry_type: form.entry_type,
           date: form.date,
           start_time: form.start_time,
@@ -353,15 +363,21 @@ export default function EmployeeTimesheetList() {
   };
 
   // ================= TABLE =================
+  const statusOptions = useMemo(() => {
+    const statuses = [...new Set(data.map((r) => (r.task_status || "").trim()).filter(Boolean))].sort();
+    return [{ value: "all", label: "All Statuses" }, ...statuses.map((s) => ({ value: s, label: s }))];
+  }, [data]);
+
   const filtered = useMemo(() => {
     const t = searchText.toLowerCase();
-    return data.filter((row) =>
-      !t ||
+    return data.filter((row) => {
+      if (statusFilter !== "all" && (row.task_status || "").toLowerCase() !== statusFilter.toLowerCase()) return false;
+      return !t ||
       (row.task_name || "").toLowerCase().includes(t) ||
       (row.project_name || "").toLowerCase().includes(t) ||
-      (row.task_status || "").toLowerCase().includes(t)
-    );
-  }, [data, searchText]);
+      (row.task_status || "").toLowerCase().includes(t);
+    });
+  }, [data, searchText, statusFilter]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -379,7 +395,7 @@ export default function EmployeeTimesheetList() {
 
   const handleSort = (field) => {
     if (sortField === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    else { setSortField(field); setSortOrder("asc"); }
+    else { setSortField(field); setSortOrder(defaultSortOrderFor(field)); }
     setPage(1);
   };
 
@@ -391,6 +407,7 @@ export default function EmployeeTimesheetList() {
   const statusConfig = {
     completed:     { color: "var(--success)", bg: "var(--success-soft)", border: "color-mix(in srgb, var(--success) 35%, transparent)", label: "Completed" },
     "in-progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)", label: "In Progress" },
+    "in progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)", label: "In Progress" },
   };
 
   // Compute hours from either time-based or legacy man_hrs entries
@@ -463,7 +480,16 @@ export default function EmployeeTimesheetList() {
               </button>
             )}
           </div>
-          <span className="et-count">{filtered.length} records</span>
+          <div className="et-status-filter">
+            <SharedSelect
+              value={statusFilter}
+              onChange={(v) => { setStatusFilter(v || "all"); setPage(1); }}
+              options={statusOptions}
+              placeholder="All Statuses"
+              isClearable={false}
+            />
+          </div>
+          <span className="et-count">{filtered.length} of {data.length} records</span>
         </div>
 
         {/* Table */}
@@ -495,7 +521,11 @@ export default function EmployeeTimesheetList() {
                 </td></tr>
               ) : paginated.length === 0 ? (
                 <tr><td colSpan={9} className="et-state-cell">
-                  <div className="et-empty"><i className="bi bi-clock-history" /><span>No timesheets found</span></div>
+                  <div className="et-empty"><i className="bi bi-clock-history" /><span>
+                    {data.length > 0
+                      ? `No results${statusFilter !== "all" ? ` for status “${statusFilter}”` : ""}${searchText ? ` matching “${searchText}”` : ""}`
+                      : "No timesheets found"}
+                  </span></div>
                 </td></tr>
               ) : paginated.map((row, idx) => {
                 const sc = statusConfig[(row.task_status || "").toLowerCase()];
@@ -507,7 +537,7 @@ export default function EmployeeTimesheetList() {
                     <td className="et-td-muted et-center">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                     <td className="et-td-muted et-nowrap">
                       {row.timesheet_date
-                        ? new Date(row.timesheet_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                        ? fmtDateShared(row.timesheet_date)
                         : "—"}
                     </td>
                     <td>
@@ -611,7 +641,7 @@ export default function EmployeeTimesheetList() {
                   <div className="et-hrs-meter">
                     <div className="et-hrs-meter-top">
                       <span className="et-hrs-meter-label">
-                        Hours used on {new Date(form.date + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        Hours used on {fmtDateShared(form.date)}
                       </span>
                       <span className="et-hrs-meter-val" style={{ color: hoursRemaining <= 0 ? "var(--danger)" : hoursRemaining <= 2 ? "var(--warning)" : "var(--success)" }}>
                         {fmtHrs(hoursUsedOnDate)} / {dayLimitFor(form.date)} hrs
@@ -718,7 +748,7 @@ export default function EmployeeTimesheetList() {
                       <SharedSelect
                         value={form.task}
                         onChange={(val) => setForm({ ...form, task: val })}
-                        options={tasks.map((t) => ({ value: t.id, label: t.task }))}
+                        options={buildModuleOptions(tasks)}
                         placeholder="— Select Module —"
                         isDisabled={!form.project}
                       />
@@ -868,7 +898,7 @@ const styles = `
   .et-breadcrumb i { font-size: 10px; opacity: 0.5; }
   .et-add-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 9px 18px; background: var(--primary); color: #fff;
+    padding: 9px 18px; background: var(--primary); color: var(--on-primary);
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font);
@@ -893,6 +923,7 @@ const styles = `
   .et-search-clear { position: absolute; right: 8px; background: none; border: none; color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px; display: flex; align-items: center; }
   .et-search-clear:hover { color: var(--t-base); }
   .et-count { font-size: 12px; font-weight: 600; color: var(--t-muted); background: var(--bg-card); box-shadow: var(--shadow-sm); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+  .et-status-filter { min-width: 165px; flex: 0 0 auto; }
 
   /* Table */
   .et-table-wrap { overflow-x: auto; }
@@ -936,7 +967,7 @@ const styles = `
   .et-page-btns { display: flex; gap: 4px; }
   .et-page-btn { width: 30px; height: 30px; border-radius: var(--radius); border: none; background: var(--bg-muted); color: var(--t-muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; font-family: var(--font); }
   .et-page-btn:hover:not(:disabled) { color: var(--primary); }
-  .et-page-btn.active { background: var(--primary); color: #fff; }
+  .et-page-btn.active { background: var(--primary); color: var(--on-primary); }
   .et-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
   /* Form fields */
@@ -990,7 +1021,7 @@ const styles = `
     font-family: var(--font);
   }
   .et-hrs-btn:hover:not(.disabled) { color: var(--primary); background: var(--primary-soft); }
-  .et-hrs-btn.active { background: var(--primary); color: #fff; }
+  .et-hrs-btn.active { background: var(--primary); color: var(--on-primary); }
   .et-hrs-btn.disabled { opacity: 0.35; cursor: not-allowed; }
 
   /* Hours meter */

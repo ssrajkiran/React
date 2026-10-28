@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
+import { fmtDate as fmtDateShared, fmtDays } from "../../utils";
 
 export default function EmployeeDashboard() {
   const [history, setHistory] = useState([]);
   const [holidays, setHolidays] = useState([]);
+  const [histSearch, setHistSearch] = useState("");
+  const [histStatus, setHistStatus] = useState("all");
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get("/leaves/my").then((r) => {
@@ -26,9 +31,10 @@ export default function EmployeeDashboard() {
             type: "Comp Off",
             from_date: h.start,
             to_date: h.start,
-            days: "1 day",
-            raw_days: 1,
+            days: fmtDays(h.days ?? 1),
+            raw_days: parseFloat(h.days) || 1,
             status: h.status,
+            comp_off_date: h.comp_off_date,
           };
         } else if (h.type === "present") {
           return {
@@ -46,7 +52,7 @@ export default function EmployeeDashboard() {
             type: "Leave",
             from_date: h.start,
             to_date: h.end,
-            days: h.days + " day(s)",
+            days: fmtDays(h.days ?? 1),
             raw_days: parseFloat(h.days) || 0,
             status: h.status,
             half_day_type: h.half_day_type,
@@ -68,7 +74,9 @@ export default function EmployeeDashboard() {
     .filter((h) => h.type === "Leave" && h.status === "approved")
     .reduce((sum, h) => sum + (h.raw_days || 0), 0);
 
-  const compoffUsed  = history.filter((h) => h.type === "Comp Off" && h.status === "approved").length;
+  const compoffUsed  = history
+    .filter((h) => h.type === "Comp Off" && h.status === "approved")
+    .reduce((sum, h) => sum + (h.raw_days || 0), 0);
   const presentBonus = history.filter((h) => h.type === "Present"  && h.status === "approved").length;
 
   const balance = parseFloat(
@@ -87,11 +95,9 @@ export default function EmployeeDashboard() {
   // ================= HELPERS =================
   const stripTime = (date) =>
     new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
   const formatDate = (dateStr) => {
     if (!dateStr) return "-";
-    const d = new Date(dateStr);
-    return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+    return fmtDateShared(dateStr);
   };
 
   const getDayName = (dateStr) =>
@@ -104,19 +110,43 @@ export default function EmployeeDashboard() {
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .slice(0, 5);
 
-  const recentHistory = history.slice(0, 5);
+  const histQ = histSearch.trim().toLowerCase();
+  const filteredHistory = history.filter((h) => {
+    if (histStatus !== "all" && h.status !== histStatus) return false;
+    if (!histQ) return true;
+    return [
+      h.type, h.status, h.days, h.slot, h.half_day_type,
+      fmtDateShared(h.from_date), fmtDateShared(h.to_date),
+      h.comp_off_date ? fmtDateShared(h.comp_off_date) : "",
+    ].filter(Boolean).join(" ").toLowerCase().includes(histQ);
+  });
 
   // ================= RENDER =================
   return (
     <AppLayout>
       <style>{styles}</style>
 
+      {/* ── PAGE HEADER ── */}
+      <div className="db-page-header">
+        <div>
+          <h5 className="db-page-title">Leave Dashboard</h5>
+          <nav className="db-breadcrumb">
+            <span>Dashboard</span>
+            <i className="bi bi-chevron-right" />
+            <span>Leave Dashboard</span>
+          </nav>
+        </div>
+        <button className="db-page-btn" onClick={() => navigate("/employee/leaves")}>
+          <i className="bi bi-plus-lg" /> Add Leave
+        </button>
+      </div>
+
       {/* ── STAT CARDS ── */}
       <div className="db-stats-grid">
-        <StatCard title="Applied"  value={applied}  icon="bi-file-earmark-text" accent="var(--primary)" bg="var(--primary-soft)" />
-        <StatCard title="Approved" value={approved}  icon="bi-check-circle"       accent="var(--success)" bg="var(--success-soft)" />
-        <StatCard title="Pending"  value={pending}   icon="bi-hourglass-split"    accent="var(--warning)" bg="var(--warning-soft)" />
-        <StatCard title="Rejected" value={rejected}  icon="bi-x-circle"           accent="var(--danger)" bg="var(--danger-soft)" />
+        <StatCard title="Applied"  value={applied}  icon="bi-file-earmark-text" accent="var(--primary)" bg="var(--primary-soft)" onClick={() => navigate("/employee/leaves")} />
+        <StatCard title="Approved" value={approved}  icon="bi-check-circle"       accent="var(--success)" bg="var(--success-soft)" onClick={() => navigate("/employee/leaves?status=approved")} />
+        <StatCard title="Pending"  value={pending}   icon="bi-hourglass-split"    accent="var(--warning)" bg="var(--warning-soft)" onClick={() => navigate("/employee/leaves?status=pending")} />
+        <StatCard title="Rejected" value={rejected}  icon="bi-x-circle"           accent="var(--danger)" bg="var(--danger-soft)" onClick={() => navigate("/employee/leaves?status=rejected")} />
       </div>
 
       {/* ── LEAVE BALANCE ── */}
@@ -152,10 +182,44 @@ export default function EmployeeDashboard() {
             <span className="db-card-dot" style={{ background: "var(--primary)" }} />
             <h6 className="db-card-title">Leave / Permission History</h6>
             <span className="db-badge" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
-              {history.length}
+              {filteredHistory.length}{filteredHistory.length !== history.length && ` of ${history.length}`}
             </span>
+            <button className="db-view-all" title="Open full leave list" onClick={() => navigate("/employee/leaves")}>
+              View all <i className="bi bi-arrow-right" />
+            </button>
           </div>
-          <div className="db-table-wrap">
+          <div className="db-hist-toolbar">
+            <div className="db-hist-pills">
+              {[{ key: "all", label: "All" },
+                { key: "pending", label: "Pending" },
+                { key: "approved", label: "Approved" },
+                { key: "rejected", label: "Rejected" },
+              ].map((p) => (
+                <button
+                  key={p.key}
+                  className={`db-hist-pill ${histStatus === p.key ? `active ${p.key}` : ""}`}
+                  onClick={() => setHistStatus(p.key)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="db-hist-search">
+              <i className="bi bi-search" />
+              <input
+                type="text"
+                placeholder="Search…"
+                value={histSearch}
+                onChange={(e) => setHistSearch(e.target.value)}
+              />
+              {histSearch && (
+                <button className="db-hist-search-clear" title="Clear search" onClick={() => setHistSearch("")}>
+                  <i className="bi bi-x-lg" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="db-table-wrap db-table-scroll-max">
             <table className="db-table">
               <thead>
                 <tr>
@@ -167,8 +231,8 @@ export default function EmployeeDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {recentHistory.length > 0 ? (
-                  recentHistory.map((h) => (
+                {filteredHistory.length > 0 ? (
+                  filteredHistory.map((h) => (
                     <tr key={h.id}>
                       <td>
                         <span className="db-type-pill">{h.type}</span>
@@ -183,7 +247,11 @@ export default function EmployeeDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="db-empty">No history found.</td>
+                    <td colSpan={5} className="db-empty">
+                      {history.length > 0
+                        ? `No records match${histStatus !== "all" ? ` ${histStatus}` : ""}${histSearch ? ` “${histSearch}”` : ""}`
+                        : "No history found."}
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -231,11 +299,15 @@ export default function EmployeeDashboard() {
 }
 
 // ================= STAT CARD =================
-function StatCard({ title, value, icon, accent, bg }) {
+function StatCard({ title, value, icon, accent, bg, onClick }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
-      className="db-stat-card"
+      className={`db-stat-card ${onClick ? "db-stat-clickable" : ""}`}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -244,6 +316,7 @@ function StatCard({ title, value, icon, accent, bg }) {
         boxShadow: hovered
           ? "0 12px 28px rgba(0,0,0,0.12)"
           : "0 1px 3px rgba(0,0,0,0.06)",
+        cursor: onClick ? "pointer" : undefined,
       }}
     >
       <div
@@ -280,6 +353,25 @@ function StatusBadge({ status }) {
 
 // ================= STYLES =================
 const styles = `
+  /* ── Page header ── */
+  .db-page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .db-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; }
+  .db-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
+  .db-breadcrumb i { font-size: 10px; opacity: 0.5; }
+  .db-page-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px; background: var(--primary); color: var(--on-primary);
+    border: none; border-radius: var(--radius);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: var(--font); letter-spacing: 0.01em;
+    transition: background 0.15s, transform 0.15s; white-space: nowrap;
+  }
+  .db-page-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .db-page-btn i { font-size: 14px; }
+
   /* ── Stat grid ── */
   .db-stats-grid {
     display: grid;
@@ -381,6 +473,50 @@ const styles = `
     letter-spacing: 0.02em;
     flex-shrink: 0;
   }
+  .db-view-all {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    border-radius: 20px; padding: 4px 11px; cursor: pointer;
+    font-family: var(--font); font-size: 11.5px; font-weight: 600; color: var(--primary);
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .db-view-all:hover { background: var(--primary-soft); border-color: var(--primary); }
+
+  /* ── History toolbar (search + status pills) ── */
+  .db-hist-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .db-hist-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+  .db-hist-pill {
+    border: 1px solid var(--border); background: var(--bg-card);
+    border-radius: 20px; padding: 4px 11px; cursor: pointer;
+    font-family: var(--font); font-size: 11.5px; font-weight: 600; color: var(--t-muted);
+    transition: all 0.15s;
+  }
+  .db-hist-pill:hover { border-color: var(--primary); color: var(--primary); }
+  .db-hist-pill.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  .db-hist-pill.active.pending { background: var(--warning); border-color: var(--warning); color: #fff; }
+  .db-hist-pill.active.approved { background: var(--success); border-color: var(--success); color: #fff; }
+  .db-hist-pill.active.rejected { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .db-hist-search {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 11px; min-width: 150px; transition: border-color 0.15s;
+  }
+  .db-hist-search:focus-within { border-color: var(--primary); }
+  .db-hist-search > i { font-size: 11px; color: var(--t-muted); }
+  .db-hist-search input {
+    flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+    font-family: var(--font); font-size: 12px; color: var(--t-base);
+  }
+  .db-hist-search input::placeholder { color: var(--t-muted); }
+  .db-hist-search-clear {
+    display: flex; align-items: center; justify-content: center; border: none; background: var(--bg-muted);
+    color: var(--t-muted); width: 15px; height: 15px; border-radius: 50%; font-size: 8px; cursor: pointer; padding: 0;
+  }
+  .db-hist-search-clear:hover { background: var(--danger-soft); color: var(--danger); }
+  .db-table-scroll-max { max-height: 420px; overflow-y: auto; }
 
   /* ── Balance card ── */
   .db-balance-card {

@@ -3,7 +3,7 @@ const db = require("../config/db");
 
 // Get all holidays
 router.get("/list", (req, res) => {
-  const query = "SELECT id, name, DATE_FORMAT(date, '%Y-%m-%d') AS date FROM holidays";
+  const query = "SELECT id, name, DATE_FORMAT(date, '%Y-%m-%d') AS date FROM holidays ORDER BY date DESC";
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ message: "Failed to fetch holidays" });
     res.json(results); // date is string YYYY-MM-DD
@@ -22,6 +22,7 @@ router.get("/", (req, res) => {
     SELECT id, name, DATE_FORMAT(date, '%Y-%m-%d') AS date
     FROM holidays
     WHERE YEAR(date) = ? AND MONTH(date) = ?
+    ORDER BY date ASC
   `;
   db.query(query, [year, month], (err, results) => {
     if (err) return res.status(500).json({ message: "Failed to fetch holidays" });

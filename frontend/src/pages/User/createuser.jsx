@@ -261,7 +261,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .sr-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .sr-input:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
 
   /* ── Form card ── */
   .cu-form-card {

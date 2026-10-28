@@ -5,6 +5,7 @@ import api from "../../api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import SharedDatePicker from "../../components/SharedDatePicker";
+import { fmtDate } from "../../utils";
 
 // ── Human-readable hours: 1.5 → "1h 30m", 0.5 → "30m", 2 → "2h" ──
 const fmtHrs = (hrs) => {
@@ -32,6 +33,7 @@ export default function AISummary() {
   const [toast, setToast]                   = useState(null);
   const [generated, setGenerated]           = useState(false);
   const [openEmps, setOpenEmps]             = useState({});
+  const [searchQuery, setSearchQuery]       = useState("");
 
   useEffect(() => { generateReport(); }, []);
 
@@ -64,26 +66,35 @@ export default function AISummary() {
     }
   };
 
-  const formatDate = (iso) => {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
-  };
+  const formatDate = (iso) => fmtDate(iso);
 
-  const formatDateShort = (iso) => {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  };
+  const formatDateShort = (iso) => fmtDate(iso);
 
-  const groupedByEmployee = tableData.reduce((acc, row) => {
+  const searchQ = searchQuery.trim().toLowerCase();
+  const visibleRows = searchQ
+    ? tableData.filter((row) =>
+        [row.employee, row.project, row.task, row.work_description, row.status, formatDateShort(row.date)]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(searchQ)
+      )
+    : tableData;
+
+  const groupedByEmployee = visibleRows.reduce((acc, row) => {
     if (!acc[row.employee]) acc[row.employee] = [];
     acc[row.employee].push(row);
     return acc;
   }, {});
 
-  const totalHours = Object.values(employeeHours).reduce((s, h) => s + (Number(h) || 0), 0);
-  const totalTasks = tableData.length;
+  const totalHours = searchQ
+    ? visibleRows.reduce((s, r) => s + (Number(r.hours) || 0), 0)
+    : Object.values(employeeHours).reduce((s, h) => s + (Number(h) || 0), 0);
+  const totalTasks = visibleRows.length;
   const totalEmployees = Object.keys(groupedByEmployee).length;
+
+  const hoursFor = (emp, tasks) =>
+    searchQ ? tasks.reduce((s, t) => s + (Number(t.hours) || 0), 0) : Number(employeeHours[emp]) || 0;
 
   const empNames = Object.keys(groupedByEmployee);
   const allEmpsClosed =
@@ -117,7 +128,7 @@ export default function AISummary() {
     Object.entries(groupedByEmployee).forEach(([emp, tasks]) => {
       doc.setFontSize(11);
       doc.setFont(undefined, "bold");
-      doc.text(`${emp}  (${fmtHrs(employeeHours[emp] || 0)})`, 14, startY);
+      doc.text(`${emp}  (${fmtHrs(hoursFor(emp, tasks))})`, 14, startY);
       doc.setFont(undefined, "normal");
       startY += 5;
 
@@ -200,6 +211,24 @@ export default function AISummary() {
             />
           </div>
 
+          <div className="sr-filter-group sr-filter-group-search">
+            <label className="sr-label">Search</label>
+            <div className="sr-search">
+              <i className="bi bi-search" />
+              <input
+                type="text"
+                placeholder="Employee, project, work…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="sr-search-clear" title="Clear search" onClick={() => setSearchQuery("")}>
+                  <i className="bi bi-x-lg" />
+                </button>
+              )}
+            </div>
+          </div>
+
           <button className="sr-generate-btn" onClick={generateReport} disabled={loading}>
             {loading
               ? <><i className="bi bi-arrow-repeat sr-spin" /> Generating…</>
@@ -261,15 +290,27 @@ export default function AISummary() {
             </div>
           </div>
 
+          {/* Search results info / empty */}
+          {searchQ && visibleRows.length === 0 && (
+            <div className="sr-empty-state">
+              <div className="sr-empty-icon"><i className="bi bi-search" /></div>
+              <p className="sr-empty-title">No results for “{searchQuery}”</p>
+              <p className="sr-empty-sub">Try a different employee, project or work description</p>
+            </div>
+          )}
+
           {/* Per-employee tables */}
           <div className="sr-acc-actions">
             <button type="button" className="sr-acc-toggle" onClick={toggleAllEmps}>
               <i className={`bi ${allEmpsClosed ? "bi-arrows-expand" : "bi-arrows-collapse"}`} />
               {allEmpsClosed ? "Expand all" : "Collapse all"}
             </button>
+            <span className="sr-search-count">
+              {visibleRows.length}{visibleRows.length !== tableData.length && ` of ${tableData.length}`} entr{visibleRows.length !== 1 ? "ies" : "y"}
+            </span>
           </div>
           {Object.entries(groupedByEmployee).map(([emp, tasks]) => {
-            const empHrs = Number(employeeHours[emp]) || 0;
+            const empHrs = hoursFor(emp, tasks);
             const completedCount = tasks.filter(t => (t.status || "").toLowerCase() === "completed").length;
             const inProgressCount = tasks.filter(t => (t.status || "").toLowerCase().includes("progress")).length;
             const open = !!openEmps[emp];
@@ -432,6 +473,28 @@ const styles = `
   }
   .sr-filter-inner { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
   .sr-filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .sr-filter-group-search { min-width: 220px; }
+  .sr-search {
+    display: flex; align-items: center; gap: 8px; height: 38px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 0 12px; box-shadow: var(--shadow-sm); transition: border-color 0.15s;
+  }
+  .sr-search:focus-within { border-color: var(--primary); }
+  .sr-search > i { font-size: 12px; color: var(--t-muted); }
+  .sr-search input {
+    flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+    font-family: var(--font); font-size: 13px; color: var(--t-base);
+  }
+  .sr-search input::placeholder { color: var(--t-muted); }
+  .sr-search-clear {
+    display: flex; align-items: center; justify-content: center; border: none; background: var(--bg-muted);
+    color: var(--t-muted); width: 18px; height: 18px; border-radius: 50%; font-size: 9px; cursor: pointer; padding: 0;
+  }
+  .sr-search-clear:hover { background: var(--danger-soft); color: var(--danger); }
+  .sr-search-count {
+    align-self: center; font-size: 11.5px; font-weight: 600; color: var(--t-muted);
+    background: var(--bg-muted); border-radius: 20px; padding: 4px 11px; margin-left: 10px;
+  }
   .sr-filter-sep { color: var(--t-muted); font-size: 14px; padding-bottom: 9px; }
   .sr-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .sr-input-wrap { position: relative; display: flex; align-items: center; }
@@ -447,7 +510,7 @@ const styles = `
   /* Generate btn */
   .sr-generate-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 9px 20px; background: var(--primary); color: #fff;
+    padding: 9px 20px; background: var(--primary); color: var(--on-primary);
     border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.15s, transform 0.15s;
     font-family: var(--font); white-space: nowrap;
@@ -525,7 +588,7 @@ const styles = `
   .sr-emp-header-left { display: flex; align-items: center; gap: 12px; }
   .sr-emp-avatar {
     width: 38px; height: 38px; border-radius: 50%;
-    background: var(--primary); color: #fff;
+    background: var(--primary); color: var(--on-primary);
     font-size: 15px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }

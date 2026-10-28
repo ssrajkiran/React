@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
 import SharedSelect from "../../components/SharedSelect";
 import SharedDatePicker from "../../components/SharedDatePicker";
+import { fmtDate as fmtDateShared } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -24,7 +26,7 @@ const to12h = (h24) => {
 
 const fmtDate = (iso) => {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return fmtDateShared(iso);
 };
 
 const fmtDayLong = (iso) => {
@@ -58,11 +60,13 @@ export default function TimesheetDashboard() {
   const [expandedProjects, setExpandedProjects] = useState({});
   const [expandedDays, setExpandedDays] = useState({});
   const [activeTab, setActiveTab] = useState("daily");
+  const navigate = useNavigate();
 
   const [dateFrom, setDateFrom] = useState(yesterdayStr());
   const [dateTo, setDateTo] = useState(yesterdayStr());
   const [projectId, setProjectId] = useState("");
   const [employeeId, setEmployeeId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
 
@@ -133,13 +137,31 @@ export default function TimesheetDashboard() {
   const hierarchy = data?.hierarchy || [];
   const entries = data?.entries || [];
 
+  const searchQ = searchQuery.trim().toLowerCase();
+  const visibleEntries = searchQ
+    ? entries.filter((e) =>
+        [e.project_name, e.module_name, e.work_description, e.employee_name, fmtDate(e.timesheet_date)]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(searchQ)
+      )
+    : entries;
+
+  const displayHierarchy = searchQ
+    ? hierarchy.filter((p) =>
+        (p.project_name || "").toLowerCase().includes(searchQ) ||
+        visibleEntries.some((e) => e.project_name === p.project_name)
+      )
+    : hierarchy;
+
   const totalProjectHours = hierarchy.reduce((s, p) => s + (p.total_hours || 0), 0);
   const totalModules = hierarchy.reduce((s, p) => s + (p.modules?.length || 0), 0);
 
   // Group entries by date
   const entriesByDate = useMemo(() => {
     const map = {};
-    entries.forEach((e) => {
+    visibleEntries.forEach((e) => {
       const key = fmtDateKey(e.timesheet_date);
       if (!key) return;
       if (!map[key]) map[key] = { date: e.timesheet_date, entries: [], totalHours: 0 };
@@ -147,7 +169,7 @@ export default function TimesheetDashboard() {
       map[key].totalHours += parseFloat(e.man_hrs) || 0;
     });
     return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
-  }, [entries]);
+  }, [visibleEntries]);
 
   const projectOptions = useMemo(() => [
     { value: "", label: "All Projects" },
@@ -173,6 +195,9 @@ export default function TimesheetDashboard() {
             <span>Timesheet Report</span>
           </nav>
         </div>
+        <button className="td-page-btn" onClick={() => navigate(isAdmin ? "/admin/timesheet" : "/employee/timesheet")}>
+          <i className="bi bi-plus-lg" /> Add Timesheet
+        </button>
       </div>
 
       {/* ── KPI CARDS ── */}
@@ -181,7 +206,7 @@ export default function TimesheetDashboard() {
           <div className="td-kpi-icon-wrap"><i className="bi bi-clock-history" /></div>
           <div className="td-kpi-body">
             <span className="td-kpi-val">{fmtHrs(kpis.total_hours || 0)}</span>
-            <span className="td-kpi-label">Total Hours (7d)</span>
+            <span className="td-kpi-label">{dateFrom || dateTo ? "Total Hours" : "Total Hours (7d)"}</span>
           </div>
         </div>
         <div className="td-kpi-card td-kpi-success">
@@ -244,7 +269,24 @@ export default function TimesheetDashboard() {
               <SharedSelect value={employeeId} onChange={setEmployeeId} options={employeeOptions} placeholder="All Employees" />
             </div>
           )}
-          <button className="td-filter-clear" onClick={clearFilters}>
+          <div className="td-filter-group td-filter-group-search">
+            <label className="td-filter-label">Search</label>
+            <div className="td-search">
+              <i className="bi bi-search" />
+              <input
+                type="text"
+                placeholder="Module, work, person…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="td-search-clear" title="Clear search" onClick={() => setSearchQuery("")}>
+                  <i className="bi bi-x-lg" />
+                </button>
+              )}
+            </div>
+          </div>
+          <button className="td-filter-clear" onClick={() => { clearFilters(); setSearchQuery(""); }}>
             <i className="bi bi-arrow-counterclockwise" /> Reset
           </button>
         </div>
@@ -279,7 +321,7 @@ export default function TimesheetDashboard() {
                   {entriesByDate.length} day{entriesByDate.length !== 1 ? "s" : ""}
                 </span>
                 <span className="td-badge" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
-                  {entries.length} entries
+                  {visibleEntries.length}{visibleEntries.length !== entries.length && ` of ${entries.length}`} entries
                 </span>
               </div>
             </div>
@@ -386,8 +428,8 @@ export default function TimesheetDashboard() {
             ) : (
               <div className="td-empty-state">
                 <i className="bi bi-inbox td-empty-icon" />
-                <p className="td-empty-title">No data found</p>
-                <p className="td-empty-sub">No timesheet entries match your filters</p>
+                <p className="td-empty-title">{entries.length > 0 && searchQ ? `No results for “${searchQuery}”` : "No data found"}</p>
+                <p className="td-empty-sub">{entries.length > 0 && searchQ ? "Try a different search term" : "No timesheet entries match your filters"}</p>
               </div>
             )}
           </div>
@@ -510,7 +552,7 @@ export default function TimesheetDashboard() {
             </div>
             <div className="td-header-badges">
               <span className="td-badge" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
-                {hierarchy.length} projects
+                {displayHierarchy.length}{displayHierarchy.length !== hierarchy.length && ` of ${hierarchy.length}`} projects
               </span>
               <span className="td-badge" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
                 {fmtHrs(totalProjectHours)} total
@@ -520,10 +562,10 @@ export default function TimesheetDashboard() {
 
           {loading ? (
             <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Stacking your time slots…</div>
-          ) : hierarchy.length > 0 ? (
+          ) : displayHierarchy.length > 0 ? (
             <div className="td-hierarchy">
-              {hierarchy.map((project) => {
-                const projEntries = entries.filter(e => e.project_name === project.project_name);
+              {displayHierarchy.map((project) => {
+                const projEntries = visibleEntries.filter(e => e.project_name === project.project_name);
                 return (
                   <div key={project.project_id} className="td-project-card">
                     <div className="td-project-header" onClick={() => toggleProject(project.project_id)}>
@@ -602,8 +644,8 @@ export default function TimesheetDashboard() {
           ) : (
             <div className="td-empty-state">
               <i className="bi bi-inbox td-empty-icon" />
-              <p className="td-empty-title">No data found</p>
-              <p className="td-empty-sub">No projects match your filters</p>
+              <p className="td-empty-title">{hierarchy.length > 0 && searchQ ? `No results for “${searchQuery}”` : "No data found"}</p>
+              <p className="td-empty-sub">{hierarchy.length > 0 && searchQ ? "Try a different project or module name" : "No projects match your filters"}</p>
             </div>
           )}
         </div>
@@ -620,13 +662,13 @@ export default function TimesheetDashboard() {
               <h6 className="td-card-title">All Timesheet Entries</h6>
             </div>
             <span className="td-badge" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
-              {entries.length} entries
+              {visibleEntries.length}{visibleEntries.length !== entries.length && ` of ${entries.length}`} entries
             </span>
           </div>
 
           {loading ? (
             <div className="td-loading"><i className="bi bi-arrow-repeat td-spin" /> Stacking your time slots…</div>
-          ) : entries.length > 0 ? (
+          ) : visibleEntries.length > 0 ? (
             <div className="td-table-scroll">
               <table className="td-table">
                 <thead>
@@ -642,7 +684,7 @@ export default function TimesheetDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((row, idx) => (
+                  {visibleEntries.map((row, idx) => (
                     <tr key={row.timesheet_id || idx}>
                       <td className="td-td-num">{idx + 1}</td>
                       <td className="td-td-date">
@@ -676,8 +718,8 @@ export default function TimesheetDashboard() {
           ) : (
             <div className="td-empty-state">
               <i className="bi bi-inbox td-empty-icon" />
-              <p className="td-empty-title">No entries found</p>
-              <p className="td-empty-sub">No timesheet entries match your filters</p>
+              <p className="td-empty-title">{entries.length > 0 && searchQ ? `No results for “${searchQuery}”` : "No entries found"}</p>
+              <p className="td-empty-sub">{entries.length > 0 && searchQ ? "Try a different search term" : "No timesheet entries match your filters"}</p>
             </div>
           )}
         </div>
@@ -692,6 +734,16 @@ const styles = `
   .td-page-title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--t-base); margin: 0; }
   .td-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); margin-top: 6px; }
   .td-breadcrumb i { font-size: 10px; opacity: 0.5; }
+  .td-page-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px; background: var(--primary); color: var(--on-primary);
+    border: none; border-radius: var(--radius);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: var(--font); letter-spacing: 0.01em;
+    transition: background 0.15s, transform 0.15s; white-space: nowrap;
+  }
+  .td-page-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .td-page-btn i { font-size: 14px; }
 
   /* ── KPI Grid ── */
   .td-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -725,8 +777,26 @@ const styles = `
   .td-filter-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
   .td-filter-group { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 1; }
   .td-filter-label { font-size: 11px; font-weight: 700; color: var(--t-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .td-filter-group-search { min-width: 220px; flex: 1.4; }
+  .td-search {
+    display: flex; align-items: center; gap: 8px; height: 38px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 0 12px; box-shadow: var(--shadow-sm); transition: border-color 0.15s;
+  }
+  .td-search:focus-within { border-color: var(--primary); }
+  .td-search > i { font-size: 12px; color: var(--t-muted); }
+  .td-search input {
+    flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+    font-family: var(--font); font-size: 13px; color: var(--t-base);
+  }
+  .td-search input::placeholder { color: var(--t-muted); }
+  .td-search-clear {
+    display: flex; align-items: center; justify-content: center; border: none; background: var(--bg-muted);
+    color: var(--t-muted); width: 18px; height: 18px; border-radius: 50%; font-size: 9px; cursor: pointer; padding: 0;
+  }
+  .td-search-clear:hover { background: var(--danger-soft); color: var(--danger); }
   .td-filter-input { padding: 8px 12px; border: none; border-radius: var(--radius); font-size: 13px; color: var(--t-base); background: var(--bg-muted); outline: none; font-family: var(--font); }
-  .td-filter-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .td-filter-input:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .td-filter-clear {
     display: flex; align-items: center; gap: 5px; padding: 8px 14px;
     background: var(--bg-muted); border: none; border-radius: var(--radius);
@@ -777,7 +847,7 @@ const styles = `
     width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0;
     background: linear-gradient(135deg, var(--primary), var(--purple));
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: #fff;
+    color: var(--on-primary);
   }
   .td-day-num { font-size: 18px; font-weight: 800; line-height: 1; }
   .td-day-month { font-size: 9px; font-weight: 700; text-transform: uppercase; opacity: 0.85; }
@@ -849,7 +919,7 @@ const styles = `
   .td-day-entry-avatar {
     width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, var(--primary), var(--purple));
-    color: #fff; font-size: 8px; font-weight: 700;
+    color: var(--on-primary); font-size: 8px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
 
@@ -951,7 +1021,7 @@ const styles = `
   .td-entry-avatar {
     width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, var(--primary), var(--purple));
-    color: #fff; font-size: 10px; font-weight: 700;
+    color: var(--on-primary); font-size: 10px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
   .td-entry-time { color: var(--t-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -980,7 +1050,7 @@ const styles = `
   .td-avatar {
     width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, var(--primary), var(--purple));
-    color: #fff; font-size: 10px; font-weight: 700;
+    color: var(--on-primary); font-size: 10px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
   .td-td-module { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }

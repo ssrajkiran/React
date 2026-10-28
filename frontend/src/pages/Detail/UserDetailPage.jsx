@@ -6,6 +6,7 @@ import Tabs from "../../components/ui/Tabs";
 import StatusBadge from "../../components/ui/StatusBadge";
 import EmptyState from "../../components/ui/EmptyState";
 import { PageLoader } from "../../components/ui/Loader";
+import { fmtDate } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -14,11 +15,6 @@ const fmtHrs = (hrs) => {
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
   return `${m}m`;
-};
-
-const fmtDate = (d) => {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 export default function UserDetailPage() {
@@ -76,7 +72,7 @@ export default function UserDetailPage() {
       {/* Hero */}
       <div className="detail-page">
         <div className="detail-hero">
-          <div className="detail-hero-icon" style={{ background: "linear-gradient(135deg, var(--primary), #14B8A6)", color: "#fff", fontSize: 20 }}>
+          <div className="detail-hero-icon" style={{ background: "linear-gradient(135deg, var(--primary), #14B8A6)", color: "var(--on-primary)", fontSize: 20 }}>
             {initials}
           </div>
           <div className="detail-hero-info">

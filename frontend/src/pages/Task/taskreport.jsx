@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
 import SharedSelect from "../../components/SharedSelect";
+import { fmtDate as fmtDateShared } from "../../utils";
 
 export default function TaskReport() {
   const [entries, setEntries] = useState([]);
@@ -93,7 +94,13 @@ export default function TaskReport() {
       }
       groups[key].entries.push(entry);
     });
-    return Object.values(groups).sort((a, b) => a.project_name.localeCompare(b.project_name));
+    return Object.values(groups)
+      .map((g) => ({
+        ...g,
+        // Newest entry first inside each project group
+        entries: [...g.entries].sort((a, b) => new Date(b.date) - new Date(a.date)),
+      }))
+      .sort((a, b) => a.project_name.localeCompare(b.project_name));
   }, [filtered]);
 
   const totalHours = useMemo(
@@ -120,11 +127,7 @@ export default function TaskReport() {
     Pending: { color: "var(--t-muted)", bg: "var(--bg-muted)", border: "var(--border)" },
   };
 
-  const formatDate = (d) => {
-    if (!d) return "-";
-    const dt = new Date(d);
-    return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-  };
+  const formatDate = (d) => fmtDateShared(d);
 
   return (
     <AppLayout>
@@ -402,7 +405,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .tr-search:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .tr-search:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .tr-search-clear {
     position: absolute; right: 8px; background: none; border: none;
     color: var(--t-muted); cursor: pointer; font-size: 14px; padding: 2px;
@@ -518,7 +521,7 @@ const styles = `
     border-radius: var(--radius); padding: 5px 14px; cursor: pointer;
     font-family: var(--font); transition: all 0.15s;
   }
-  .tr-empty-reset:hover { background: var(--primary); color: #fff; }
+  .tr-empty-reset:hover { background: var(--primary); color: var(--on-primary); }
   .tr-spin { animation: tr-spin 0.7s linear infinite; display: inline-block; }
   @keyframes tr-spin { to { transform: rotate(360deg); } }
 `;

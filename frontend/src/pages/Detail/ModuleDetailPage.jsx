@@ -6,6 +6,7 @@ import Tabs from "../../components/ui/Tabs";
 import StatusBadge from "../../components/ui/StatusBadge";
 import EmptyState from "../../components/ui/EmptyState";
 import { PageLoader } from "../../components/ui/Loader";
+import { fmtDate as fmtDateShared } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -16,10 +17,7 @@ const fmtHrs = (hrs) => {
   return `${m}m`;
 };
 
-const fmtDate = (d) => {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-};
+const fmtDate = (d) => fmtDateShared(d);
 
 export default function ModuleDetailPage() {
   const { id } = useParams();

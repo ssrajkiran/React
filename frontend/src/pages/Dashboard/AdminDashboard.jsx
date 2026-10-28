@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import AppLayout from "../../components/layout/AppLayout";
+import SummaryPeriodFilter, { defaultSummaryPeriod } from "../../components/SummaryPeriodFilter";
+import { fmtDate as fmtDateShared, fmtDays, fmtNum } from "../../utils";
 
-const fmtDate = (dateStr) => {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
-};
+const fmtDate = (dateStr) => fmtDateShared(dateStr);
 
 const fmtDay = (dateStr) => {
   if (!dateStr) return "";
@@ -30,13 +29,8 @@ export default function AdminDashboard() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
-
-  useEffect(() => {
-    loadRequests();
-    loadEmployees();
-    loadHolidays();
-    loadEmployeeSummary();
-  }, []);
+  const [summaryPeriod, setSummaryPeriod] = useState(defaultSummaryPeriod);
+  const navigate = useNavigate();
 
   const loadRequests = async () => {
     try {
@@ -45,6 +39,7 @@ export default function AdminDashboard() {
         ...r,
         from_date: r.from_date || r.start || null,
         to_date: r.to_date || r.end || r.from_date || r.start || null,
+        reason: r.reason || r.remarks || null,
       }));
       setRequests(normalized);
     } catch (err) { console.error(err); }
@@ -64,30 +59,45 @@ export default function AdminDashboard() {
     } catch (err) { console.error(err); }
   };
 
-  const loadEmployeeSummary = async () => {
+  const loadEmployeeSummary = async (period) => {
+    const p = period || summaryPeriod;
     setSummaryLoading(true);
     try {
-      const res = await api.get("/leaves/employee-summary");
+      const res = await api.get("/leaves/employee-summary", { params: { from: p.from, to: p.to } });
       setEmployeeSummary(res.data);
     } catch (err) { console.error(err); setEmployeeSummary([]); }
     finally { setSummaryLoading(false); }
   };
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRequests();
+    loadEmployees();
+    loadHolidays();
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (activeTab === "summary") loadEmployeeSummary(summaryPeriod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, summaryPeriod]);
+
   const stripTime = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
   // Stats
-  const totalEmployees = employees.length;
+  const totalEmployees = employees.filter(e => e.role === "employee").length;
   const totalRequests = requests.length;
   const approvedRequests = requests.filter(r => r.status === "approved").length;
   const pendingRequests = requests.filter(r => r.status === "pending").length;
   const rejectedRequests = requests.filter(r => r.status === "rejected").length;
   const leaveDaysUsed = requests
-    .filter(r => r.status === "approved")
+    .filter(r => r.status === "approved" && r.type === "leave")
     .reduce((sum, r) => sum + parseFloat(r.days || 0), 0)
     .toFixed(1);
 
   const todayDate = stripTime(new Date());
   const todaysLeaves = requests.filter(r => {
+    if (r.type === "present") return false; // present on holiday = working, not on leave
     const start = stripTime(new Date(r.from_date));
     const end = r.to_date ? stripTime(new Date(r.to_date)) : start;
     return start <= todayDate && todayDate <= end && r.status === "approved";
@@ -99,12 +109,21 @@ export default function AdminDashboard() {
     .slice(0, 5);
 
   const recentRequests = [...requests]
-    .sort((a, b) => new Date(b.from_date) - new Date(a.from_date))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
     .slice(0, 8);
 
   const filteredSummary = employeeSummary.filter(e =>
     e.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const summaryTotals = filteredSummary.reduce((acc, e) => ({
+    leaves: acc.leaves + parseFloat(e.leaves_used || 0),
+    compoff: acc.compoff + parseFloat(e.compoff_used || 0),
+    perm: acc.perm + parseFloat(e.permission_used || 0),
+    holiday: acc.holiday + parseInt(e.present_on_holiday || 0, 10),
+    used: acc.used + parseFloat(e.leaves_used || 0) + parseFloat(e.compoff_used || 0),
+    remaining: acc.remaining + parseFloat(e.leave_balance || 0),
+    pending: acc.pending + Number(e.total_pending || 0),
+  }), { leaves: 0, compoff: 0, perm: 0, holiday: 0, used: 0, remaining: 0, pending: 0 });
 
   return (
     <AppLayout>
@@ -120,51 +139,72 @@ export default function AdminDashboard() {
             <span>Leave Dashboard</span>
           </nav>
         </div>
+        <button className="db-page-btn" onClick={() => navigate("/admin/leaves")}>
+          <i className="bi bi-plus-lg" /> Add Leave
+        </button>
       </div>
 
-      {/* ── KPI CARDS ── */}
+      {/* ── KPI CARDS (click to open leave list with filter) ── */}
       <div className="db-kpi-grid">
-        <div className="db-kpi-card db-kpi-primary">
+        <div className="db-kpi-card db-kpi-primary db-kpi-clickable" role="button" tabIndex={0}
+          onClick={() => navigate("/employee/userslist")}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/employee/userslist")}>
           <div className="db-kpi-icon-wrap"><i className="bi bi-people" /></div>
           <div className="db-kpi-body">
             <span className="db-kpi-val">{totalEmployees}</span>
             <span className="db-kpi-label">Total Employees</span>
           </div>
+          <i className="bi bi-arrow-right db-kpi-arrow" />
         </div>
-        <div className="db-kpi-card db-kpi-info">
+        <div className="db-kpi-card db-kpi-info db-kpi-clickable" role="button" tabIndex={0}
+          onClick={() => navigate("/admin/leaves")}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves")}>
           <div className="db-kpi-icon-wrap"><i className="bi bi-file-earmark-text" /></div>
           <div className="db-kpi-body">
             <span className="db-kpi-val">{totalRequests}</span>
             <span className="db-kpi-label">Total Requests</span>
           </div>
+          <i className="bi bi-arrow-right db-kpi-arrow" />
         </div>
-        <div className="db-kpi-card db-kpi-success">
+        <div className="db-kpi-card db-kpi-success db-kpi-clickable" role="button" tabIndex={0}
+          onClick={() => navigate("/admin/leaves?status=approved")}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves?status=approved")}>
           <div className="db-kpi-icon-wrap"><i className="bi bi-check-circle" /></div>
           <div className="db-kpi-body">
             <span className="db-kpi-val">{approvedRequests}</span>
             <span className="db-kpi-label">Approved</span>
           </div>
+          <i className="bi bi-arrow-right db-kpi-arrow" />
         </div>
-        <div className="db-kpi-card db-kpi-warning">
+        <div className="db-kpi-card db-kpi-warning db-kpi-clickable" role="button" tabIndex={0}
+          onClick={() => navigate("/admin/leaves?status=pending")}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves?status=pending")}>
           <div className="db-kpi-icon-wrap"><i className="bi bi-hourglass-split" /></div>
           <div className="db-kpi-body">
             <span className="db-kpi-val">{pendingRequests}</span>
             <span className="db-kpi-label">Pending</span>
           </div>
+          <i className="bi bi-arrow-right db-kpi-arrow" />
         </div>
-        <div className="db-kpi-card db-kpi-danger">
+        <div className="db-kpi-card db-kpi-danger db-kpi-clickable" role="button" tabIndex={0}
+          onClick={() => navigate("/admin/leaves?status=rejected")}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves?status=rejected")}>
           <div className="db-kpi-icon-wrap"><i className="bi bi-x-circle" /></div>
           <div className="db-kpi-body">
             <span className="db-kpi-val">{rejectedRequests}</span>
             <span className="db-kpi-label">Rejected</span>
           </div>
+          <i className="bi bi-arrow-right db-kpi-arrow" />
         </div>
-        <div className="db-kpi-card db-kpi-purple">
+        <div className="db-kpi-card db-kpi-purple db-kpi-clickable" role="button" tabIndex={0}
+          onClick={() => navigate("/admin/leaves?status=approved")}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves?status=approved")}>
           <div className="db-kpi-icon-wrap"><i className="bi bi-calendar2-check" /></div>
           <div className="db-kpi-body">
-            <span className="db-kpi-val">{leaveDaysUsed}</span>
+            <span className="db-kpi-val">{fmtNum(leaveDaysUsed)}</span>
             <span className="db-kpi-label">Leave Days Used</span>
           </div>
+          <i className="bi bi-arrow-right db-kpi-arrow" />
         </div>
       </div>
 
@@ -205,7 +245,7 @@ export default function AdminDashboard() {
                       <span className="db-leave-type">{r.type}</span>
                     </div>
                     <span className="db-leave-badge" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
-                      {r.type === "permission" ? `${r.hours}h` : `${r.days}d`}
+                      {r.type === "permission" ? `${r.hours}h` : fmtDays(r.days || 1)}
                     </span>
                   </div>
                 ))}
@@ -262,7 +302,9 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="db-breakdown">
-              <div className="db-breakdown-row">
+              <div className="db-breakdown-row db-breakdown-clickable" role="button" tabIndex={0}
+                onClick={() => navigate("/admin/leaves?status=approved")}
+                onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves?status=approved")}>
                 <div className="db-breakdown-left">
                   <span className="db-breakdown-dot" style={{ background: "var(--success)" }} />
                   <span className="db-breakdown-name">Approved</span>
@@ -275,7 +317,9 @@ export default function AdminDashboard() {
                   <span className="db-breakdown-pct">{totalRequests > 0 ? (approvedRequests / totalRequests * 100).toFixed(0) : 0}%</span>
                 </div>
               </div>
-              <div className="db-breakdown-row">
+              <div className="db-breakdown-row db-breakdown-clickable" role="button" tabIndex={0}
+                onClick={() => navigate("/admin/leaves?status=pending")}
+                onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves?status=pending")}>
                 <div className="db-breakdown-left">
                   <span className="db-breakdown-dot" style={{ background: "var(--warning)" }} />
                   <span className="db-breakdown-name">Pending</span>
@@ -288,7 +332,9 @@ export default function AdminDashboard() {
                   <span className="db-breakdown-pct">{totalRequests > 0 ? (pendingRequests / totalRequests * 100).toFixed(0) : 0}%</span>
                 </div>
               </div>
-              <div className="db-breakdown-row">
+              <div className="db-breakdown-row db-breakdown-clickable" role="button" tabIndex={0}
+                onClick={() => navigate("/admin/leaves?status=rejected")}
+                onKeyDown={(e) => e.key === "Enter" && navigate("/admin/leaves?status=rejected")}>
                 <div className="db-breakdown-left">
                   <span className="db-breakdown-dot" style={{ background: "var(--danger)" }} />
                   <span className="db-breakdown-name">Rejected</span>
@@ -330,8 +376,12 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          <div className="db-summary-filter">
+            <SummaryPeriodFilter value={summaryPeriod} onChange={(p) => setSummaryPeriod(p)} />
+          </div>
+
           {summaryLoading ? (
-            <div className="db-loading"><i className="bi bi-arrow-repeat db-spin" /> Counting today’s minutes…</div>
+            <div className="db-loading"><i className="bi bi-arrow-repeat db-spin" /> Loading employee summary…</div>
           ) : (
             <div className="db-table-scroll">
               <table className="db-table">
@@ -391,21 +441,21 @@ export default function AdminDashboard() {
                           </td>
                           <td>
                             <div className="db-val-cell" style={{ color: "var(--primary)" }}>
-                              {parseFloat(emp.leaves_used || 0).toFixed(1)}
+                              {fmtNum(emp.leaves_used)}
                               <span className="db-val-unit">days</span>
                             </div>
                             {emp.leaves_pending > 0 && <div className="db-pending-chip">{emp.leaves_pending} pending</div>}
                           </td>
                           <td>
                             <div className="db-val-cell" style={{ color: "var(--info)" }}>
-                              {parseFloat(emp.compoff_used || 0).toFixed(1)}
+                              {fmtNum(emp.compoff_used)}
                               <span className="db-val-unit">days</span>
                             </div>
                             {emp.compoff_pending > 0 && <div className="db-pending-chip">{emp.compoff_pending} pending</div>}
                           </td>
                           <td>
                             <div className="db-val-cell" style={{ color: "var(--warning)" }}>
-                              {parseFloat(emp.permission_used || 0).toFixed(1)}
+                              {fmtNum(emp.permission_used)}
                               <span className="db-val-unit">hrs</span>
                             </div>
                             {emp.permission_pending > 0 && <div className="db-pending-chip">{emp.permission_pending} pending</div>}
@@ -418,7 +468,7 @@ export default function AdminDashboard() {
                           </td>
                           <td>
                             <div className="db-val-cell" style={{ color: "var(--danger)", fontWeight: 700 }}>
-                              {totalUsed.toFixed(1)}
+                              {fmtNum(totalUsed)}
                               <span className="db-val-unit">days</span>
                             </div>
                           </td>
@@ -430,7 +480,7 @@ export default function AdminDashboard() {
                                 color: remaining >= 5 ? "var(--success)" : remaining >= 2 ? "var(--warning)" : "var(--danger)",
                               }}
                             >
-                              {remaining >= 0 ? remaining.toFixed(1) : "0.0"}
+                              {remaining >= 0 ? fmtNum(remaining) : "0"}
                             </span>
                           </td>
                           <td>
@@ -451,6 +501,20 @@ export default function AdminDashboard() {
                     </tr>
                   )}
                 </tbody>
+                {filteredSummary.length > 0 && (
+                  <tfoot>
+                    <tr className="db-tfoot">
+                      <td colSpan={2}>Total ({filteredSummary.length})</td>
+                      <td>{fmtNum(summaryTotals.leaves)} <span className="db-val-unit">days</span></td>
+                      <td>{fmtNum(summaryTotals.compoff)} <span className="db-val-unit">days</span></td>
+                      <td>{fmtNum(summaryTotals.perm)} <span className="db-val-unit">hrs</span></td>
+                      <td>{summaryTotals.holiday} <span className="db-val-unit">days</span></td>
+                      <td>{fmtNum(summaryTotals.used)} <span className="db-val-unit">days</span></td>
+                      <td>{fmtNum(summaryTotals.remaining)}</td>
+                      <td>{summaryTotals.pending || "—"}</td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           )}
@@ -504,7 +568,7 @@ export default function AdminDashboard() {
                           <span className="db-date-full">{fmtDate(r.to_date)}</span>
                         </td>
                         <td className="db-td-duration">
-                          {r.type === "permission" ? `${r.hours} hr(s)` : `${r.days} day(s)`}
+                          {r.type === "permission" ? `${r.hours} hr(s)` : fmtDays(r.days || 1)}
                         </td>
                         <td className="db-td-reason" title={r.reason}>{r.reason || "—"}</td>
                         <td>
@@ -533,6 +597,16 @@ const styles = `
   .db-page-title { font-size: 15px; font-weight: 700; color: var(--t-base); margin: 0 0 4px; }
   .db-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t-muted); }
   .db-breadcrumb i { font-size: 10px; opacity: 0.5; }
+  .db-page-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px; background: var(--primary); color: var(--on-primary);
+    border: none; border-radius: var(--radius);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: var(--font); letter-spacing: 0.01em;
+    transition: background 0.15s, transform 0.15s; white-space: nowrap;
+  }
+  .db-page-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .db-page-btn i { font-size: 14px; }
 
   /* ── KPI Grid ── */
   .db-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -543,6 +617,14 @@ const styles = `
     box-shadow: var(--shadow); transition: transform 0.2s, box-shadow 0.2s;
   }
   .db-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+  .db-kpi-clickable { cursor: pointer; position: relative; text-align: left; font-family: var(--font); width: 100%; }
+  .db-kpi-clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .db-kpi-arrow { position: absolute; top: 12px; right: 12px; font-size: 12px; color: var(--t-muted); opacity: 0; transition: opacity 0.15s, transform 0.15s; }
+  .db-kpi-clickable:hover .db-kpi-arrow { opacity: 1; transform: translateX(2px); color: var(--primary); }
+  .db-breakdown-clickable { cursor: pointer; border-radius: var(--radius); padding: 4px 6px; margin: -4px -6px; transition: background 0.15s; }
+  .db-breakdown-clickable:hover { background: var(--bg-muted); }
+  .db-breakdown-clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .db-summary-filter { margin: 4px 0 16px; }
   .db-kpi-icon-wrap {
     width: 46px; height: 46px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
@@ -594,7 +676,7 @@ const styles = `
   .db-leave-avatar {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, var(--primary), var(--purple));
-    color: #fff; font-size: 12px; font-weight: 700;
+    color: var(--on-primary); font-size: 12px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
   .db-leave-info { flex: 1; display: flex; flex-direction: column; gap: 1px; }
@@ -632,7 +714,7 @@ const styles = `
   .db-search-wrap { position: relative; }
   .db-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--t-muted); pointer-events: none; }
   .db-search-input { padding: 6px 10px 6px 28px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12.5px; color: var(--t-base); background: var(--bg); outline: none; width: 180px; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
-  .db-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(80,72,229,0.1); }
+  .db-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
 
   /* ── Table ── */
   .db-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -659,7 +741,7 @@ const styles = `
     width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, var(--primary), var(--purple));
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700; color: #fff;
+    font-size: 11px; font-weight: 700; color: var(--on-primary);
   }
   .db-user-name { font-size: 12.5px; font-weight: 600; color: var(--t-base); }
   .db-user-dept { font-size: 10.5px; color: var(--t-muted); }
@@ -674,6 +756,7 @@ const styles = `
   .db-val-unit { font-size: 10px; font-weight: 500; color: var(--t-muted); }
   .db-pending-chip { display: inline-block; font-size: 10px; font-weight: 600; color: var(--warning); background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 10px; padding: 1px 6px; margin-top: 3px; }
   .db-remaining-pill { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 20px; min-width: 54px; }
+  .db-tfoot td { background: var(--bg-muted); font-weight: 700; font-size: 12.5px; border-top: 2px solid var(--border); white-space: nowrap; color: var(--t-base); }
   .db-pending-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--warning-soft); color: var(--warning); font-size: 11px; font-weight: 700; border: 1px solid var(--warning); }
 
   /* ── Empty / Loading ── */

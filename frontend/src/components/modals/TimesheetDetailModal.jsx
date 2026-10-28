@@ -1,17 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "../../api";
 import StatusBadge from "../ui/StatusBadge";
 import EmptyState from "../ui/EmptyState";
 import { PageLoader } from "../ui/Loader";
-import { fmtHrs, fmtDateLong, getInitials } from "../../utils";
+import { fmtHrs, fmtDateLong, fmtDateTime } from "../../utils";
 
 export default function TimesheetDetailModal({ timesheetId, onClose, onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { if (timesheetId) loadDetail(); }, [timesheetId]);
-
-  const loadDetail = async () => {
+  const loadDetail = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get(`/timesheet/detail/${timesheetId}`);
@@ -21,7 +19,10 @@ export default function TimesheetDetailModal({ timesheetId, onClose, onNavigate 
     } finally {
       setLoading(false);
     }
-  };
+  }, [timesheetId]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (timesheetId) loadDetail(); }, [loadDetail, timesheetId]);
 
   if (!timesheetId) return null;
 
@@ -126,7 +127,7 @@ export default function TimesheetDetailModal({ timesheetId, onClose, onNavigate 
                 )}
                 <div>
                   <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Created At</span>
-                  <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.created_at ? new Date(data.created_at).toLocaleString() : "—"}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.created_at ? fmtDateTime(data.created_at) : "—"}</p>
                 </div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import SharedDatePicker from "../../components/SharedDatePicker";
+import { defaultSortOrderFor } from "../../utils";
 
 const ROWS_PER_PAGE = 10;
 
@@ -327,7 +328,7 @@ export default function DynamicPage() {
       setSortOrder((p) => (p === "asc" ? "desc" : "asc"));
     } else {
       setSortField(key);
-      setSortOrder("asc");
+      setSortOrder(defaultSortOrderFor(key));
     }
   };
 
@@ -633,7 +634,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s;
   }
-  .dy-input:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .dy-input:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .dy-clear-btn {
     position: absolute; right: 9px; background: none; border: none;
     cursor: pointer; color: var(--t-muted); font-size: 15px;
@@ -738,7 +739,7 @@ const styles = `
     font-family: var(--font);
   }
   .dy-page-num:hover { color: var(--primary); background: var(--primary-soft); }
-  .dy-page-num-active { background: var(--primary); color: #fff; }
+  .dy-page-num-active { background: var(--primary); color: var(--on-primary); }
 
   /* ── Buttons ── */
   .dy-btn {
@@ -749,8 +750,8 @@ const styles = `
     border: none;
   }
   .dy-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .dy-btn-primary { background: var(--primary); color: #fff; }
-  .dy-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); color: #fff; }
+  .dy-btn-primary { background: var(--primary); color: var(--on-primary); }
+  .dy-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); color: var(--on-primary); }
   .dy-btn-danger { background: var(--danger); color: #fff; }
   .dy-btn-danger:hover:not(:disabled) { background: #b91c1c; }
   .dy-btn-outline { background: var(--bg-muted); border: none; color: var(--t-muted); }
@@ -758,18 +759,18 @@ const styles = `
 
   /* ── Overlay + Modal ── */
   .dy-overlay {
-    position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(2px);
+    position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(8px);
     z-index: 1000; display: flex; align-items: center; justify-content: center;
     animation: dy-fade-in 0.15s ease; padding: 16px;
   }
   .dy-modal {
     background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
-    padding: 28px; width: 80%; max-height: calc(100vh - 32px);
+    padding: 28px; width: 80vw; height: 80vh; max-height: 80vh;
     animation: dy-modal-in 0.2s ease; text-align: center;
   }
-  .dy-modal-lg { max-width: 720px; text-align: left; overflow-y: auto; }
-  .dy-modal-sm { max-width: 400px; }
+  .dy-modal-lg { width: 80vw; height: 80vh; max-height: 80vh; text-align: left; overflow-y: auto; }
+  .dy-modal-sm { width: min(480px, 92vw); height: auto; max-height: 80vh; }
   .dy-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 0; }
   .dy-modal-close {
     background: none; border: none; cursor: pointer; color: var(--t-muted);
@@ -810,7 +811,7 @@ const styles = `
     font-family: var(--font); outline: none;
     transition: box-shadow 0.15s; width: 100%; box-sizing: border-box;
   }
-  .dy-input:focus, .dy-textarea:focus { box-shadow: 0 0 0 3px rgba(80,72,229,0.18); }
+  .dy-input:focus, .dy-textarea:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
   .dy-textarea { resize: vertical; min-height: 80px; }
   select.dy-input { cursor: pointer; }
 

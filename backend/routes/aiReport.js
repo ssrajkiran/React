@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
+const { taskNameSql, taskStatusSql, projectJoinSql } = require("../utils/freezedModules");
 
 // ==============================
 // VERIFY TOKEN MIDDLEWARE
@@ -82,13 +83,13 @@ router.post("/", verifyToken, (req, res) => {
       ts.end_time AS end_time,
       ts.work_description AS work_description,
       ts.task AS task_id,
-      IFNULL(t.task, ts.work_description) AS task_name,
-      IFNULL(t.status, 'Permission') AS task_status,
+      ${taskNameSql()} AS task_name,
+      ${taskStatusSql()} AS task_status,
       IFNULL(p.project_name, 'Permission') AS project_name,
       u.name AS employee_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
-    LEFT JOIN projects p ON t.project_id = p.id
+    ${projectJoinSql()}
     LEFT JOIN users u ON ts.created_by = u.id
     WHERE 1=1
   `;
@@ -97,6 +98,7 @@ router.post("/", verifyToken, (req, res) => {
   if (employee_id) { sql += " AND ts.created_by = ?"; params.push(employee_id); }
   if (from_date) { sql += " AND ts.date >= ?"; params.push(from_date); }
   if (to_date) { sql += " AND ts.date <= ?"; params.push(to_date); }
+  sql += " ORDER BY ts.date DESC, ts.id DESC";
 
   db.query(sql, params, (err, data) => {
     if (err) {

@@ -9,6 +9,7 @@ import {
   ACCENT_OPTIONS,
   FONT_OPTIONS,
   DEFAULT_PREFS,
+  CUSTOM_ACCENT,
 } from "../../utils/preferences";
 
 const styles = `
@@ -41,15 +42,18 @@ const styles = `
 .st-dot{width:18px;height:18px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.7),0 1px 3px rgba(0,0,0,.2)}
 .st-swatch .st-check{margin-left:auto;opacity:0;color:var(--primary)}
 .st-swatch.is-active .st-check{opacity:1}
+.st-swatch-custom{position:relative;overflow:hidden}
+.st-swatch-custom input[type=color]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0;z-index:1}
+.st-swatch-custom .st-hex{font-size:11px;font-weight:600;color:var(--t-light);font-family:var(--font-mono)}
 
 .st-preview{border:1px solid var(--border-soft);border-radius:12px;overflow:hidden}
 .st-preview-bar{display:flex;align-items:center;gap:7px;padding:10px 14px;background:var(--bg-muted);border-bottom:1px solid var(--border-soft)}
 .st-preview-bar span{width:9px;height:9px;border-radius:50%;background:var(--border)}
 .st-preview-body{padding:18px;background:var(--bg-body)}
-.st-preview-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;border:none;font-family:var(--font)}
+.st-preview-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;background:var(--primary);color: var(--on-primary);font-size:13px;font-weight:600;border:none;font-family:var(--font)}
 .st-preview-ghost{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;background:var(--primary-soft);color:var(--primary);font-size:13px;font-weight:600;border:1px solid transparent;font-family:var(--font);margin-left:8px}
 .st-preview-card{margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);display:flex;align-items:center;gap:12px}
-.st-preview-avatar{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.st-preview-avatar{width:36px;height:36px;border-radius:50%;background:var(--primary);color: var(--on-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
 .st-preview-card strong{display:block;font-size:13.5px;color:var(--t-base);font-family:var(--font)}
 .st-preview-card small{font-size:12px;color:var(--t-muted);font-family:var(--font)}
 .st-preview-type{margin-top:14px;font-size:13.5px;color:var(--t-base);line-height:1.6}
@@ -65,7 +69,7 @@ const styles = `
 `;
 
 export default function Settings() {
-  const { theme, accent, font, isDark, setTheme, setAccent, setFont, resetPrefs } =
+  const { theme, accent, accentColor, font, isDark, setTheme, setAccent, setAccentColor, setFont, resetPrefs } =
     usePreferences();
 
   const handleReset = () => {
@@ -75,7 +79,10 @@ export default function Settings() {
 
   const activeFont =
     FONT_OPTIONS.find((f) => f.id === font)?.stack || FONT_OPTIONS[0].stack;
-  const activeAccent = ACCENT_OPTIONS.find((a) => a.id === accent)?.color || ACCENT_OPTIONS[0].color;
+  const accentLabel =
+    accent === CUSTOM_ACCENT
+      ? "Custom"
+      : ACCENT_OPTIONS.find((a) => a.id === accent)?.label || "Custom";
 
   return (
     <AppLayout>
@@ -149,6 +156,41 @@ export default function Settings() {
                 <i className="bi bi-check-circle-fill st-check"></i>
               </button>
             ))}
+            <label
+              className={`st-swatch st-swatch-custom ${accent === CUSTOM_ACCENT ? "is-active" : ""}`}
+              role="radio"
+              aria-checked={accent === CUSTOM_ACCENT}
+              title={
+                accent === CUSTOM_ACCENT
+                  ? `Custom accent ${accentColor}`
+                  : "Pick a custom accent color"
+              }
+              onClick={() => {
+                if (accent !== CUSTOM_ACCENT) setAccentColor(accentColor);
+              }}
+            >
+              <span
+                className="st-dot"
+                style={
+                  accent === CUSTOM_ACCENT
+                    ? { background: accentColor }
+                    : {
+                        background:
+                          "conic-gradient(from 45deg, #EF4444, #F59E0B, #22C55E, #06B6D4, #3B82F6, #A855F7, #EF4444)",
+                      }
+                }
+              ></span>
+              Custom
+              {accent === CUSTOM_ACCENT && <span className="st-hex">{accentColor}</span>}
+              <i className="bi bi-check-circle-fill st-check"></i>
+              <input
+                type="color"
+                value={accentColor.toLowerCase()}
+                onChange={(e) => setAccentColor(e.target.value)}
+                aria-label="Custom accent color"
+                tabIndex={-1}
+              />
+            </label>
           </div>
         </div>
       </section>
@@ -197,21 +239,21 @@ export default function Settings() {
             </div>
             <div className="st-preview-body">
               <div>
-                <button className="st-preview-btn" style={{ background: activeAccent }}>
+                <button className="st-preview-btn">
                   <i className="bi bi-check2"></i> Primary button
                 </button>
-                <button className="st-preview-ghost" style={{ color: activeAccent }}>
+                <button className="st-preview-ghost">
                   <i className="bi bi-pencil"></i> Secondary
                 </button>
               </div>
               <div className="st-preview-card">
-                <div className="st-preview-avatar" style={{ background: activeAccent }}>
+                <div className="st-preview-avatar">
                   VP
                 </div>
                 <div>
                   <strong>Voltech User</strong>
                   <small>Sample card · {theme === "dark" ? "Dark" : "Light"} mode ·{" "}
-                    {ACCENT_OPTIONS.find((a) => a.id === accent)?.label} accent</small>
+                    {accentLabel} accent</small>
                 </div>
               </div>
               <p className="st-preview-type">

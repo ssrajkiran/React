@@ -333,7 +333,7 @@ const styles = `
     font-family:var(--font);outline:none;
     transition:box-shadow .15s;
   }
-  .sr-input:focus{box-shadow:0 0 0 3px rgba(80,72,229,0.18)}
+  .sr-input:focus{box-shadow:0 0 0 3px var(--primary-ring)}
   .cu-input{display:block}
   .cu-input-password{padding-right:38px}
   .cu-pw-toggle{

@@ -42,7 +42,6 @@ export default function UserDetailModal({ userId, onClose, onNavigate }) {
       <div
         className="ul-modal ul-modal-xl"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 960, maxWidth: "calc(100vw - 32px)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
       >
         {/* Header */}
         <div className="ul-modal-header">

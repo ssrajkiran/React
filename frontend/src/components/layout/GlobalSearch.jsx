@@ -8,7 +8,7 @@ import {
 } from "../../utils/searchItems";
 
 const styles = `
-.gs-overlay { position: fixed; inset: 0; z-index: 10050; display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; background: rgba(15,23,42,0.55); backdrop-filter: blur(3px); animation: gs-fade 0.15s ease; }
+.gs-overlay { position: fixed; inset: 0; z-index: 10050; display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; background: rgba(15,23,42,0.55); backdrop-filter: blur(8px); animation: gs-fade 0.15s ease; }
 @keyframes gs-fade { from { opacity: 0; } to { opacity: 1; } }
 .gs-modal { width: min(560px, calc(100vw - 32px)); background: var(--bg-card); border-radius: 14px; box-shadow: 0 24px 64px rgba(0,0,0,0.35); overflow: hidden; animation: gs-pop 0.18s ease; }
 @keyframes gs-pop { from { opacity: 0; transform: translateY(-8px) scale(0.985); } to { opacity: 1; transform: none; } }
@@ -23,7 +23,7 @@ const styles = `
 .gs-item i { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 13px; background: var(--primary-soft); color: var(--primary); flex-shrink: 0; }
 .gs-item .gs-path { margin-left: auto; font-size: 11px; color: var(--t-light); font-family: var(--font-mono); }
 .gs-item:hover, .gs-item.is-active { background: var(--primary-soft); }
-.gs-item.is-active i { background: var(--primary); color: #fff; }
+.gs-item.is-active i { background: var(--primary); color: var(--on-primary); }
 .gs-empty { text-align: center; color: var(--t-muted); font-size: 13px; padding: 28px 12px; }
 .gs-empty i { display: block; font-size: 24px; margin-bottom: 8px; opacity: 0.5; }
 `;
