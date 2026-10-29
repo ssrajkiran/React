@@ -28,22 +28,31 @@ describe("PreferencesContext", () => {
     expect(result.current.theme).toBe("light");
     expect(result.current.accent).toBe("teal");
     expect(result.current.font).toBe("poppins");
+    expect(result.current.sidebar).toBe("white");
     expect(result.current.isDark).toBe(false);
   });
 
-  it("setTheme updates theme and isDark", () => {
+  it("setTheme updates theme, isDark, and shifts white sidebar to dark", () => {
     const { result } = renderPrefs();
+    expect(result.current.sidebar).toBe("white");
     act(() => result.current.setTheme("dark"));
     expect(result.current.theme).toBe("dark");
+    expect(result.current.sidebar).toBe("dark");
     expect(result.current.isDark).toBe(true);
+    act(() => result.current.setTheme("light"));
+    expect(result.current.theme).toBe("light");
+    expect(result.current.sidebar).toBe("white");
   });
 
-  it("toggleTheme flips light -> dark -> light", () => {
+  it("toggleTheme flips light -> dark -> light and adapts sidebar", () => {
     const { result } = renderPrefs();
+    expect(result.current.sidebar).toBe("white");
     act(() => result.current.toggleTheme());
     expect(result.current.theme).toBe("dark");
+    expect(result.current.sidebar).toBe("dark");
     act(() => result.current.toggleTheme());
     expect(result.current.theme).toBe("light");
+    expect(result.current.sidebar).toBe("white");
   });
 
   it("setAccent / setFont update independently", () => {
@@ -52,6 +61,16 @@ describe("PreferencesContext", () => {
     act(() => result.current.setFont("roboto"));
     expect(result.current).toMatchObject({ accent: "purple", font: "roboto" });
     expect(result.current.theme).toBe("light");
+  });
+
+  it("setSidebar updates sidebar appearance and sets data attribute", () => {
+    const { result } = renderPrefs();
+    expect(result.current.sidebar).toBe("white");
+    act(() => result.current.setSidebar("dark"));
+    expect(result.current.sidebar).toBe("dark");
+    expect(document.documentElement.getAttribute("data-sidebar")).toBe("dark");
+    const stored = JSON.parse(localStorage.getItem(PREFS_KEY));
+    expect(stored.sidebar).toBe("dark");
   });
 
   it("setAccentColor switches to the custom accent with the picked hex", () => {
@@ -82,10 +101,12 @@ describe("PreferencesContext", () => {
     act(() => result.current.setTheme("dark"));
     act(() => result.current.setAccent("indigo"));
     act(() => result.current.setFont("nunito"));
+    act(() => result.current.setSidebar("themed"));
     const root = document.documentElement;
     expect(root.getAttribute("data-theme")).toBe("dark");
     expect(root.getAttribute("data-accent")).toBe("indigo");
     expect(root.getAttribute("data-font")).toBe("nunito");
+    expect(root.getAttribute("data-sidebar")).toBe("themed");
   });
 
   it("restores saved prefs on mount", () => {

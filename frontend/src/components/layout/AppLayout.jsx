@@ -7,10 +7,27 @@ import { usePreferences } from "../../context/PreferencesContext";
 export default function AppLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("hrms_sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
   const { toggleTheme, isDark } = usePreferences();
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar  = () => setSidebarOpen(false);
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("hrms_sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -38,7 +55,7 @@ export default function AppLayout({ children }) {
   }, []);
 
   return (
-    <div className="app-wrapper">
+    <div className={`app-wrapper ${isCollapsed ? "is-collapsed" : ""}`}>
       {sidebarOpen && (
         <div
           className="sidebar-overlay visible"
@@ -47,12 +64,19 @@ export default function AppLayout({ children }) {
         />
       )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={closeSidebar}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={toggleCollapse}
+      />
 
       <div className="main-panel">
         <Topbar
           onMenuClick={toggleSidebar}
           sidebarOpen={sidebarOpen}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={toggleCollapse}
           onSearchClick={() => setSearchOpen(true)}
           onThemeToggle={toggleTheme}
           isDark={isDark}

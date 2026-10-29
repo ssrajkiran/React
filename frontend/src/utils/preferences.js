@@ -9,6 +9,12 @@ export const THEME_OPTIONS = [
   { id: "dark", label: "Dark", icon: "bi-moon-stars" },
 ];
 
+export const SIDEBAR_OPTIONS = [
+  { id: "white", label: "White", icon: "bi-layout-sidebar" },
+  { id: "dark", label: "Dark", icon: "bi-layout-sidebar-inset" },
+  { id: "themed", label: "Accent", icon: "bi-palette" },
+];
+
 export const ACCENT_OPTIONS = [
   { id: "teal", label: "Teal", color: "#0D9488" },
   { id: "blue", label: "Blue", color: "#2563EB" },
@@ -17,6 +23,7 @@ export const ACCENT_OPTIONS = [
   { id: "rose", label: "Rose", color: "#E11D48" },
   { id: "emerald", label: "Emerald", color: "#059669" },
   { id: "orange", label: "Orange", color: "#EA580C" },
+  { id: "white", label: "White", color: "#FFFFFF" },
 ];
 
 export const FONT_OPTIONS = [
@@ -37,16 +44,17 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const PRESET_PRIMARY = {
   light: {
     teal: "#0D9488", blue: "#2563EB", indigo: "#4F46E5", purple: "#7C3AED",
-    rose: "#E11D48", emerald: "#059669", orange: "#EA580C",
+    rose: "#E11D48", emerald: "#059669", orange: "#EA580C", white: "#FFFFFF",
   },
   dark: {
     teal: "#2DD4BF", blue: "#60A5FA", indigo: "#818CF8", purple: "#A78BFA",
-    rose: "#FB7185", emerald: "#34D399", orange: "#FB923C",
+    rose: "#FB7185", emerald: "#34D399", orange: "#FB923C", white: "#FFFFFF",
   },
 };
 
 export const DEFAULT_PREFS = {
   theme: "light",
+  sidebar: "white",
   accent: "teal",
   accentColor: DEFAULT_ACCENT_COLOR,
   font: "poppins",
@@ -117,14 +125,17 @@ export const customAccentVars = (hex, theme = "light") => {
   // In dark mode a near-black pick would vanish against the dark surface.
   const primary = isDark && luminance(base) < 0.045 ? mix(base, "#FFFFFF", 0.45) : base;
   const [r, g, b] = hexToRgb(primary);
+  const isLightAccent = !isDark && luminance(primary) > 0.85;
   return {
     "--primary": primary,
     "--primary-light": mix(primary, "#FFFFFF", isDark ? 0.3 : 0.18),
     "--primary-dark": mix(primary, "#000000", 0.2),
-    "--primary-soft": mix(primary, isDark ? "#000000" : "#FFFFFF", isDark ? 0.87 : 0.92),
+    "--primary-soft": isLightAccent ? mix(primary, "#000000", 0.08) : mix(primary, isDark ? "#000000" : "#FFFFFF", isDark ? 0.87 : 0.92),
     "--primary-ring": `rgba(${r}, ${g}, ${b}, ${isDark ? 0.24 : 0.18})`,
-    "--sidebar-accent": isDark ? primary : mix(primary, "#FFFFFF", 0.35),
-    "--sidebar-grad": `linear-gradient(160deg, ${mix(primary, "#000000", isDark ? 0.8 : 0.72)} 0%, ${mix(primary, "#000000", isDark ? 0.55 : 0.35)} 40%, ${primary} 100%)`,
+    "--sidebar-accent": isLightAccent ? "#0F172A" : (isDark ? primary : mix(primary, "#FFFFFF", 0.35)),
+    "--sidebar-grad": isLightAccent
+      ? "#FFFFFF"
+      : `linear-gradient(160deg, ${mix(primary, "#000000", isDark ? 0.8 : 0.72)} 0%, ${mix(primary, "#000000", isDark ? 0.55 : 0.35)} 40%, ${primary} 100%)`,
   };
 };
 
@@ -149,6 +160,7 @@ export const sanitizePrefs = (raw) => {
     ACCENT_OPTIONS.some((a) => a.id === src.accent) || src.accent === CUSTOM_ACCENT;
   return {
     theme: THEME_OPTIONS.some((t) => t.id === src.theme) ? src.theme : DEFAULT_PREFS.theme,
+    sidebar: SIDEBAR_OPTIONS.some((s) => s.id === src.sidebar) ? src.sidebar : DEFAULT_PREFS.sidebar,
     accent: accentValid ? src.accent : DEFAULT_PREFS.accent,
     accentColor: normalizeHex(src.accentColor) || DEFAULT_PREFS.accentColor,
     font: FONT_OPTIONS.some((f) => f.id === src.font) ? src.font : DEFAULT_PREFS.font,
@@ -213,6 +225,7 @@ export const applyPrefs = (prefs, doc = globalThis.document) => {
   const root = doc?.documentElement;
   if (!root) return clean;
   root.setAttribute("data-theme", clean.theme);
+  root.setAttribute("data-sidebar", clean.sidebar);
   root.setAttribute("data-accent", clean.accent);
   root.setAttribute("data-font", clean.font);
   root.setAttribute("data-accent-color", clean.accentColor);
@@ -224,6 +237,7 @@ export const readPrefsFromDom = (doc = globalThis.document) => {
   const root = doc?.documentElement;
   return sanitizePrefs({
     theme: root?.getAttribute("data-theme") || DEFAULT_PREFS.theme,
+    sidebar: root?.getAttribute("data-sidebar") || DEFAULT_PREFS.sidebar,
     accent: root?.getAttribute("data-accent") || DEFAULT_PREFS.accent,
     accentColor: root?.getAttribute("data-accent-color") || DEFAULT_PREFS.accentColor,
     font: root?.getAttribute("data-font") || DEFAULT_PREFS.font,

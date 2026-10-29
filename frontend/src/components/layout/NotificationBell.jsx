@@ -111,7 +111,7 @@ export default function NotificationBell() {
   return (
     <div className="notif-wrap" ref={wrapRef}>
       <button
-        className="topbar-icon-btn"
+        className="topbar-circle-btn"
         title="Notifications"
         aria-label="Notifications"
         aria-expanded={open}

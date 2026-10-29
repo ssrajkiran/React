@@ -3,6 +3,7 @@ import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import SharedSelect from "../../components/SharedSelect";
+import SharedDatePicker from "../../components/SharedDatePicker";
 import UserDetailModal from "../../components/modals/UserDetailModal";
 import { fmtDob } from "../../utils";
 
@@ -335,12 +336,10 @@ export default function UsersPresent() {
 
                 <div className="ul-field">
                   <label className="ul-label">Date of Birth</label>
-                  <input
+                  <SharedDatePicker
                     className="ul-input"
-                    type="date"
-                    name="dob"
-                    value={selectedUser.dob || ""}
-                    onChange={handleChange}
+                    value={selectedUser.dob}
+                    onChange={(val) => handleChange({ target: { name: "dob", value: val } })}
                     max={new Date().toISOString().slice(0, 10)}
                   />
                 </div>

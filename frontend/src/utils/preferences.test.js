@@ -3,6 +3,7 @@ import {
   PREFS_KEY,
   THEME_KEY,
   THEME_OPTIONS,
+  SIDEBAR_OPTIONS,
   ACCENT_OPTIONS,
   FONT_OPTIONS,
   DEFAULT_PREFS,
@@ -30,15 +31,18 @@ const makeStorage = () => {
 };
 
 describe("option constants", () => {
-  it("exposes 2 themes, 7 accents, 5 fonts", () => {
+  it("exposes 2 themes, 3 sidebars, 8 accents, 5 fonts", () => {
     expect(THEME_OPTIONS.map((t) => t.id)).toEqual(["light", "dark"]);
-    expect(ACCENT_OPTIONS).toHaveLength(7);
+    expect(SIDEBAR_OPTIONS.map((s) => s.id)).toEqual(["white", "dark", "themed"]);
+    expect(ACCENT_OPTIONS).toHaveLength(8);
+    expect(ACCENT_OPTIONS.map((a) => a.id)).toContain("white");
     expect(FONT_OPTIONS).toHaveLength(5);
   });
 
   it("defaults to light + teal + poppins", () => {
     expect(DEFAULT_PREFS).toEqual({
       theme: "light",
+      sidebar: "white",
       accent: "teal",
       accentColor: "#0D9488",
       font: "poppins",
@@ -64,12 +68,13 @@ describe("sanitizePrefs", () => {
     expect(sanitizePrefs({ theme: "solarized", accent: "neon", font: "comic" }))
       .toEqual(DEFAULT_PREFS);
     expect(sanitizePrefs({ theme: "dark", accent: "bogus", font: 9 }))
-      .toEqual({ theme: "dark", accent: "teal", accentColor: "#0D9488", font: "poppins" });
+      .toEqual({ theme: "dark", sidebar: "white", accent: "teal", accentColor: "#0D9488", font: "poppins" });
   });
 
   it("fills missing fields from defaults", () => {
     expect(sanitizePrefs({ accent: "rose" })).toEqual({
       theme: "light",
+      sidebar: "white",
       accent: "rose",
       accentColor: "#0D9488",
       font: "poppins",
@@ -79,6 +84,7 @@ describe("sanitizePrefs", () => {
   it("accepts the custom accent + a valid hex, rejects bad hex", () => {
     expect(sanitizePrefs({ accent: "custom", accentColor: "#abcdef" })).toEqual({
       theme: "light",
+      sidebar: "white",
       accent: "custom",
       accentColor: "#ABCDEF",
       font: "poppins",
@@ -102,9 +108,10 @@ describe("loadPrefs / savePrefs", () => {
   });
 
   it("round-trips saved prefs", () => {
-    savePrefs({ theme: "dark", accent: "orange", font: "inter" }, storage);
+    savePrefs({ theme: "dark", sidebar: "white", accent: "orange", font: "inter" }, storage);
     expect(loadPrefs(storage)).toEqual({
       theme: "dark",
+      sidebar: "white",
       accent: "orange",
       accentColor: "#0D9488",
       font: "inter",
@@ -115,6 +122,7 @@ describe("loadPrefs / savePrefs", () => {
     savePrefs({ accent: "custom", accentColor: "#123456" }, storage);
     expect(loadPrefs(storage)).toEqual({
       theme: "light",
+      sidebar: "white",
       accent: "custom",
       accentColor: "#123456",
       font: "poppins",
@@ -125,6 +133,7 @@ describe("loadPrefs / savePrefs", () => {
     savePrefs({ theme: "invalid", accent: "blue" }, storage);
     expect(loadPrefs(storage)).toEqual({
       theme: "light",
+      sidebar: "white",
       accent: "blue",
       accentColor: "#0D9488",
       font: "poppins",
@@ -149,10 +158,11 @@ describe("loadPrefs / savePrefs", () => {
 });
 
 describe("applyPrefs", () => {
-  it("sets data-theme, data-accent, data-font on <html>", () => {
-    applyPrefs({ theme: "dark", accent: "purple", font: "roboto" });
+  it("sets data-theme, data-sidebar, data-accent, data-font on <html>", () => {
+    applyPrefs({ theme: "dark", sidebar: "dark", accent: "purple", font: "roboto" });
     const root = document.documentElement;
     expect(root.getAttribute("data-theme")).toBe("dark");
+    expect(root.getAttribute("data-sidebar")).toBe("dark");
     expect(root.getAttribute("data-accent")).toBe("purple");
     expect(root.getAttribute("data-font")).toBe("roboto");
     applyPrefs(DEFAULT_PREFS);
@@ -161,6 +171,7 @@ describe("applyPrefs", () => {
   it("sanitizes invalid values before applying", () => {
     applyPrefs({ theme: "neon" });
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(document.documentElement.getAttribute("data-sidebar")).toBe("white");
     expect(document.documentElement.getAttribute("data-accent")).toBe("teal");
     applyPrefs(DEFAULT_PREFS);
   });
@@ -168,9 +179,10 @@ describe("applyPrefs", () => {
 
 describe("readPrefsFromDom", () => {
   it("reads back applied attributes", () => {
-    applyPrefs({ theme: "dark", accent: "rose", font: "nunito" });
+    applyPrefs({ theme: "dark", sidebar: "dark", accent: "rose", font: "nunito" });
     expect(readPrefsFromDom()).toEqual({
       theme: "dark",
+      sidebar: "dark",
       accent: "rose",
       accentColor: "#0D9488",
       font: "nunito",
@@ -181,6 +193,7 @@ describe("readPrefsFromDom", () => {
   it("falls back to defaults when attributes missing", () => {
     const root = document.documentElement;
     root.removeAttribute("data-theme");
+    root.removeAttribute("data-sidebar");
     root.removeAttribute("data-accent");
     root.removeAttribute("data-font");
     expect(readPrefsFromDom()).toEqual(DEFAULT_PREFS);
@@ -235,6 +248,12 @@ describe("customAccentVars", () => {
     expect(customAccentVars("#3B82F6", "dark")["--primary"]).toBe("#3B82F6"); // visible → kept
     expect(customAccentVars("#123456", "dark")["--primary"]).not.toBe("#123456"); // 1.5:1 on dark bg → lifted
     expect(customAccentVars("#000000", "dark")["--primary"]).not.toBe("#000000");
+  });
+
+  it("light theme with white/bright accent provides white sidebar and dark indicator", () => {
+    const vars = customAccentVars("#FFFFFF", "light");
+    expect(vars["--sidebar-grad"]).toBe("#FFFFFF");
+    expect(vars["--sidebar-accent"]).toBe("#0F172A");
   });
 });
 

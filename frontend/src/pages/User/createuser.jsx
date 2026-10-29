@@ -3,6 +3,7 @@ import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
 import { useNavigate, Link } from "react-router-dom";
 import SharedSelect from "../../components/SharedSelect";
+import SharedDatePicker from "../../components/SharedDatePicker";
 
 export default function CreateUser() {
   const navigate = useNavigate();
@@ -184,12 +185,10 @@ export default function CreateUser() {
               <label className="sr-label">Date of Birth</label>
               <div className="sr-input-wrap">
                 <i className="bi bi-calendar3 sr-input-icon" />
-                <input
+                <SharedDatePicker
                   className="sr-input cu-input"
-                  type="date"
-                  name="dob"
                   value={form.dob}
-                  onChange={handleChange}
+                  onChange={(val) => handleChange({ target: { name: "dob", value: val } })}
                   max={new Date().toISOString().slice(0, 10)}
                 />
               </div>

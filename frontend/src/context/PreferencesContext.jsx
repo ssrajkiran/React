@@ -12,7 +12,20 @@ export function PreferencesProvider({ children }) {
     savePrefs(clean);
   }, [prefs]);
 
-  const setTheme = useCallback((theme) => setPrefsState((p) => ({ ...p, theme })), []);
+  const setTheme = useCallback(
+    (theme) =>
+      setPrefsState((p) => {
+        const nextSidebar =
+          theme === "dark" && p.sidebar === "white"
+            ? "dark"
+            : theme === "light" && p.sidebar === "dark"
+            ? "white"
+            : p.sidebar;
+        return { ...p, theme, sidebar: nextSidebar };
+      }),
+    []
+  );
+  const setSidebar = useCallback((sidebar) => setPrefsState((p) => ({ ...p, sidebar })), []);
   const setAccent = useCallback((accent) => setPrefsState((p) => ({ ...p, accent })), []);
   // Picking a custom hex switches the accent to "custom" and stores the color.
   const setAccentColor = useCallback(
@@ -21,7 +34,17 @@ export function PreferencesProvider({ children }) {
   );
   const setFont = useCallback((font) => setPrefsState((p) => ({ ...p, font })), []);
   const toggleTheme = useCallback(
-    () => setPrefsState((p) => ({ ...p, theme: p.theme === "light" ? "dark" : "light" })),
+    () =>
+      setPrefsState((p) => {
+        const nextTheme = p.theme === "light" ? "dark" : "light";
+        const nextSidebar =
+          nextTheme === "dark" && p.sidebar === "white"
+            ? "dark"
+            : nextTheme === "light" && p.sidebar === "dark"
+            ? "white"
+            : p.sidebar;
+        return { ...p, theme: nextTheme, sidebar: nextSidebar };
+      }),
     []
   );
   const resetPrefs = useCallback(() => setPrefsState({ ...DEFAULT_PREFS }), []);
@@ -30,6 +53,7 @@ export function PreferencesProvider({ children }) {
     ...prefs,
     isDark: prefs.theme === "dark",
     setTheme,
+    setSidebar,
     setAccent,
     setAccentColor,
     setFont,

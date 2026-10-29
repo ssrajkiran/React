@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import LeaveCalendar from "../components/LeaveCalendar";
+import SharedDatePicker from "../components/SharedDatePicker";
 import api from "../api";
 
 export default function Employee() {
@@ -96,11 +97,10 @@ export default function Employee() {
               {type === "compoff" && (
                 <div style={{ marginTop: 10 }}>
                   <label>Comp Off Worked Date</label>
-                  <input
-                    type="date"
+                  <SharedDatePicker
                     value={compOffDate}
-                    onChange={e => setCompOffDate(e.target.value)}
-                    style={input}
+                    onChange={setCompOffDate}
+                    className="sd-datepicker"
                   />
                 </div>
               )}

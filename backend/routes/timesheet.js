@@ -601,6 +601,20 @@ router.get("/dashboard/summary", verifyToken, (req, res) => {
     });
   });
 
+  // 4b. Today's active leaves (approved leave covering today)
+  queries.todayLeaves = new Promise((resolve, reject) => {
+    const scope = isAdmin ? "" : " AND user_id = ?";
+    const sql = `
+      SELECT COUNT(*) AS count FROM leaves
+      WHERE status = 'approved' AND ? BETWEEN DATE(from_date) AND DATE(to_date) ${scope}
+    `;
+    const params = isAdmin ? [todayStr] : [todayStr, userId];
+    db.query(sql, params, (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows[0] || { count: 0 });
+    });
+  });
+
   // 5. Recent timesheet entries (last 5)
   queries.recentEntries = new Promise((resolve, reject) => {
     const sql = `

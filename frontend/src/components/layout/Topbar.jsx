@@ -56,6 +56,8 @@ function getAvatarColor(name) {
 export default function Topbar({
   onMenuClick,
   sidebarOpen,
+  isCollapsed,
+  onToggleCollapse,
   onSearchClick,
   onThemeToggle,
   isDark,
@@ -64,8 +66,45 @@ export default function Topbar({
   const [userInitials, setUserInitials] = useState("U");
   const [role, setRole] = useState("employee");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [todayHours, setTodayHours] = useState(0);
+  const [todayLeaves, setTodayLeaves] = useState(0);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  useEffect(() => {
+    const onScroll = () => {
+      const top = window.scrollY || document.documentElement.scrollTop || 0;
+      setIsScrolled(top > 10);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSummary = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const res = await api.get("/timesheet/dashboard/summary");
+        if (!isMounted || !res?.data) return;
+        const hrs = res.data.todayHours?.total_hours ?? res.data.teamTodayHours?.total_hours ?? 0;
+        const leaves = res.data.todayLeaves?.count ?? res.data.pendingLeaves?.count ?? 0;
+        setTodayHours(Number(hrs) || 0);
+        setTodayLeaves(Number(leaves) || 0);
+      } catch {
+        /* silent fallback */
+      }
+    };
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 60000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -130,10 +169,25 @@ export default function Topbar({
   const avatarGradient = getAvatarColor(userName);
 
   return (
-    <header className="app-topbar">
+    <header className={`app-topbar ${isScrolled ? "is-scrolled" : ""}`}>
+      {/* Left side: Collapse toggle + Status & Page Pills */}
       <div className="topbar-left">
+        {/* Desktop Collapse / Extend toggle button */}
         <button
-          className={`topbar-hamburger${sidebarOpen ? " is-open" : ""}`}
+          className="topbar-circle-btn topbar-collapse-desktop"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={onToggleCollapse}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.8">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+        </button>
+
+        {/* Mobile Hamburger Drawer button */}
+        <button
+          className={`topbar-hamburger topbar-hamburger-mobile ${sidebarOpen ? "is-open" : ""}`}
           aria-label={sidebarOpen ? "Close menu" : "Open menu"}
           onClick={() => onMenuClick?.()}
         >
@@ -144,28 +198,75 @@ export default function Topbar({
           </span>
         </button>
 
-        <div className="topbar-title-wrap">
-          <div className="topbar-title">{pageTitle}</div>
-          <div className="topbar-subtitle">
-            Voltech Attendance &amp; Timesheet Management System
+        {/* Metrics & Status Pills Stack (matching tactical pill look) */}
+        <div className="topbar-pills-stack">
+          {/* Live Pulse Status Pill */}
+          <div className="topbar-pill topbar-pill-status" title="System operational and connected">
+            <span className="topbar-pulse-dot"></span>
+            <span className="topbar-pill-label">Status:</span>
+            <strong className="topbar-pill-val">Active</strong>
+          </div>
+
+          {/* User Role Pill */}
+          <div className="topbar-pill topbar-pill-role" title={`Signed in as ${role}`}>
+            <i className={`bi ${role === "admin" ? "bi-shield-check" : "bi-person-badge"}`}></i>
+            <span className="topbar-pill-label">Role:</span>
+            <strong className="topbar-pill-val">{role.charAt(0).toUpperCase() + role.slice(1)}</strong>
+          </div>
+
+          {/* Today's Man Hours Pill */}
+          <div
+            className="topbar-pill topbar-pill-metric topbar-pill-hours"
+            title="Today's logged man hours (click to view timesheet)"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate(role === "admin" ? "/admin/timesheet" : "/employee/timesheet")}
+            onKeyDown={(e) => e.key === "Enter" && navigate(role === "admin" ? "/admin/timesheet" : "/employee/timesheet")}
+          >
+            <i className="bi bi-clock-history text-info"></i>
+            <span className="topbar-pill-label">Today Hours:</span>
+            <strong className="topbar-pill-val">{Number(todayHours).toFixed(1)}h</strong>
+          </div>
+
+          {/* Today's Leaves Pill */}
+          <div
+            className="topbar-pill topbar-pill-metric topbar-pill-leaves"
+            title="Today's leave requests / approvals (click to view attendance)"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate(role === "admin" ? "/admin/leaves" : "/employee/leaves")}
+            onKeyDown={(e) => e.key === "Enter" && navigate(role === "admin" ? "/admin/leaves" : "/employee/leaves")}
+          >
+            <i className="bi bi-calendar-x text-warning"></i>
+            <span className="topbar-pill-label">Leaves:</span>
+            <strong className="topbar-pill-val">{todayLeaves}</strong>
+          </div>
+
+          {/* Active Section / Page Breadcrumb Pill */}
+          <div className="topbar-pill topbar-pill-page" title="Current page">
+            <i className="bi bi-grid-fill"></i>
+            <strong className="topbar-pill-val">{pageTitle}</strong>
           </div>
         </div>
       </div>
 
+      {/* Right side: Search Pill + Quick Actions + User Profile Pill */}
       <div className="topbar-actions">
+        {/* Global Search Pill with ⌘K Badge */}
         <button
-          className="topbar-search-btn"
-          title="Search (Ctrl + K)"
+          className="topbar-search-pill"
+          title="Search modules, records, and pages (Ctrl + K)"
           aria-label="Open global search"
           onClick={() => onSearchClick?.()}
         >
           <i className="bi bi-search"></i>
-          <span>Search…</span>
-          <kbd>Ctrl K</kbd>
+          <span className="topbar-search-text">Search modules, records...</span>
+          <kbd className="topbar-search-kbd">⌘K</kbd>
         </button>
 
+        {/* Theme Mode Toggle Pill Button */}
         <button
-          className="topbar-icon-btn"
+          className="topbar-circle-btn"
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           onClick={() => onThemeToggle?.()}
@@ -173,11 +274,14 @@ export default function Topbar({
           <i className={`bi ${isDark ? "bi-sun" : "bi-moon-stars"}`}></i>
         </button>
 
+        {/* Notification Bell Pill */}
         <NotificationBell />
 
+        {/* Fullscreen Toggle Pill Button */}
         <button
-          className="topbar-icon-btn"
+          className="topbar-circle-btn hide-sm"
           title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          aria-label="Toggle fullscreen"
           onClick={toggleFullscreen}
         >
           <i className={`bi ${isFullscreen ? "bi-fullscreen-exit" : "bi-fullscreen"}`}></i>
@@ -185,11 +289,13 @@ export default function Topbar({
 
         <div className="topbar-divider"></div>
 
+        {/* User Profile Pill with Avatar & Dropdown */}
         <div className="dropdown">
           <button
-            className="topbar-profile-btn"
+            className="topbar-user-pill"
             data-bs-toggle="dropdown"
             aria-expanded="false"
+            title="User menu"
           >
             <div
               className="ui-avatar sm topbar-avatar"
@@ -197,14 +303,14 @@ export default function Topbar({
             >
               {userInitials}
             </div>
-            <div className="topbar-profile-info">
-              <div className="topbar-profile-name">{userName}</div>
-              <div className="topbar-profile-role">
+            <div className="topbar-user-pill-info">
+              <div className="topbar-user-pill-name">{userName}</div>
+              <div className="topbar-user-pill-role">
                 <i className={`bi ${role === "admin" ? "bi-shield-lock" : "bi-person-badge"}`}></i>
                 {" "}{role.charAt(0).toUpperCase() + role.slice(1)}
               </div>
             </div>
-            <i className="bi bi-chevron-down topbar-profile-chevron"></i>
+            <i className="bi bi-chevron-down topbar-user-pill-chevron"></i>
           </button>
 
           <ul className="dropdown-menu dropdown-menu-end topbar-dropdown">
@@ -256,7 +362,7 @@ export default function Topbar({
                 <span className="dropdown-icon-wrap" style={{ background: "var(--warning-soft)", color: "var(--warning)" }}>
                   <i className="bi bi-gear"></i>
                 </span>
-                Settings
+                Personalization
               </button>
             </li>
             <li><hr className="dropdown-divider" /></li>

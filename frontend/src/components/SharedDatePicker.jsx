@@ -50,6 +50,7 @@ export default function SharedDatePicker({
       showMonthDropdown
       showYearDropdown
       dropdownMode="select"
+      formatWeekDay={(day) => day.slice(0, 3)}
       {...rest}
     />
   );
