@@ -327,6 +327,8 @@ export default function AdminTimesheetList() {
 
   const handleSave = async () => {
     const isPermission = form.entry_type === "permission";
+    const isMeeting = form.entry_type === "meeting";
+    const isInternal = isPermission || isMeeting;
 
     if (!form.user) {
       setFormError("Please select a user.");
@@ -342,11 +344,11 @@ export default function AdminTimesheetList() {
       return;
     }
     const dayLimit = dayLimitFor(form.date);
-    if (!isPermission && !form.project) {
+    if (!isInternal && !form.project) {
       setFormError("Please select a project.");
       return;
     }
-    if (!isPermission && !form.task) {
+    if (!isInternal && !form.task) {
       setFormError("Please select a module.");
       return;
     }
@@ -387,13 +389,13 @@ export default function AdminTimesheetList() {
     try {
       await api.post("/timesheet",
         {
-          task: isPermission ? null : form.task,
-          project: isPermission ? null : form.project,
+          task: isInternal ? null : form.task,
+          project: isInternal ? null : form.project,
           entry_type: form.entry_type,
           date: form.date,
           start_time: form.start_time,
           end_time: form.end_time,
-          work_description: isPermission ? "Permission" : form.work_description,
+          work_description: isPermission ? "Permission" : (form.work_description || (isMeeting ? "Meeting" : "")),
           created_by: form.user,
         },
         { headers: authHeader }
@@ -801,6 +803,7 @@ export default function AdminTimesheetList() {
                     >
                       <option value="project">Project</option>
                       <option value="permission">Permission</option>
+                      <option value="meeting">Meeting</option>
                     </select>
                   </div>
 
@@ -879,16 +882,27 @@ export default function AdminTimesheetList() {
                   </div>
                 </div>
 
-                {!leaveBlocked && form.entry_type === "project" && (
+                {!leaveBlocked && (form.entry_type === "project" || form.entry_type === "meeting") && (
                   <div className="ts-field">
-                    <label className="ts-label">Work Description</label>
+                    <label className="ts-label">
+                      {form.entry_type === "meeting" ? "Meeting Notes / Description" : "Work Description"}
+                    </label>
                     <textarea
                       className="ts-textarea"
                       rows={3}
-                      placeholder="Describe what was worked on..."
+                      placeholder={
+                        form.entry_type === "meeting"
+                          ? "Describe the meeting agenda, attendees, or key takeaways…"
+                          : "Describe what was worked on..."
+                      }
                       value={form.work_description}
                       onChange={(e) => setForm((prev) => ({ ...prev, work_description: e.target.value }))}
                     />
+                  </div>
+                )}
+                {!leaveBlocked && form.entry_type === "meeting" && (
+                  <div className="ts-field-hint" style={{ color: "var(--info)", fontWeight: 600, fontSize: "12px", marginTop: "-6px" }}>
+                    <i className="bi bi-info-circle me-1" /> Meeting mode: Project and Module are not required.
                   </div>
                 )}
 
@@ -964,7 +978,7 @@ export default function AdminTimesheetList() {
 const styles = `
   /* Toast */
   .ts-toast {
-    position: fixed; top: 20px; right: 20px; z-index: 999;
+    position: fixed; top: 20px; right: 20px; z-index: 1100;
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-lg);
     font-size: 13px; font-weight: 600; font-family: var(--font);

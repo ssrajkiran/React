@@ -309,7 +309,7 @@ export default function AdminLeaves() {
   };
 
   useEffect(() => {
-    if (applyForm.leave_type !== "leave") return;
+    if (applyForm.leave_type !== "leave" && applyForm.leave_type !== "wfh") return;
     const total = calculateDays(applyForm.start_date, applyForm.end_date);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setApplyForm((prev) => ({
@@ -430,7 +430,7 @@ export default function AdminLeaves() {
         if (!applyForm.user_id || !applyForm.start_date || !applyForm.end_date) {
           alert("Please select employee, start and end date."); setApplyLoading(false); return;
         }
-        payload = { ...payload, from_date: applyForm.start_date, to_date: applyForm.end_date, type: "leave", days: applyForm.days, half_day_type: applyForm.half_day_type, remarks: applyForm.reason || null };
+        payload = { ...payload, from_date: applyForm.start_date, to_date: applyForm.end_date, type: applyForm.leave_type === "wfh" ? "wfh" : "leave", days: applyForm.days, half_day_type: applyForm.half_day_type, remarks: applyForm.reason || null };
       }
 
       await api.post("/leaves/admin", payload);
@@ -480,8 +480,9 @@ export default function AdminLeaves() {
 
   // ── CONFIG ─────────────────────────────────────────────────────────────────
   const typeConfig = useMemo(() => ({
-    leave:      { label: "Leave",      color: "var(--primary)", bg: "var(--primary-soft)" },
-    compoff:    { label: "Comp Off",   color: "var(--info)", bg: "var(--info-soft)" },
+    leave:      { label: "Leave",                 color: "var(--primary)", bg: "var(--primary-soft)" },
+    wfh:        { label: "Work From Home (WH)",   color: "#0284c7",        bg: "rgba(14, 165, 233, 0.12)" },
+    compoff:    { label: "Comp Off",              color: "var(--info)",    bg: "var(--info-soft)" },
     permission: { label: "Permission", color: "var(--warning)", bg: "var(--warning-soft)" },
     present:    { label: "Present",    color: "var(--success)", bg: "var(--success-soft)" },
   }), []);
@@ -822,8 +823,8 @@ export default function AdminLeaves() {
                 <div>
                   <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Type</span>
                   <div style={{ marginTop: 4 }}>
-                    <span className={`ul-badge ${formData.type === "leave" ? "ul-badge-danger" : formData.type === "permission" ? "ul-badge-warning" : formData.type === "compoff" ? "ul-badge-primary" : "ul-badge-success"}`}>
-                      <i className={`bi ${formData.type === "permission" ? "bi-clock" : formData.type === "compoff" ? "bi-arrow-left-right" : formData.type === "present" ? "bi-person-check" : "bi-calendar-x"}`} />
+                    <span className={`ul-badge ${formData.type === "leave" ? "ul-badge-danger" : formData.type === "permission" ? "ul-badge-warning" : formData.type === "compoff" ? "ul-badge-primary" : formData.type === "wfh" ? "ul-badge-info" : "ul-badge-success"}`}>
+                      <i className={`bi ${formData.type === "permission" ? "bi-clock" : formData.type === "compoff" ? "bi-arrow-left-right" : formData.type === "present" ? "bi-person-check" : formData.type === "wfh" ? "bi-house-door" : "bi-calendar-x"}`} />
                       {typeConfig[formData.type]?.label || formData.type}
                     </span>
                   </div>
@@ -832,7 +833,7 @@ export default function AdminLeaves() {
                   <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Date</span>
                   <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: 13 }}>{fmtDate(formData.start_date)}</p>
                 </div>
-                {formData.type === "leave" && (
+                {(formData.type === "leave" || formData.type === "wfh") && (
                   <>
                     <div>
                       <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>To</span>
@@ -958,7 +959,7 @@ export default function AdminLeaves() {
                 </div>
 
                 {/* ── LEAVE ── */}
-                {applyForm.leave_type === "leave" && (
+                {(applyForm.leave_type === "leave" || applyForm.leave_type === "wfh") && (
                   <>
                     <div className="al-row-2">
                       <div className="al-field">
@@ -1482,8 +1483,8 @@ const styles = `
   .al-radio-btn { display:flex; align-items:center; gap:6px; padding:7px 12px; border-radius:var(--radius); background:var(--bg-muted); font-size:12.5px; font-weight:500; color:var(--t-muted); cursor:pointer; transition:all 0.15s; user-select:none; }
   .al-radio-btn:has(input:disabled) { opacity:0.5; cursor:default; }
   .al-radio-btn input[type="radio"] { display:none; }
-  .al-radio-btn.active { background:var(--primary-light); color:var(--primary); font-weight:600; }
-  .al-days-display { display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--primary-light); border-radius:var(--radius); font-size:13px; font-weight:700; color:var(--primary); }
+  .al-radio-btn.active { background:var(--primary-soft); color:var(--t-base); font-weight:600; border: 1px solid var(--primary); }
+  .al-days-display { display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--primary-soft); border-radius:var(--radius); font-size:13px; font-weight:700; color:var(--t-base); border: 1px solid var(--border); }
   /* ── buttons ── */
   .al-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; border:1px solid transparent; font-family:var(--font); white-space:nowrap; }
   .al-btn:disabled { opacity:0.6; cursor:not-allowed; }
@@ -1510,7 +1511,7 @@ const styles = `
   /* nav */
   .hcp-nav { display:flex; align-items:center; justify-content:space-between; }
   .hcp-nav-btn { width:28px; height:28px; border-radius:var(--radius); background:var(--bg-muted); color:var(--t-muted); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0; }
-  .hcp-nav-btn:hover { background:var(--primary-light); color:var(--primary); }
+  .hcp-nav-btn:hover { background:var(--primary-soft); color:var(--t-base); }
   .hcp-month-label { font-size:13px; font-weight:700; color:var(--t-base); }
   /* grid */
   .hcp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
@@ -1537,7 +1538,7 @@ const styles = `
   .hcp-dot-holiday { background:var(--danger); }
   .hcp-dot-sw { background:var(--warning); }
   /* selected banner */
-  .hcp-selected-info { display:flex; align-items:center; gap:8px; padding:8px 11px; background:var(--primary-light); border-radius:var(--radius); font-size:12.5px; color:var(--primary); }
+  .hcp-selected-info { display:flex; align-items:center; gap:8px; padding:8px 11px; background:var(--primary-soft); border-radius:var(--radius); font-size:12.5px; color:var(--t-base); font-weight:600; border: 1px solid var(--border); }
   .hcp-selected-info i { font-size:13px; flex-shrink:0; }
   .hcp-selected-info span { flex:1; line-height:1.4; }
   .hcp-clear { width:20px; height:20px; border:none; background:transparent; color:var(--primary); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:15px; opacity:0.65; padding:0; }

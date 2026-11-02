@@ -437,7 +437,7 @@ const styles = `
 
   /* Toast */
   .sr-toast {
-    position: fixed; top: 20px; right: 20px; z-index: 999;
+    position: fixed; top: 20px; right: 20px; z-index: 1100;
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-lg);
     font-size: 13px; font-weight: 600; font-family: var(--font);

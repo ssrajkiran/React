@@ -226,7 +226,7 @@ export default function Leaves() {
   };
 
   useEffect(() => {
-    if (formData.leave_type !== "leave") return;
+    if (formData.leave_type !== "leave" && formData.leave_type !== "wfh") return;
     const total = calculateDays(formData.start_date, formData.end_date);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFormData((prev) => ({
@@ -288,7 +288,7 @@ export default function Leaves() {
         payload = { ...payload, from_date: formData.start_date, type: "present", holiday_name: holidayName, remarks: formData.reason || null };
       } else {
         if (!formData.start_date || !formData.end_date) { alert("Please select start and end date."); setLoading(false); return; }
-        payload = { ...payload, from_date: formData.start_date, to_date: formData.end_date, type: "leave", days: formData.days, half_day_type: formData.half_day_type, remarks: formData.reason || null };
+        payload = { ...payload, from_date: formData.start_date, to_date: formData.end_date, type: formData.leave_type === "wfh" ? "wfh" : "leave", days: formData.days, half_day_type: formData.half_day_type, remarks: formData.reason || null };
       }
       await api.post("/leaves", payload);
       setLoading(false); setShowModal(false); fetchLeaves(); fetchPermissionRemaining();
@@ -297,6 +297,7 @@ export default function Leaves() {
 
   const typeConfig = useMemo(() => ({
     leave: { label: "Leave", color: "var(--primary)", bg: "var(--primary-soft)" },
+    wfh: { label: "Work From Home (WH)", color: "#0284c7", bg: "rgba(14, 165, 233, 0.12)" },
     compoff: { label: "Comp Off", color: "var(--info)", bg: "var(--info-soft)" },
     permission: { label: "Permission", color: "var(--warning)", bg: "var(--warning-soft)" },
     present: { label: "Present on Holiday", color: "var(--success)", bg: "var(--success-soft)" },
@@ -306,7 +307,7 @@ export default function Leaves() {
     pending: { label: "Pending", color: "var(--warning)", bg: "var(--warning-soft)" },
     rejected: { label: "Rejected", color: "var(--danger)", bg: "var(--danger-soft)" },
   }), []);
-  const typeIcons = { leave: "bi-calendar-x", compoff: "bi-arrow-left-right", permission: "bi-clock", present: "bi-person-check" };
+  const typeIcons = { leave: "bi-calendar-x", wfh: "bi-house-door", compoff: "bi-arrow-left-right", permission: "bi-clock", present: "bi-person-check" };
   const modalTitle = isViewMode ? `${typeConfig[formData.leave_type]?.label || "Leave"} Details` : formData.id ? "Edit Request" : "New Request";
 
   const selectedHolidayName = (() => {
@@ -563,7 +564,7 @@ export default function Leaves() {
 
                     {/* Info Grid */}
                     <div className="lv-view-grid">
-                      {formData.leave_type === "leave" && (
+                      {(formData.leave_type === "leave" || formData.leave_type === "wfh") && (
                         <>
                           <div className="lv-view-item">
                             <span className="lv-view-label">Start Date</span>
@@ -657,8 +658,8 @@ export default function Leaves() {
                       />
                     </div>
 
-                    {/* Leave Type Fields */}
-                    {formData.leave_type === "leave" && (
+                    {/* Leave / WFH Type Fields */}
+                    {(formData.leave_type === "leave" || formData.leave_type === "wfh") && (
                       <div className="lv-form-grid">
                         <div className="lv-field">
                           <label className="lv-label">Start Date</label>

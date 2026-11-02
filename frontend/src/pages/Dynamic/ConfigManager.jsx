@@ -473,8 +473,8 @@ const styles = `
     font-size: 13px; font-weight: 600; font-family: var(--font);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: cfg-fade-in 0.2s ease;
   }
-  .cfg-toast-success { background: var(--success-soft); color: var(--success); border: 1px solid #6ee7b7; }
-  .cfg-toast-error   { background: var(--danger-soft); color: var(--danger); border: 1px solid #fca5a5; }
+  .cfg-toast-success { background: var(--success-soft); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 40%, transparent); }
+  .cfg-toast-error   { background: var(--danger-soft); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
   .cfg-toast-close { margin-left: 6px; background: none; border: none; cursor: pointer; color: inherit; font-size: 15px; display: flex; align-items: center; }
 
   /* ── Header ── */
@@ -556,8 +556,8 @@ const styles = `
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
   }
-  .cfg-status-active { background: var(--success-soft); color: var(--success); border: 1px solid #6ee7b7; }
-  .cfg-status-inactive { background: var(--danger-soft); color: var(--danger); border: 1px solid #fca5a5; }
+  .cfg-status-active { background: var(--success-soft); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 40%, transparent); }
+  .cfg-status-inactive { background: var(--danger-soft); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
 
   /* ── Actions ── */
   .cfg-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
@@ -568,14 +568,14 @@ const styles = `
     transition: background 0.15s; font-family: var(--font);
     text-decoration: none;
   }
-  .cfg-action-view { background: var(--success-soft); color: var(--success); border: 1px solid #6ee7b7; }
+  .cfg-action-view { background: var(--success-soft); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 40%, transparent); }
   .cfg-action-view:hover { background: var(--success-soft); color: var(--success); }
   .cfg-action-edit { background: var(--primary-soft); color: var(--primary); border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent); }
   .cfg-action-edit:hover { background: var(--primary-soft); }
   .cfg-action-delete {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 5px 12px; background: var(--danger-soft); color: var(--danger);
-    border: 1px solid #fca5a5; border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); border-radius: var(--radius);
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s; font-family: var(--font);
   }
@@ -652,12 +652,12 @@ const styles = `
   .cfg-toggle-wrap input { position: absolute; opacity: 0; width: 0; height: 0; }
   .cfg-toggle-track {
     display: block; width: 40px; height: 22px; border-radius: 20px;
-    background: #d1d5db; transition: background 0.2s; position: relative;
+    background: var(--border); transition: background 0.2s; position: relative;
   }
   .cfg-toggle-thumb {
     position: absolute; top: 3px; left: 3px;
     width: 16px; height: 16px; border-radius: 50%;
-    background: #fff; transition: transform 0.2s;
+    background: var(--bg-card); transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
   .cfg-toggle-wrap input:checked + .cfg-toggle-track { background: var(--primary); }

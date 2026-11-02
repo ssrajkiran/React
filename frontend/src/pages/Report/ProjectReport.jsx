@@ -255,7 +255,7 @@ export default function ProjectReport() {
                       <div className="rp-module-head">
                         <div className="rp-module-title">
                           <span className="rp-module-index">{mi + 1}</span>
-                          <h4 className="rp-module-name">{m.module_name}</h4>
+                          <h4 className="rp-module-name text-truncate-hover" title={m.module_name}>{m.module_name}</h4>
                           <span className={statusClass(m.status)}>{m.status}</span>
                         </div>
                         <span className="rp-module-hours">{fmtHrs(m.total_hours)}</span>
@@ -265,7 +265,7 @@ export default function ProjectReport() {
                           {m.entries.map((e, i) => (
                             <div className="rp-entry" key={i}>
                               <div className="rp-entry-main">
-                                <span className="rp-entry-desc">{e.work_description}</span>
+                                <span className="rp-entry-desc text-truncate-hover" title={e.work_description}>{e.work_description}</span>
                                 <span className="rp-entry-meta">
                                   {e.person} <span className="rp-dot">·</span> {fmtDate(e.date)}
                                 </span>
@@ -332,7 +332,7 @@ export default function ProjectReport() {
                           <span className="rp-group-icon">
                             <i className={`bi ${closed ? "bi-folder2" : "bi-folder2-open"}`} />
                           </span>
-                          <span className="rp-group-name">{g.project_name}</span>
+                          <span className="rp-group-name text-truncate-hover" title={g.project_name}>{g.project_name}</span>
                           <span className="rp-group-count">
                             {g.modules.length} {g.modules.length === 1 ? "module" : "modules"}
                           </span>
@@ -346,7 +346,7 @@ export default function ProjectReport() {
                         g.modules.map((row) => (
                           <div className="rp-row" key={row.task_id}>
                             <span className="rp-row-module">
-                              <span className="rp-row-module-name">{row.module_name}</span>
+                              <span className="rp-row-module-name text-truncate-hover" title={row.module_name}>{row.module_name}</span>
                               <span className="rp-row-module-meta">
                                 <span className={statusClass(row.status)}>{row.status}</span>
                                 <span className="rp-row-entries">{row.entry_count} entries</span>
@@ -508,7 +508,7 @@ const styles = `
     font-size: 11px; font-weight: 800; color: var(--primary);
     background: var(--primary-soft);
   }
-  .rp-module-name { font-size: 14.5px; font-weight: 700; margin: 0; color: var(--t-base); }
+  .rp-module-name { font-size: 14.5px; font-weight: 700; margin: 0; color: var(--t-base); max-width: 380px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rp-status {
     font-size: 10px; font-weight: 700; padding: 3px 9px;
     border-radius: 999px; background: var(--bg-muted); color: var(--t-muted);
@@ -529,7 +529,7 @@ const styles = `
   }
   .rp-entry + .rp-entry { border-top: 1px dashed var(--border-soft); }
   .rp-entry-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .rp-entry-desc { font-size: 13px; color: var(--t-base); line-height: 1.45; }
+  .rp-entry-desc { font-size: 13px; color: var(--t-base); line-height: 1.45; max-width: 600px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rp-entry-meta { font-size: 11.5px; color: var(--t-muted); }
   .rp-dot { opacity: 0.5; }
   .rp-entry-hours {
@@ -582,7 +582,7 @@ const styles = `
     display: grid; place-items: center; font-size: 13px;
     background: var(--primary-soft); color: var(--primary);
   }
-  .rp-group-name { font-size: 14px; font-weight: 800; margin: 0; color: var(--t-base); }
+  .rp-group-name { font-size: 14px; font-weight: 800; margin: 0; color: var(--t-base); max-width: 350px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rp-group-count {
     font-size: 11px; font-weight: 700; color: var(--t-muted);
     background: var(--bg-card); padding: 3px 10px; border-radius: 999px;
@@ -599,7 +599,7 @@ const styles = `
   .rp-row:hover { background: var(--bg-hover); }
   .rp-row + .rp-row { border-top: 1px solid var(--border-soft); }
   .rp-row-module { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .rp-row-module-name { font-size: 13px; color: var(--t-base); }
+  .rp-row-module-name { font-size: 13px; color: var(--t-base); max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rp-row-module-meta { display: flex; align-items: center; gap: 8px; }
   .rp-row-entries { font-size: 11px; color: var(--t-muted); }
   .rp-row-persons { display: flex; gap: 6px; flex-wrap: wrap; }

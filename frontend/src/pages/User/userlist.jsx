@@ -581,14 +581,13 @@ const styles = `
     z-index: 1000; display: flex; align-items: center; justify-content: center;
     animation: sr-fade-in 0.15s ease; padding: 16px;
   }
-  .ul-modal {
+  .ul-modal-sm {
     background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding: 28px;
     animation: ul-modal-center-in 0.2s ease;
     text-align: center;
   }
-  .ul-modal-lg { text-align: left; }
 
   @keyframes ul-modal-center-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 

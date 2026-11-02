@@ -820,12 +820,12 @@ const styles = `
   .dy-toggle-wrap input { position: absolute; opacity: 0; width: 0; height: 0; }
   .dy-toggle-track {
     display: block; width: 40px; height: 22px; border-radius: 20px;
-    background: #d1d5db; transition: background 0.2s; position: relative;
+    background: var(--border); transition: background 0.2s; position: relative;
   }
   .dy-toggle-thumb {
     position: absolute; top: 3px; left: 3px;
     width: 16px; height: 16px; border-radius: 50%;
-    background: #fff; transition: transform 0.2s;
+    background: var(--bg-card); transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
   .dy-toggle-wrap input:checked + .dy-toggle-track { background: var(--primary); }
@@ -840,7 +840,7 @@ const styles = `
     transition: all 0.15s; background: var(--bg-card);
   }
   .dy-check-wrap input:checked + .dy-check-box { background: var(--primary); border-color: var(--primary); }
-  .dy-check-wrap input:checked + .dy-check-box::after { content: "✓"; color: #fff; font-size: 12px; font-weight: 700; }
+  .dy-check-wrap input:checked + .dy-check-box::after { content: "✓"; color: var(--on-primary); font-size: 12px; font-weight: 700; }
 
   /* ── Radio ── */
   .dy-radio-group { display: flex; gap: 16px; flex-wrap: wrap; padding-top: 2px; }

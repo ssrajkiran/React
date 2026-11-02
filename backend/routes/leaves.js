@@ -432,16 +432,16 @@ router.post("/admin", auth, async (req, res) => {
     }
 
     if (!from_date) return res.status(400).json({ error: "from_date is required" });
-    if (type === "leave" && !to_date) return res.status(400).json({ error: "to_date is required for leave" });
+    if ((type === "leave" || type === "wfh") && !to_date) return res.status(400).json({ error: "to_date is required for leave/wfh" });
 
-    const leaveToDate      = type === "leave" ? to_date : from_date;
-    const finalDays        = (type === "leave" || type === "compoff") && half_day_type && half_day_type !== "full" ? 0.5 : (days || 1);
+    const leaveToDate      = (type === "leave" || type === "wfh") ? to_date : from_date;
+    const finalDays        = (type === "leave" || type === "wfh" || type === "compoff") && half_day_type && half_day_type !== "full" ? 0.5 : (days || 1);
     const compOffDateValue = type === "compoff" ? comp_off_date : null;
 
     await db.promise().query(
       `INSERT INTO leaves (user_id, from_date, to_date, days, type, remarks, half_day_type, status, created_at, comp_off_date)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', NOW(), ?)`,
-      [user_id, from_date, leaveToDate, finalDays, type, remarks || null, (type === "leave" || type === "compoff") ? (half_day_type || "full") : null, compOffDateValue]
+      [user_id, from_date, leaveToDate, finalDays, type, remarks || null, (type === "leave" || type === "compoff" || type === "wfh") ? (half_day_type || "full") : null, compOffDateValue]
     );
     await notify(user_id, {
       title: `${type.charAt(0).toUpperCase() + type.slice(1)} approved`,
@@ -583,23 +583,23 @@ router.post("/", auth, async (req, res) => {
       return res.json({ message: "Present on holiday applied successfully" });
     }
 
-    // ── LEAVE / COMP-OFF ──
-    if (!from_date || (type === "leave" && !to_date))
-      return res.status(400).json({ error: "Missing required fields for leave/compoff" });
+    // ── LEAVE / WFH / COMP-OFF ──
+    if (!from_date || ((type === "leave" || type === "wfh") && !to_date))
+      return res.status(400).json({ error: "Missing required fields for leave/wfh/compoff" });
 
-    const leaveToDate      = type === "leave" ? to_date : from_date;
-    const finalDays        = (type === "leave" || type === "compoff") && half_day_type && half_day_type !== "full" ? 0.5 : (days || 1);
+    const leaveToDate      = (type === "leave" || type === "wfh") ? to_date : from_date;
+    const finalDays        = (type === "leave" || type === "wfh" || type === "compoff") && half_day_type && half_day_type !== "full" ? 0.5 : (days || 1);
     const compOffDateValue = type === "compoff" ? comp_off_date : null;
 
     const checkQuery =
-      type === "leave"
-        ? `SELECT id, status FROM leaves WHERE user_id=? AND type='leave' AND
+      (type === "leave" || type === "wfh")
+        ? `SELECT id, status FROM leaves WHERE user_id=? AND type=? AND
            ((from_date BETWEEN ? AND ?) OR (to_date BETWEEN ? AND ?) OR (? BETWEEN from_date AND to_date))`
         : `SELECT id, status FROM leaves WHERE user_id=? AND type='compoff' AND from_date=?`;
 
     const params =
-      type === "leave"
-        ? [req.user.id, from_date, leaveToDate, from_date, leaveToDate, from_date]
+      (type === "leave" || type === "wfh")
+        ? [req.user.id, type, from_date, leaveToDate, from_date, leaveToDate, from_date]
         : [req.user.id, from_date];
 
     const [existing] = await db.promise().query(checkQuery, params);
@@ -633,7 +633,7 @@ router.post("/", auth, async (req, res) => {
       if ((id && existing[0].id === id && existing[0].status === "pending") || existing[0].status === "rejected") {
         await db.promise().query(
           `UPDATE leaves SET from_date=?, to_date=?, days=?, remarks=?, half_day_type=?, comp_off_date=?, status='pending' WHERE id=?`,
-          [from_date, leaveToDate, finalDays, remarks || null, (type === "leave" || type === "compoff") ? (half_day_type || "full") : null, compOffDateValue, id]
+          [from_date, leaveToDate, finalDays, remarks || null, (type === "leave" || type === "compoff" || type === "wfh") ? (half_day_type || "full") : null, compOffDateValue, id]
         );
         message = `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully`;
       } else {
@@ -643,7 +643,7 @@ router.post("/", auth, async (req, res) => {
       await db.promise().query(
         `INSERT INTO leaves (user_id, from_date, to_date, days, type, remarks, half_day_type, status, created_at, comp_off_date)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), ?)`,
-        [req.user.id, from_date, leaveToDate, finalDays, type, remarks || null, (type === "leave" || type === "compoff") ? (half_day_type || "full") : null, compOffDateValue]
+        [req.user.id, from_date, leaveToDate, finalDays, type, remarks || null, (type === "leave" || type === "compoff" || type === "wfh") ? (half_day_type || "full") : null, compOffDateValue]
       );
       message = `${type.charAt(0).toUpperCase() + type.slice(1)} applied successfully`;
     }

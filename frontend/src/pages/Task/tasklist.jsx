@@ -522,6 +522,8 @@ export default function TaskList() {
                       onChange={(sel) => setEditFormData({ ...editFormData, assigned_to: resolveAssignee(sel) })}
                       placeholder="Select users…"
                       styles={selectStyles}
+                      menuPosition="fixed"
+                      menuPortalTarget={document.body}
                     />
                   </div>
                   <div className="ul-field">
@@ -655,6 +657,8 @@ export default function TaskList() {
                               onChange={(sel) => handleCreateTaskChange(idx, "assigned_to", resolveAssignee(sel))}
                               placeholder="Select users..."
                               styles={selectStyles}
+                              menuPosition="fixed"
+                              menuPortalTarget={document.body}
                             />
                           ) : (
                             <input
@@ -728,6 +732,7 @@ const selectStyles = {
     overflow: "hidden",
   }),
   menuList: (base) => ({ ...base, backgroundColor: "var(--bg-card)" }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
   option: (base, state) => ({
     ...base,
     backgroundColor: state.isSelected

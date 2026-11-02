@@ -20,7 +20,7 @@ const injectStyles = () => {
       height: 100vh;
       overflow: hidden;
       font-family: 'Poppins', sans-serif;
-      background: #F0F2F9;
+      background: var(--bg);
     }
 
     /* ── Left panel ── */
@@ -153,7 +153,7 @@ const injectStyles = () => {
       padding: clamp(28px, 4vw, 48px) clamp(20px, 4vw, 44px);
       overflow: hidden;
       position: relative;
-      background: #ffffff;
+      background: var(--bg-card);
     }
 
     /* ── Form Area (integrated, no card) ── */
@@ -182,51 +182,51 @@ const injectStyles = () => {
     }
     .reg-form-title {
       font-size: 24px; font-weight: 700;
-      color: #0D1030; margin: 0 0 8px; line-height: 1.2;
+      color: var(--t-base); margin: 0 0 8px; line-height: 1.2;
     }
-    .reg-form-subtitle { font-size: 14px; color: #828BAA; margin: 0; font-weight: 400; }
+    .reg-form-subtitle { font-size: 14px; color: var(--t-muted); margin: 0; font-weight: 400; }
 
     /* Error */
     .reg-error-box {
       display: flex; align-items: center; gap: 8px;
-      background: #FEF2F2; border: 1px solid #FECACA;
+      background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
       border-radius: 10px; padding: 11px 16px;
       font-size: 12.5px; font-weight: 600;
-      color: #DC2626; margin-bottom: 16px;
+      color: var(--danger); margin-bottom: 16px;
     }
 
     /* Form */
     .reg-form { display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 20px); }
     .reg-field-group { display: flex; flex-direction: column; gap: 7px; }
-    .reg-label { font-size: 14px; font-weight: 600; color: #374151; }
+    .reg-label { font-size: 14px; font-weight: 600; color: var(--t-base); }
 
     /* Input */
     .reg-input-wrap {
       display: flex; align-items: center;
-      border: 1.5px solid #E2E4ED; border-radius: 10px;
-      background: #F9FAFC; position: relative;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      background: var(--bg-muted); position: relative;
       transition: all 0.2s ease; height: 48px;
     }
     .reg-input-wrap:focus-within {
       border-color: #0F766E;
       box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
-      background: #fff;
+      background: var(--bg-card);
     }
-    .reg-input-icon { font-size: 14px; color: #A8AECA; padding: 0 14px; flex-shrink: 0; transition: color 0.2s; }
+    .reg-input-icon { font-size: 14px; color: var(--t-muted); padding: 0 14px; flex-shrink: 0; transition: color 0.2s; }
     .reg-input-wrap:focus-within .reg-input-icon { color: #0F766E; }
     .reg-input {
       flex: 1; border: none; outline: none;
-      font-size: 14px; font-weight: 500; color: #0D1030;
+      font-size: 14px; font-weight: 500; color: var(--t-base);
       background: transparent; padding: 0 12px 0 0;
       font-family: 'Poppins', sans-serif;
       min-width: 0; height: 100%;
     }
-    .reg-input::placeholder { color: #C0C6D8; font-weight: 400; }
+    .reg-input::placeholder { color: var(--t-light); font-weight: 400; }
 
     .reg-eye-btn {
       position: absolute; right: 12px;
       background: none; border: none; cursor: pointer;
-      padding: 4px 6px; color: #A8AECA; font-size: 14px;
+      padding: 4px 6px; color: var(--t-muted); font-size: 14px;
       display: flex; align-items: center;
       transition: color 0.15s;
     }
@@ -258,19 +258,19 @@ const injectStyles = () => {
       display: flex; align-items: center; gap: 14px;
       margin: clamp(24px, 2.5vw, 28px) 0 clamp(18px, 2vw, 22px);
     }
-    .reg-divider-line { flex: 1; height: 1px; background: #E8EAF2; }
+    .reg-divider-line { flex: 1; height: 1px; background: var(--border); }
     .reg-divider-text {
-      font-size: 12px; color: #B8BDD4; font-weight: 600;
+      font-size: 12px; color: var(--t-light); font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.1em;
     }
 
     /* Login link */
-    .reg-login-text { text-align: center; font-size: 14px; color: #828BAA; margin: 0; }
+    .reg-login-text { text-align: center; font-size: 14px; color: var(--t-muted); margin: 0; }
     .reg-login-link { color: #0F766E; font-weight: 600; text-decoration: none; transition: color 0.15s; }
     .reg-login-link:hover { color: var(--primary-dark); text-decoration: underline; }
 
     .reg-right-footer {
-      margin-top: 32px; font-size: 12px; color: #A8AECA;
+      margin-top: 32px; font-size: 12px; color: var(--t-muted);
       text-align: center; font-weight: 400;
     }
 

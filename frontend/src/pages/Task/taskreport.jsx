@@ -260,7 +260,7 @@ export default function TaskReport() {
                   >
                     <div className="tr-project-header-left">
                       <i className={`bi bi-chevron-right tr-chevron ${isExpanded ? "rotated" : ""}`}></i>
-                      <span className="tr-project-name">{group.project_name}</span>
+                      <span className="tr-project-name text-truncate-hover" title={group.project_name}>{group.project_name}</span>
                       <span className="tr-project-count">{group.entries.length} entries</span>
                     </div>
                     <div className="tr-project-header-right">
@@ -293,7 +293,7 @@ export default function TaskReport() {
                                   {formatDate(entry.date)}
                                 </td>
                                 <td className="tr-task-cell" title={entry.module_name}>
-                                  <span className="tr-module-pill">{entry.module_name}</span>
+                                  <span className="tr-module-pill text-truncate-hover" title={entry.module_name}>{entry.module_name}</span>
                                 </td>
                                 <td className="tr-desc-cell" title={entry.work_description}>
                                   {entry.work_description}
@@ -455,7 +455,7 @@ const styles = `
     transition: transform 0.2s ease;
   }
   .tr-chevron.rotated { transform: rotate(90deg); }
-  .tr-project-name { font-size: 14px; font-weight: 700; color: var(--t-base); }
+  .tr-project-name { font-size: 14px; font-weight: 700; color: var(--t-base); max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tr-project-count {
     font-size: 11px; font-weight: 600; color: var(--t-muted);
     background: var(--bg-card); box-shadow: var(--shadow-sm);

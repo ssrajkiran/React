@@ -172,19 +172,6 @@ export default function Topbar({
     <header className={`app-topbar ${isScrolled ? "is-scrolled" : ""}`}>
       {/* Left side: Collapse toggle + Status & Page Pills */}
       <div className="topbar-left">
-        {/* Desktop Collapse / Extend toggle button */}
-        <button
-          className="topbar-circle-btn topbar-collapse-desktop"
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          onClick={onToggleCollapse}
-        >
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.8">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
-          </svg>
-        </button>
-
         {/* Mobile Hamburger Drawer button */}
         <button
           className={`topbar-hamburger topbar-hamburger-mobile ${sidebarOpen ? "is-open" : ""}`}

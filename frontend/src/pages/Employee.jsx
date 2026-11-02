@@ -25,8 +25,8 @@ export default function Employee() {
 
     const payload = {
       from_date: from,
-      to_date: type === "leave" ? to : from,
-      days: type === "leave" ? (halfDay ? 0.5 : days) : 1,
+      to_date: (type === "leave" || type === "wfh") ? to : from,
+      days: (type === "leave" || type === "wfh") ? (halfDay ? 0.5 : days) : 1,
       type,
       remarks,
       comp_off_date: type === "compoff" ? compOffDate : null
@@ -60,6 +60,7 @@ export default function Employee() {
 
           <select value={type} onChange={e => { setType(e.target.value); setHalfDay(false); }} style={input}>
             <option value="leave">Leave</option>
+            <option value="wfh">Work From Home (WH)</option>
             <option value="compoff">Comp Off</option>
           </select> 
           <div style={gap}></div>
@@ -78,16 +79,16 @@ export default function Employee() {
                 </div>
                 <div>
                   <label>To</label>
-                  <input value={type === "leave" ? to : from} readOnly style={input} />
+                  <input value={(type === "leave" || type === "wfh") ? to : from} readOnly style={input} />
                 </div>
                 <div>
                   <label>Days</label>
-                  <input value={type === "leave" ? (halfDay ? 0.5 : days) : 1} readOnly style={input} />
+                  <input value={(type === "leave" || type === "wfh") ? (halfDay ? 0.5 : days) : 1} readOnly style={input} />
                 </div>
               </div>
 
-              {/* Half Day only for Leave + 1 Day */}
-              {type === "leave" && days === 1 && (
+              {/* Half Day for Leave or WFH (1 Day) */}
+              {(type === "leave" || type === "wfh") && days === 1 && (
                 <label style={{ display: "block", marginTop: 10 }}>
                   <input type="checkbox" checked={halfDay} onChange={e => setHalfDay(e.target.checked)} /> Half Day
                 </label>
@@ -140,7 +141,7 @@ export default function Employee() {
                   <td style={td}>{h.days}</td>
                   <td style={td}>{h.type}</td>
                   <td style={td}>{h.comp_off_date || "-"}</td>
-                  <td style={{ ...td, color: h.status === "approved" ? "green" : h.status === "rejected" ? "red" : "orange" }}>
+                  <td style={{ ...td, color: h.status === "approved" ? "var(--success)" : h.status === "rejected" ? "var(--danger)" : "var(--warning)" }}>
                     {h.status}
                   </td>
                 </tr>
@@ -157,14 +158,14 @@ export default function Employee() {
 /* STYLES */
 const container = { minHeight: "100vh", background: "var(--bg)" };
 const gap = { minHeight: "5vh" };
-const header = { background: "#1f2937", color: "#fff", padding: 15, display: "flex", justifyContent: "space-between" };
+const header = { background: "var(--bg-card)", color: "var(--t-base)", padding: 15, display: "flex", justifyContent: "space-between" };
 const main = { display: "flex", gap: 20, padding: 20 };
 const card = { flex: 1, background: "var(--bg-card)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20)" };
 const grid = { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 };
 const input = { width: "100%", padding: 10, marginTop: 5, border: "none", background: "var(--bg-muted)", borderRadius: "var(--radius)", outline: "none" };
 const textarea = { width: "100%", height: 80, marginTop: 15, border: "none", background: "var(--bg-muted)", borderRadius: "var(--radius)", outline: "none" };
 const btn = { marginTop: 15, width: "100%", padding: 10, background: "var(--primary)", color: "var(--on-primary)", border: "none" };
-const logout = { background: "#dc2626", color: "#fff", border: "none", padding: "5px 10px" };
+const logout = { background: "var(--danger)", color: "#fff", border: "none", padding: "5px 10px" };
 
 /* Table Styles */
 const table = { width: "100%", borderCollapse: "collapse", marginTop: 15, fontFamily: "Arial, sans-serif", fontSize: 14 };

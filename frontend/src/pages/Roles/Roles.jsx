@@ -672,14 +672,13 @@ const styles = `
     z-index: 1000; display: flex; align-items: center; justify-content: center;
     animation: sr-fade-in 0.15s ease; padding: 16px;
   }
-  .ul-modal {
+  .ul-modal-sm {
     background: var(--bg-card); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
     padding: 28px;
     animation: ul-modal-center-in 0.2s ease;
     text-align: center;
   }
-  .ul-modal-lg { text-align: left; overflow-y: auto; }
 
   @keyframes ul-modal-center-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 
@@ -755,13 +754,13 @@ const styles = `
   .rl-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
   .rl-toggle-track {
     display: block; width: 34px; height: 18px; border-radius: 20px;
-    background: #d1d5db; transition: background 0.2s;
+    background: var(--border); transition: background 0.2s;
     position: relative;
   }
   .rl-toggle-track::after {
     content: ""; position: absolute; top: 2px; left: 2px;
     width: 14px; height: 14px; border-radius: 50%;
-    background: #fff; transition: transform 0.2s;
+    background: var(--bg-card); transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
   .rl-toggle input:checked + .rl-toggle-track { background: var(--primary); }

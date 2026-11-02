@@ -307,13 +307,15 @@ function getLeaveOnDate(userId, dateStr, cb) {
 router.post("/", verifyToken, (req, res) => {
   const { task, date, start_time, end_time, man_hrs, created_by, work_description, entry_type, project } = req.body;
   const isPermission = entry_type === "permission";
+  const isMeeting = entry_type === "meeting";
+  const isInternal = isPermission || isMeeting;
   const freezedName = parseFreezedValue(task);
   const isVirtualFreezed = freezedName && String(task).startsWith(FREEZED_PREFIX);
 
   if (!date || !created_by) {
     return res.status(400).json({ message: "Date and user are required" });
   }
-  if (!isPermission && !task) {
+  if (!isInternal && !task) {
     return res.status(400).json({ message: "Task is required for project entries" });
   }
   if (isVirtualFreezed && !project) {
@@ -363,7 +365,7 @@ router.post("/", verifyToken, (req, res) => {
   const displayDate = `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
 
   // For permission entries and virtual freezed modules, skip task validation
-  if (isPermission || isVirtualFreezed) {
+  if (isInternal || isVirtualFreezed) {
     proceedAfterValidation();
   } else {
     // Validate that the task is assigned to the target user.
@@ -463,8 +465,8 @@ router.post("/", verifyToken, (req, res) => {
         }
 
         function insertTimesheet() {
-          const taskValue = isPermission ? null : isVirtualFreezed ? fvValue(freezedName) : task;
-          const projectValue = isPermission ? null : (project || null);
+          const taskValue = isInternal ? null : isVirtualFreezed ? fvValue(freezedName) : task;
+          const projectValue = isInternal ? null : (project || null);
           const insertSql = "INSERT INTO timesheet (task, project_id, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
           db.query(insertSql, [taskValue, projectValue, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, work_description || null, created_by], (err, result) => {

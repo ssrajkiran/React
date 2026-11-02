@@ -23,12 +23,13 @@ export default function Login(){
   display:"flex",
   justifyContent:"center",
   alignItems:"center",
-  background:"#f2f4f8"
+  background:"var(--bg)"
  }}>
 
  <div style={{
   width:350,
-  background:"#fff",
+  background:"var(--bg-card)",
+  color:"var(--t-base)",
   padding:30,
   borderRadius:10,
   boxShadow:"0 0 10px rgba(0,0,0,.1)"
@@ -68,7 +69,9 @@ const input={
  padding:10,
  marginTop:15,
  borderRadius:5,
- border:"1px solid #ccc",
+ border:"1px solid var(--border)",
+ background:"var(--bg-card)",
+ color:"var(--t-base)",
  outline:"none"
 };
 
@@ -76,8 +79,8 @@ const btn={
  width:"100%",
  marginTop:20,
  padding:10,
-    background:"#0D9488",
- color:"#fff",
+    background:"var(--primary)",
+ color:"var(--on-primary)",
  border:"none",
  borderRadius:5,
  cursor:"pointer"

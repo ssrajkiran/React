@@ -16,7 +16,7 @@ const css = `
     max-height: 100vh;
     overflow: hidden;
     font-family: 'Poppins', sans-serif;
-    background: #F0F2F9;
+    background: var(--bg);
   }
 
   /* ═══ LEFT PANEL ═══ */
@@ -207,7 +207,7 @@ const css = `
     align-items: center; justify-content: center;
     padding: 40px 48px;
     position: relative;
-    background: #ffffff;
+    background: var(--bg-card);
   }
 
   .vt-login-wrap {
@@ -226,10 +226,10 @@ const css = `
   }
   .vt-login-title {
     font-size: 24px; font-weight: 700;
-    color: #0F1029; margin: 0 0 8px; line-height: 1.2;
+    color: var(--t-base); margin: 0 0 8px; line-height: 1.2;
   }
   .vt-login-sub {
-    font-size: 14px; color: #8B92B3; margin: 0; font-weight: 400;
+    font-size: 14px; color: var(--t-muted); margin: 0; font-weight: 400;
   }
 
   .vt-form {
@@ -238,7 +238,7 @@ const css = `
   }
   .vt-field { display: flex; flex-direction: column; gap: 7px; }
   .vt-lrow { display: flex; justify-content: space-between; align-items: center; }
-  .vt-label { font-size: 14px; font-weight: 600; color: #374151; }
+  .vt-label { font-size: 14px; font-weight: 600; color: var(--t-base); }
   .vt-forgot {
     font-size: 12px; color: #0F766E; font-weight: 600;
     cursor: pointer; transition: color 0.15s;
@@ -247,36 +247,36 @@ const css = `
 
   .vt-iw {
     display: flex; align-items: center;
-    border: 1.5px solid #E2E4ED;
+    border: 1.5px solid var(--border);
     border-radius: 10px;
-    background: #F9FAFC;
+    background: var(--bg-muted);
     transition: all 0.2s ease;
     position: relative;
   }
   .vt-iw:focus-within {
     border-color: #0F766E;
     box-shadow: 0 0 0 3px rgba(13,148,136,0.08);
-    background: #fff;
+    background: var(--bg-card);
   }
   .vt-iw .vt-icon {
-    font-size: 15px; color: #A8AECA;
+    font-size: 15px; color: var(--t-muted);
     padding: 0 14px; flex-shrink: 0;
     transition: color 0.2s;
   }
   .vt-iw:focus-within .vt-icon { color: #0F766E; }
   .vt-iw input {
     flex: 1; border: none; outline: none;
-    font-size: 14px; font-weight: 500; color: #0F1029;
+    font-size: 14px; font-weight: 500; color: var(--t-base);
     background: transparent;
     padding: 14px 14px 14px 0;
     font-family: 'Poppins', sans-serif; width: 100%;
   }
-  .vt-iw input::placeholder { color: #C0C6D8; font-weight: 400; }
+  .vt-iw input::placeholder { color: var(--t-light); font-weight: 400; }
 
   .vt-eye {
     position: absolute; right: 12px;
     background: none; border: none; cursor: pointer;
-    padding: 4px 6px; color: #A8AECA; font-size: 15px;
+    padding: 4px 6px; color: var(--t-muted); font-size: 15px;
     display: flex; align-items: center;
     transition: color 0.15s;
   }
@@ -307,13 +307,13 @@ const css = `
     display: flex; align-items: center; gap: 14px;
     margin: 24px 0 20px;
   }
-  .vt-div-line { flex: 1; height: 1px; background: #E8EAF2; }
+  .vt-div-line { flex: 1; height: 1px; background: var(--border); }
   .vt-div-txt {
-    font-size: 12px; color: #B8BDD4; font-weight: 600;
+    font-size: 12px; color: var(--t-light); font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.1em;
   }
 
-  .vt-reg { text-align: center; font-size: 14px; color: #8B92B3; margin: 0; }
+  .vt-reg { text-align: center; font-size: 14px; color: var(--t-muted); margin: 0; }
   .vt-reg a {
     color: #0F766E; font-weight: 600; text-decoration: none;
     transition: color 0.15s;
@@ -322,7 +322,7 @@ const css = `
 
   .vt-foot {
     margin-top: 32px;
-    font-size: 12px; color: #A8AECA; text-align: center;
+    font-size: 12px; color: var(--t-muted); text-align: center;
   }
 
   /* ═══ RESPONSIVE ═══ */
@@ -641,13 +641,13 @@ export default function Login() {
               onClick={openIntercomModal}
               style={{
                 width: "100%", marginTop: 16, padding: "12px 20px",
-                background: "#fff", border: "1.5px solid #E2E4ED", borderRadius: 10,
+                background: "var(--bg-card)", border: "1.5px solid var(--border)", borderRadius: 10,
                 fontSize: 14, fontWeight: 600, color: "#0F766E", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 fontFamily: "'Poppins', sans-serif", transition: "all 0.2s",
               }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#0F766E"; e.currentTarget.style.background = "#F0FDFA"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E2E4ED"; e.currentTarget.style.background = "#fff"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--bg-card)"; }}
             >
               <i className="bi bi-telephone" /> Intercom Directory
             </button>
@@ -673,15 +673,15 @@ export default function Login() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#fff", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-              width: "80vw", height: "80vh", maxHeight: "80vh", display: "flex",
+              background: "var(--bg-card)", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              width: "min(860px, calc(100vw - 32px))", maxHeight: "calc(100vh - 32px)", display: "flex",
               flexDirection: "column", overflow: "hidden", animation: "ic-modal-in 0.2s ease",
             }}
           >
             {/* Header */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "20px 24px 16px", borderBottom: "1px solid #E8ECF1",
+              padding: "20px 24px 16px", borderBottom: "1px solid var(--border)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{
@@ -692,10 +692,10 @@ export default function Login() {
                   <i className="bi bi-telephone" />
                 </div>
                 <div>
-                  <h6 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0F1029" }}>
+                  <h6 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--t-base)" }}>
                     Intercom Directory
                   </h6>
-                  <p style={{ margin: 0, fontSize: 12, color: "#8B92B3" }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--t-muted)" }}>
                     Search by name, intercom number or department
                   </p>
                 </div>
@@ -704,9 +704,9 @@ export default function Login() {
                 onClick={() => setShowIntercom(false)}
                 title="Close"
                 style={{
-                  width: 32, height: 32, borderRadius: 8, border: "1px solid #E8ECF1",
+                  width: 32, height: 32, borderRadius: 8, border: "1px solid var(--border)",
                   background: "transparent", display: "flex", alignItems: "center",
-                  justifyContent: "center", cursor: "pointer", color: "#8B92B3",
+                  justifyContent: "center", cursor: "pointer", color: "var(--t-muted)",
                   fontSize: 14, transition: "all 0.15s",
                 }}
               >
@@ -718,10 +718,10 @@ export default function Login() {
             <div style={{ padding: "16px 24px 12px" }}>
               <div style={{
                 display: "flex", alignItems: "center",
-                border: "1.5px solid #E2E4ED", borderRadius: 10,
-                background: "#F9FAFC", transition: "all 0.2s",
+                border: "1.5px solid var(--border)", borderRadius: 10,
+                background: "var(--bg-muted)", transition: "all 0.2s",
               }}>
-                <i className="bi bi-search" style={{ fontSize: 15, color: "#A8AECA", padding: "0 14px" }} />
+                <i className="bi bi-search" style={{ fontSize: 15, color: "var(--t-muted)", padding: "0 14px" }} />
                 <input
                   autoFocus
                   type="text"
@@ -730,7 +730,7 @@ export default function Login() {
                   onChange={(e) => searchIntercom(e.target.value)}
                   style={{
                     flex: 1, border: "none", outline: "none", fontSize: 14,
-                    fontWeight: 500, color: "#0F1029", background: "transparent",
+                    fontWeight: 500, color: "var(--t-base)", background: "transparent",
                     padding: "13px 14px 13px 0", fontFamily: "'Poppins', sans-serif",
                   }}
                 />
@@ -740,7 +740,7 @@ export default function Login() {
                     title="Clear search"
                     style={{
                       background: "none", border: "none", cursor: "pointer",
-                      color: "#A8AECA", padding: "0 14px", fontSize: 16,
+                      color: "var(--t-muted)", padding: "0 14px", fontSize: 16,
                     }}
                   >
                     <i className="bi bi-x" />
@@ -752,15 +752,15 @@ export default function Login() {
             {/* Results */}
             <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 20px" }}>
               {intercomLoading && (
-                <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
+                <div style={{ textAlign: "center", padding: 40, color: "var(--t-muted)", fontSize: 13 }}>
                   <i className="bi bi-arrow-repeat" style={{ animation: "ic-spin 1s linear infinite", display: "inline-block", marginRight: 8 }} />
                   Searching...
                 </div>
               )}
 
               {!intercomLoading && intercomSearch && intercomResults.length === 0 && (
-                <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
-                  <i className="bi bi-search" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "#C0C6D8" }} />
+                <div style={{ textAlign: "center", padding: 40, color: "var(--t-muted)", fontSize: 13 }}>
+                  <i className="bi bi-search" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "var(--t-light)" }} />
                   No results found
                 </div>
               )}
@@ -768,13 +768,13 @@ export default function Login() {
               {!intercomLoading && !intercomSearch && !selectedDept && (
                 <div>
                   {intercomDepts.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 40, color: "#8B92B3", fontSize: 13 }}>
-                      <i className="bi bi-telephone" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "#C0C6D8" }} />
+                    <div style={{ textAlign: "center", padding: 40, color: "var(--t-muted)", fontSize: 13 }}>
+                      <i className="bi bi-telephone" style={{ fontSize: 28, display: "block", marginBottom: 10, color: "var(--t-light)" }} />
                       No intercom data available
                     </div>
                   ) : (
                     <>
-                      <div style={{ fontSize: 12, color: "#8B92B3", marginBottom: 12, fontWeight: 600 }}>
+                      <div style={{ fontSize: 12, color: "var(--t-muted)", marginBottom: 12, fontWeight: 600 }}>
                         {intercomAll.length} entries across {intercomDepts.length} departments
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
@@ -783,11 +783,11 @@ export default function Login() {
                             key={dept}
                             onClick={() => setSelectedDept(dept)}
                             style={{
-                              border: "1.5px solid #E2E4ED", borderRadius: 12, padding: "16px 14px",
-                              cursor: "pointer", transition: "all 0.2s", background: "#fff",
+                              border: "1.5px solid var(--border)", borderRadius: 12, padding: "16px 14px",
+                              cursor: "pointer", transition: "all 0.2s", background: "var(--bg-card)",
                             }}
                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#0F766E"; e.currentTarget.style.background = "#F0FDFA"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(13,148,136,0.1)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E2E4ED"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--bg-card)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
                           >
                             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                               <div style={{
@@ -797,7 +797,7 @@ export default function Login() {
                               }}>
                                 <i className="bi bi-building" />
                               </div>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: "#0F1029", lineHeight: 1.2, wordBreak: "break-word" }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t-base)", lineHeight: 1.2, wordBreak: "break-word" }}>
                                 {dept}
                               </div>
                             </div>
@@ -822,39 +822,39 @@ export default function Login() {
                       onClick={() => setSelectedDept("")}
                       title="Back to departments"
                       style={{
-                        width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E2E4ED",
-                        background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                        width: 32, height: 32, borderRadius: 8, border: "1.5px solid var(--border)",
+                        background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer", color: "#0F766E", fontSize: 14, transition: "all 0.15s", flexShrink: 0,
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "#F0FDFA"; e.currentTarget.style.borderColor = "#0F766E"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#E2E4ED"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-card)"; e.currentTarget.style.borderColor = "var(--border)"; }}
                     >
                       <i className="bi bi-arrow-left" />
                     </button>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F1029" }}>{selectedDept}</div>
-                      <div style={{ fontSize: 11, color: "#8B92B3" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t-base)" }}>{selectedDept}</div>
+                      <div style={{ fontSize: 11, color: "var(--t-muted)" }}>
                         {intercomDeptMap[selectedDept]?.length || 0} intercom{intercomDeptMap[selectedDept]?.length !== 1 ? "s" : ""}
                       </div>
                     </div>
                   </div>
-                  <div style={{ border: "1px solid #E8ECF1", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                       <thead>
-                        <tr style={{ borderBottom: "2px solid #E8ECF1" }}>
-                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Name</th>
-                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Intercom</th>
+                        <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "var(--bg-muted)" }}>Name</th>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "var(--bg-muted)" }}>Intercom</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(intercomDeptMap[selectedDept] || []).map((row, idx) => (
                           <tr
                             key={row.id || idx}
-                            style={{ borderBottom: idx < (intercomDeptMap[selectedDept]?.length || 0) - 1 ? "1px solid #F1F5F9" : "none" }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "#F8FAFC"}
+                            style={{ borderBottom: idx < (intercomDeptMap[selectedDept]?.length || 0) - 1 ? "1px solid var(--border-soft)" : "none" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"}
                             onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                           >
-                            <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0F1029" }}>
+                            <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--t-base)" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                 <div style={{
                                   width: 30, height: 30, borderRadius: 8,
@@ -886,27 +886,27 @@ export default function Login() {
 
               {!intercomLoading && intercomSearch && intercomResults.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12, color: "#8B92B3", marginBottom: 10, fontWeight: 600 }}>
+                  <div style={{ fontSize: 12, color: "var(--t-muted)", marginBottom: 10, fontWeight: 600 }}>
                     {intercomResults.length} result{intercomResults.length !== 1 ? "s" : ""} found
                   </div>
-                  <div style={{ border: "1px solid #E8ECF1", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                       <thead>
-                        <tr style={{ borderBottom: "2px solid #E8ECF1" }}>
-                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Name</th>
-                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Intercom</th>
-                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "#8B92B3", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "#F8FAFC" }}>Department</th>
+                        <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "var(--bg-muted)" }}>Name</th>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "var(--bg-muted)" }}>Intercom</th>
+                          <th style={{ padding: "10px 14px", fontSize: 10, fontWeight: 700, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", background: "var(--bg-muted)" }}>Department</th>
                         </tr>
                       </thead>
                       <tbody>
                         {intercomResults.slice(0, 50).map((row, idx) => (
                           <tr
                             key={row.id || idx}
-                            style={{ borderBottom: idx < Math.min(intercomResults.length, 50) - 1 ? "1px solid #F1F5F9" : "none" }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "#F8FAFC"}
+                            style={{ borderBottom: idx < Math.min(intercomResults.length, 50) - 1 ? "1px solid var(--border-soft)" : "none" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"}
                             onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                           >
-                            <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0F1029" }}>
+                            <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--t-base)" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                 <div style={{
                                   width: 30, height: 30, borderRadius: 8,
@@ -928,7 +928,7 @@ export default function Login() {
                                 {row.intercom}
                               </span>
                             </td>
-                            <td style={{ padding: "10px 14px", fontSize: 12, color: "#8B92B3" }}>
+                            <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--t-muted)" }}>
                               {row.department}
                             </td>
                           </tr>

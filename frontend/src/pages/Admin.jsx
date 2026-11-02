@@ -55,7 +55,7 @@ export default function AdminDashboard() {
         <td style={thTd}>{l.type}</td>
         <td style={thTd}>{l.comp_off_date || "-"}</td>
         <td style={thTd}>{l.remarks}</td>
-        <td style={{ ...thTd, color: l.status === "approved" ? "green" : l.status === "rejected" ? "red" : "orange", fontWeight: "bold" }}>{l.status}</td>
+        <td style={{ ...thTd, color: l.status === "approved" ? "var(--success)" : l.status === "rejected" ? "var(--danger)" : "var(--warning)", fontWeight: "bold" }}>{l.status}</td>
         <td style={thTd}>
           {l.status === "pending" && (
             <>
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
 
 /* Styles */
 const container = { minHeight: "100vh", background: "var(--bg)" };
-const header = { background: "#1f2937", color: "#fff", padding: 15, display: "flex", justifyContent: "space-between", alignItems: "center" };
+const header = { background: "var(--bg-card)", color: "var(--t-base)", padding: 15, display: "flex", justifyContent: "space-between", alignItems: "center" };
 const main = { padding: 20 };
 const card = { background: "var(--bg-card)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20)" };
 
@@ -105,7 +105,7 @@ const rowOdd = { background: "var(--bg-card)" };
 const approveBtn = {
   padding: "5px 10px",
   marginRight: 5,
-  background: "#16a34a",
+  background: "var(--success)",
   color: "#fff",
   border: "none",
   borderRadius: 5,
@@ -114,11 +114,11 @@ const approveBtn = {
 
 const rejectBtn = {
   padding: "5px 10px",
-  background: "#dc2626",
+  background: "var(--danger)",
   color: "#fff",
   border: "none",
   borderRadius: 5,
   cursor: "pointer"
 };
 
-const logout = { background: "#dc2626", color: "#fff", border: "none", padding: "5px 10px", borderRadius: 5, cursor: "pointer" };
+const logout = { background: "var(--danger)", color: "#fff", border: "none", padding: "5px 10px", borderRadius: 5, cursor: "pointer" };

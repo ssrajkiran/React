@@ -109,6 +109,19 @@ export const luminance = (hex) => {
 // keeps white while it is still readable (≥ 3:1), otherwise picks whichever of
 // white / near-black gives the better contrast. Keeps existing light-theme
 // design intact while making dark mode and light/pastel picks readable.
+export const contrastRatio = (hex1, hex2) => {
+  const L1 = luminance(hex1);
+  const L2 = luminance(hex2);
+  const brighter = Math.max(L1, L2);
+  const darker = Math.min(L1, L2);
+  return (brighter + 0.05) / (darker + 0.05);
+};
+
+export const isContrastAccessible = (fgHex, bgHex, isLargeOrBold = false) => {
+  const ratio = contrastRatio(fgHex, bgHex);
+  return ratio >= (isLargeOrBold ? 3.0 : 4.5);
+};
+
 export const onColorFor = (hex) => {
   const L = luminance(hex);
   const whiteContrast = 1.05 / (L + 0.05);

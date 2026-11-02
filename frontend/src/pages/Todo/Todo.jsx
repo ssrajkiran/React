@@ -603,7 +603,7 @@ export default function Todo() {
 // ─── styles ──────────────────────────────────────────────────────
 const styles = `
   .sr-toast {
-    position:fixed;top:20px;right:20px;z-index:999;
+    position:fixed;top:20px;right:20px;z-index:1100;
     display:flex;align-items:center;gap:10px;
     padding:12px 16px;border-radius:var(--radius-lg);
     font-size:13px;font-weight:600;font-family:var(--font);
@@ -726,7 +726,7 @@ const styles = `
   .cd-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);backdrop-filter:blur(8px);z-index:1000}
   .cd-dialog{
     position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    z-index:1001;width:80vw;height:80vh;max-height:80vh;
+    z-index:1001;width:min(560px,calc(100vw - 32px));height:auto;max-height:calc(100vh - 32px);
     background:var(--bg-card);
     border-radius:var(--radius-lg);box-shadow:var(--shadow-card),0 24px 60px -30px rgba(15,23,42,.20);
     animation:cd-center-in .2s ease;overflow:hidden;display:flex;flex-direction:column;
@@ -757,8 +757,8 @@ const styles = `
 
   .cfg-toggle-wrap{position:relative;display:inline-block;cursor:pointer;padding-top:2px}
   .cfg-toggle-wrap input{position:absolute;opacity:0;width:0;height:0}
-  .cfg-toggle-track{display:block;width:40px;height:22px;border-radius:20px;background:#d1d5db;transition:background .2s;position:relative}
-  .cfg-toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+  .cfg-toggle-track{display:block;width:40px;height:22px;border-radius:20px;background:var(--border);transition:background .2s;position:relative}
+  .cfg-toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--bg-card);transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
   .cfg-toggle-wrap input:checked+.cfg-toggle-track{background:var(--primary)}
   .cfg-toggle-wrap input:checked+.cfg-toggle-track .cfg-toggle-thumb{transform:translateX(18px)}
 

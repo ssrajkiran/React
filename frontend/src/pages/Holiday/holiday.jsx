@@ -483,8 +483,7 @@ const styles = `
 
   /* ── Overlay / Modal (size comes from the global standard in App.css) ── */
   .ul-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.45); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; animation: sr-fade-in 0.15s ease; padding: 16px; }
-  .ul-modal { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); padding: 28px; animation: ul-modal-center-in 0.2s ease; text-align: center; }
-  .ul-modal-sm { text-align: left; }
+  .ul-modal-sm { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); padding: 28px; animation: ul-modal-center-in 0.2s ease; text-align: center; }
   @keyframes ul-modal-center-in { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
   .ul-modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
   .ul-modal-close { background: none; border: none; cursor: pointer; color: var(--t-muted); font-size: 16px; padding: 4px; border-radius: var(--radius); transition: color 0.15s, background 0.15s; display: flex; align-items: center; flex-shrink: 0; }

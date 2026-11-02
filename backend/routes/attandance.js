@@ -155,7 +155,17 @@ router.get("/", verifyToken, async (req, res) => {
             (new Date(leaveRecord.to_date) - new Date(leaveRecord.from_date)) /
               (1000 * 60 * 60 * 24) + 1;
 
-          if (leaveRecord.type === "compoff") {
+          if (leaveRecord.type === "wfh" || leaveRecord.type === "work_from_home") {
+            row[day] = {
+              status:          "WH",
+              from_date:       leaveRecord.from_date,
+              to_date:         leaveRecord.to_date,
+              days,
+              half_day_type:   leaveRecord.half_day_type || "full",
+              remarks:         leaveRecord.remarks || "",
+              approval_status: "approved",
+            };
+          } else if (leaveRecord.type === "compoff") {
             row[day] = {
               status:          "compoff",          // → frontend shows CO
               from_date:       leaveRecord.from_date,
@@ -310,7 +320,7 @@ router.get("/person-summary", verifyToken, async (req, res) => {
           const isSingle = fromStr === toStr;
           records.push({
             month: m,
-            type: l.type === "compoff" ? "compoff" : "leave",
+            type: l.type === "compoff" ? "compoff" : (l.type === "wfh" || l.type === "work_from_home" ? "wfh" : "leave"),
             from_date: fromStr,
             to_date: toStr,
             day: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
@@ -381,6 +391,7 @@ router.get("/person-summary", verifyToken, async (req, res) => {
       const bucket = monthly[r.month - 1];
       bucket.records.push(r);
       if (r.type === "leave")     bucket.leave_days += r.days || 0;
+      else if (r.type === "wfh") bucket.wfh_days = (bucket.wfh_days || 0) + (r.days || 0);
       else if (r.type === "compoff") bucket.compoff_days += r.days || 0;
       else if (r.type === "permission") bucket.permission_hours += r.hours || 0;
       else if (r.type === "present") bucket.present_days += 1;
