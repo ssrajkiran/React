@@ -2,11 +2,12 @@
 import AppLayout from "../components/layout/AppLayout";
 import api from "../api";
 import { Link } from "react-router-dom";
+import SharedDatePicker from "../components/SharedDatePicker";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
 
-  const [user, setUser] = useState({ name: "", email: "" });
+  const [user, setUser] = useState({ name: "", email: "", dob: "" });
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -28,7 +29,7 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
       try {
         const res = await api.get("/auth/profile");
-        setUser({ name: res.data?.name || "", email: res.data?.email || "" });
+        setUser({ name: res.data?.name || "", email: res.data?.email || "", dob: res.data?.dob || "" });
       } catch {
         showToast("Failed to load profile.", "error");
       }
@@ -43,7 +44,7 @@ export default function ProfilePage() {
     if (!name || !email) { showToast("Name and email are required.", "error"); return; }
     setLoading(true);
     try {
-      await api.put("/auth/profile", { name, email });
+      await api.put("/auth/profile", { name, email, dob: user.dob });
       showToast("Profile updated successfully!", "success");
     } catch (err) {
       showToast(err.response?.data?.message || "Error updating profile.", "error");
@@ -154,6 +155,20 @@ export default function ProfilePage() {
                   <p className="cu-form-title">My Profile</p>
                   <p className="cu-form-sub">Update your name and email address.</p>
                 </div>
+              
+                {/* Date of Birth */}
+                <div className="cu-field-group">
+                  <label className="sr-label">Date of Birth</label>
+                  <div className="sr-input-wrap">
+                    <i className="bi bi-calendar3 sr-input-icon" />
+                    <SharedDatePicker
+                      className="sr-input cu-input"
+                      value={user.dob}
+                      onChange={(val) => setUser((p) => ({ ...p, dob: val }))}
+                    />
+                  </div>
+                </div>
+
               </div>
 
               <div className="cu-divider" />

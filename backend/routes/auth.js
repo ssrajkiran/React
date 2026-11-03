@@ -136,7 +136,7 @@ const isAdmin = (req, res, next) => {
 =============================== */
 router.get("/profile", verifyToken, (req, res) => {
   db.query(
-    "SELECT id,name,email,role FROM users WHERE id=?",
+    "SELECT id, name, email, role, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE id=?",
     [req.user.id],
     (err, result) => {
       if (err) return res.sendStatus(500);
@@ -190,7 +190,14 @@ router.get("/permissions", verifyToken, (req, res) => {
 router.get("/birthdays/today", verifyToken, (req, res) => {
   db.query(
     `SELECT id, name FROM users
-     WHERE dob IS NOT NULL AND MONTH(dob) = MONTH(CURDATE()) AND DAY(dob) = DAY(CURDATE())`,
+     WHERE dob IS NOT NULL AND (
+       (MONTH(dob) = MONTH(CURDATE()) AND DAY(dob) = DAY(CURDATE()))
+       OR (
+         MONTH(dob) = 2 AND DAY(dob) = 29
+         AND MONTH(CURDATE()) = 2 AND DAY(CURDATE()) = 28
+         AND NOT (YEAR(CURDATE()) % 4 = 0 AND (YEAR(CURDATE()) % 100 != 0 OR YEAR(CURDATE()) % 400 = 0))
+       )
+     )`,
     (err, rows) => {
       if (err) return res.status(500).json({ message: "Database query failed" });
       res.json({
@@ -318,7 +325,7 @@ router.post("/logout", (req, res) => {
 router.post("/register", (req, res) => {
   const { name, email, password, role, dob } = req.body;
   const hash = bcrypt.hashSync(password, 10);
-  const dobValue = dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : null;
+  const dobValue = normalizeDob(dob);
 
   db.query(
     "INSERT INTO users(name,email,password,plain_password,role,dob) VALUES(?,?,?,?,?,?)",
@@ -454,7 +461,7 @@ router.put("/:id", verifyToken, (req, res) => {
 
   if (dob !== undefined) {
     updates.push("dob=?");
-    params.push(dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : null);
+    params.push(normalizeDob(dob));
   }
 
   if (password) {

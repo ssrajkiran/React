@@ -24,21 +24,35 @@ function auth(req, res, next) {
 // ================= Birthday notifications (deduped per title per day) =================
 let birthdayCheckInFlight = null;
 
-function ensureBirthdayNotifications() {
+async function ensureBirthdayNotifications() {
   if (birthdayCheckInFlight) return birthdayCheckInFlight;
   birthdayCheckInFlight = (async () => {
     try {
+      // Runs every year on the user's birth month and day (including leap day on Feb 28 on non-leap years)
       const [birthdays] = await db.promise().query(
         `SELECT id, name FROM users
-         WHERE dob IS NOT NULL AND MONTH(dob) = MONTH(CURDATE()) AND DAY(dob) = DAY(CURDATE())`
+         WHERE dob IS NOT NULL AND (
+           (MONTH(dob) = MONTH(CURDATE()) AND DAY(dob) = DAY(CURDATE()))
+           OR (
+             MONTH(dob) = 2 AND DAY(dob) = 29
+             AND MONTH(CURDATE()) = 2 AND DAY(CURDATE()) = 28
+             AND NOT (YEAR(CURDATE()) % 4 = 0 AND (YEAR(CURDATE()) % 100 != 0 OR YEAR(CURDATE()) % 400 = 0))
+           )
+         )`
       );
       if (!birthdays.length) return;
 
+      // Deduped against notifications created TODAY, ensuring fresh notifications trigger every year
       const [seen] = await db.promise().query(
-        `SELECT title FROM notifications WHERE type='birthday' AND DATE(created_at) = CURDATE()`
+        `SELECT title, link FROM notifications WHERE type='birthday' AND DATE(created_at) = CURDATE()`
       );
       const seenTitles = new Set(seen.map((r) => r.title));
-      const pending = birthdays.filter((b) => !seenTitles.has(`Happy Birthday ${b.name}!`));
+      const seenLinks = new Set(seen.map((r) => r.link).filter(Boolean));
+      const pending = birthdays.filter((b) => {
+        const link = `/admin/users/${b.id}`;
+        const title = `Happy Birthday ${b.name}!`;
+        return !seenLinks.has(link) && !seenTitles.has(title);
+      });
       if (!pending.length) return;
 
       const [allUsers] = await db.promise().query("SELECT id FROM users");
@@ -49,7 +63,7 @@ function ensureBirthdayNotifications() {
           title: `Happy Birthday ${person.name}!`,
           message: `Wishing ${person.name} a very happy birthday today.`,
           type: "birthday",
-          link: null,
+          link: `/admin/users/${person.id}`,
         });
       }
     } catch (err) {
@@ -114,4 +128,5 @@ router.put("/:id/read", auth, async (req, res) => {
   }
 });
 
+router.ensureBirthdayNotifications = ensureBirthdayNotifications;
 module.exports = router;

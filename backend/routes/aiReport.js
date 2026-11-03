@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
-const { taskNameSql, taskStatusSql, projectJoinSql } = require("../utils/freezedModules");
+const { taskNameSql, taskStatusSql, projectJoinSql, projectNameSql } = require("../utils/freezedModules");
 
 // ==============================
 // VERIFY TOKEN MIDDLEWARE
@@ -85,7 +85,7 @@ router.post("/", verifyToken, (req, res) => {
       ts.task AS task_id,
       ${taskNameSql()} AS task_name,
       ${taskStatusSql()} AS task_status,
-      IFNULL(p.project_name, 'Permission') AS project_name,
+      ${projectNameSql()} AS project_name,
       u.name AS employee_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id

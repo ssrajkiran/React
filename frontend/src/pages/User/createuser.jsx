@@ -70,7 +70,8 @@ export default function CreateUser() {
         </div>
       )}
 
-      {/* ── PAGE HEADER ── */}
+      <div className="cu-page-wrap">
+        {/* ── PAGE HEADER ── */}
       <div className="sr-page-header">
         <div>
           <h5 className="sr-page-title">Create User</h5>
@@ -189,8 +190,7 @@ export default function CreateUser() {
                   className="sr-input cu-input"
                   value={form.dob}
                   onChange={(val) => handleChange({ target: { name: "dob", value: val } })}
-                  max={new Date().toISOString().slice(0, 10)}
-                />
+                  />
               </div>
             </div>
 
@@ -218,6 +218,7 @@ export default function CreateUser() {
             </button>
           </div>
         </form>
+      </div>
       </div>
     </AppLayout>
   );
@@ -262,12 +263,22 @@ const styles = `
   }
   .sr-input:focus { box-shadow: 0 0 0 3px var(--primary-ring); }
 
-  /* ── Form card ── */
+  /* ── Page wrap & form card modal width ── */
+  .cu-page-wrap {
+    width: 100%;
+    max-width: min(720px, calc(100vw - 32px));
+    margin: 0 auto;
+    padding-bottom: 32px;
+  }
   .cu-form-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20);
-    padding: 24px 28px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: min(720px, calc(100vw - 32px));
+    margin: 0 auto;
+    box-sizing: border-box;
   }
 
   /* ── Card heading ── */

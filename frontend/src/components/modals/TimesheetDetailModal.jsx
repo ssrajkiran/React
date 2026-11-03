@@ -58,81 +58,118 @@ export default function TimesheetDetailModal({ timesheetId, onClose, onNavigate 
           </div>
         )}
 
-        {!loading && data && (
-          <div className="ul-modal-body">
-            {/* Entry Details */}
-            <div style={{ marginBottom: 20 }}>
-              <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Entry Details</span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
-                {[
-                  { label: "Date", value: fmtDateLong(data.date) },
-                  { label: "Hours", value: fmtHrs(data.man_hrs) },
-                  data.start_time && { label: "Start Time", value: data.start_time?.substring(0,5) },
-                  data.end_time && { label: "End Time", value: data.end_time?.substring(0,5) },
-                ].filter(Boolean).map((item) => (
-                  <div key={item.label}>
-                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>{item.label}</span>
-                    <p style={{ margin: "2px 0 0", fontWeight: 600, fontSize: 13 }}>{item.value}</p>
+        {!loading && data && (() => {
+          const isMeeting =
+            data.entry_type === "meeting" ||
+            String(data.task || "").toUpperCase() === "MEETING" ||
+            String(data.project_name || "").toLowerCase() === "meeting" ||
+            String(data.module_name || "").toLowerCase() === "meeting" ||
+            String(data.work_description || "").toLowerCase().includes("meeting");
+
+          const isBreak = !isMeeting && (
+            data.entry_type === "break" ||
+            data.entry_type === "permission" ||
+            String(data.task || "").toUpperCase() === "BREAK" ||
+            String(data.project_name || "").toLowerCase() === "permission" ||
+            String(data.project_name || "").toLowerCase() === "break" ||
+            String(data.work_description || "").toLowerCase() === "permission" ||
+            String(data.work_description || "").toLowerCase() === "break"
+          );
+
+          const entryType = isMeeting ? "Meeting" : (isBreak ? "Break" : "Project");
+          const projectName = isMeeting ? "Meeting" : (isBreak ? "Break" : (data.project_name || "—"));
+          const moduleName = isMeeting ? (data.module_name || "Meeting") : (isBreak ? "Break" : (data.module_name || "—"));
+          const statusVal = isMeeting ? "Completed" : (isBreak ? "Break" : (data.module_status || "Pending"));
+
+          return (
+            <div className="ul-modal-body">
+              {/* Entry Details */}
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Entry Details</span>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
+                  {[
+                    { label: "Type", value: entryType },
+                    { label: "Date", value: fmtDateLong(data.date) },
+                    { label: "Hours", value: fmtHrs(data.man_hrs) },
+                    data.start_time && { label: "Start Time", value: data.start_time?.substring(0, 5) },
+                    data.end_time && { label: "End Time", value: data.end_time?.substring(0, 5) },
+                  ].filter(Boolean).map((item) => (
+                    <div key={item.label}>
+                      <span style={{ fontSize: 11, color: "var(--t-muted)" }}>{item.label}</span>
+                      <p style={{ margin: "2px 0 0", fontWeight: 600, fontSize: 13 }}>{item.value}</p>
+                    </div>
+                  ))}
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>
+                      {isMeeting ? "Meeting Notes / Description" : "Description"}
+                    </span>
+                    <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.work_description || (isMeeting ? "Meeting" : "No description provided")}</p>
                   </div>
-                ))}
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Description</span>
-                  <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.work_description || "No description provided"}</p>
                 </div>
               </div>
-            </div>
 
-            <div className="ul-modal-divider" />
+              <div className="ul-modal-divider" />
 
-            {/* Related Information */}
-            <div style={{ marginTop: 16 }}>
-              <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Related Information</span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
-                <div>
-                  <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Employee</span>
-                  <p
-                    style={{ margin: "2px 0 0", fontWeight: 600, fontSize: 13, color: "var(--primary)", cursor: "pointer" }}
-                    onClick={() => data.created_by && onNavigate?.("user", data.created_by)}
-                  >
-                    {data.employee_name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Email</span>
-                  <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.employee_email || "—"}</p>
-                </div>
-                <div>
-                  <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Project</span>
-                  <p
-                    style={{ margin: "2px 0 0", fontWeight: 600, fontSize: 13, color: "var(--primary)", cursor: "pointer" }}
-                    onClick={() => data.project_id && onNavigate?.("project", data.project_id)}
-                  >
-                    {data.project_name || "Permission"}
-                  </p>
-                </div>
-                <div>
-                  <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Module</span>
-                  <p
-                    style={{ margin: "2px 0 0", fontWeight: 600, fontSize: 13, color: "var(--primary)", cursor: "pointer" }}
-                    onClick={() => data.module_id && onNavigate?.("module", data.module_id)}
-                  >
-                    {data.module_name || "—"}
-                  </p>
-                </div>
-                {data.module_status && (
+              {/* Related Information */}
+              <div style={{ marginTop: 16 }}>
+                <span style={{ fontSize: 11, color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Related Information</span>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
                   <div>
-                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Module Status</span>
-                    <p style={{ margin: "2px 0 0" }}><StatusBadge status={data.module_status} /></p>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Employee</span>
+                    <p
+                      style={{ margin: "2px 0 0", fontWeight: 600, fontSize: 13, color: "var(--primary)", cursor: "pointer" }}
+                      onClick={() => data.created_by && onNavigate?.("user", data.created_by)}
+                    >
+                      {data.employee_name || "—"}
+                    </p>
                   </div>
-                )}
-                <div>
-                  <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Created At</span>
-                  <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.created_at ? fmtDateTime(data.created_at) : "—"}</p>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Email</span>
+                    <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.employee_email || "—"}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Project</span>
+                    <p
+                      style={{
+                        margin: "2px 0 0",
+                        fontWeight: 600,
+                        fontSize: 13,
+                        color: data.project_id ? "var(--primary)" : "inherit",
+                        cursor: data.project_id ? "pointer" : "default",
+                      }}
+                      onClick={() => data.project_id && onNavigate?.("project", data.project_id)}
+                    >
+                      {projectName}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Module</span>
+                    <p
+                      style={{
+                        margin: "2px 0 0",
+                        fontWeight: 600,
+                        fontSize: 13,
+                        color: data.module_id ? "var(--primary)" : "inherit",
+                        cursor: data.module_id ? "pointer" : "default",
+                      }}
+                      onClick={() => data.module_id && onNavigate?.("module", data.module_id)}
+                    >
+                      {moduleName}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Status</span>
+                    <p style={{ margin: "2px 0 0" }}><StatusBadge status={statusVal} /></p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--t-muted)" }}>Created At</span>
+                    <p style={{ margin: "2px 0 0", fontSize: 13 }}>{data.created_at ? fmtDateTime(data.created_at) : "—"}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Footer */}
         <div className="ul-modal-divider" />

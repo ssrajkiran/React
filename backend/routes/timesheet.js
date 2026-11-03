@@ -9,6 +9,8 @@ const {
   taskNameSql,
   taskStatusSql,
   projectJoinSql,
+  projectNameSql,
+  columnExists,
 } = require("../utils/freezedModules");
 
 // Helper: format "HH:MM:SS" or "HH:MM" to "9:00 AM" style
@@ -121,6 +123,7 @@ router.get("/admin", verifyToken, (req, res) => {
     SELECT 
       ts.id AS timesheet_id,
       ts.task AS task_id,
+      ts.entry_type AS entry_type,
       ts.date AS timesheet_date,
       ts.man_hrs,
       ts.start_time AS start_time,
@@ -134,7 +137,7 @@ router.get("/admin", verifyToken, (req, res) => {
       ${taskStatusSql()} AS task_status,
       t.created_by AS task_created_by,
       p.id AS project_id,
-      IFNULL(p.project_name, 'Permission') AS project_name,
+      ${projectNameSql()} AS project_name,
       u.name AS created_by_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
@@ -160,6 +163,7 @@ router.get("/employee", verifyToken, (req, res) => {
     SELECT 
       ts.id AS timesheet_id,
       ts.task AS task_id,
+      ts.entry_type AS entry_type,
       ts.date AS timesheet_date,
       ts.man_hrs,
       ts.start_time AS start_time,
@@ -173,7 +177,7 @@ router.get("/employee", verifyToken, (req, res) => {
       ${taskStatusSql()} AS task_status,
       t.created_by AS task_created_by,
       p.id AS project_id,
-      IFNULL(p.project_name, 'Permission') AS project_name
+      ${projectNameSql()} AS project_name
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id
     ${projectJoinSql()}
@@ -306,7 +310,8 @@ function getLeaveOnDate(userId, dateStr, cb) {
 
 router.post("/", verifyToken, (req, res) => {
   const { task, date, start_time, end_time, man_hrs, created_by, work_description, entry_type, project } = req.body;
-  const isPermission = entry_type === "permission";
+  const isPermission = entry_type === "permission" || entry_type === "break";
+  const isBreak = isPermission;
   const isMeeting = entry_type === "meeting";
   const isInternal = isPermission || isMeeting;
   const freezedName = parseFreezedValue(task);
@@ -465,17 +470,27 @@ router.post("/", verifyToken, (req, res) => {
         }
 
         function insertTimesheet() {
-          const taskValue = isInternal ? null : isVirtualFreezed ? fvValue(freezedName) : task;
+          const taskValue = isMeeting ? "MEETING" : isBreak ? "BREAK" : isVirtualFreezed ? fvValue(freezedName) : task;
           const projectValue = isInternal ? null : (project || null);
+          const finalEntryType = isMeeting ? "meeting" : isPermission ? "break" : "project";
+          const finalWorkDesc = isPermission ? "Break" : (work_description || (isMeeting ? "Meeting" : null));
           const insertSql = "INSERT INTO timesheet (task, project_id, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-          db.query(insertSql, [taskValue, projectValue, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, work_description || null, created_by], (err, result) => {
-            if (err) {
-              console.error("Insert timesheet error:", err);
-              return res.status(500).json({ message: "Database error" });
+          columnExists("timesheet", "entry_type", (errCol, hasEntryType) => {
+            let actualSql = insertSql;
+            let params = [taskValue, projectValue, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, finalWorkDesc, created_by];
+            if (hasEntryType) {
+              actualSql = "INSERT INTO timesheet (task, project_id, entry_type, date, man_hrs, start_time, end_time, work_description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+              params = [taskValue, projectValue, finalEntryType, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, finalWorkDesc, created_by];
             }
+            db.query(actualSql, params, (err, result) => {
+              if (err) {
+                console.error("Insert timesheet error:", err);
+                return res.status(500).json({ message: "Database error" });
+              }
 
-            res.json({ message: "Timesheet added successfully", timesheet_id: result.insertId });
+              res.json({ message: "Timesheet added successfully", timesheet_id: result.insertId });
+            });
           });
         }
       });
@@ -623,7 +638,7 @@ router.get("/dashboard/summary", verifyToken, (req, res) => {
       SELECT ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time,
              ts.work_description,
              ${taskNameSql()} AS task_name,
-             IFNULL(p.project_name, 'Permission') AS project_name
+             ${projectNameSql()} AS project_name
       FROM timesheet ts
       LEFT JOIN task t ON ts.task = t.id
       ${projectJoinSql()}
@@ -930,7 +945,7 @@ router.get("/dashboard/timesheet", verifyToken, (req, res) => {
         ts.end_time,
         ts.work_description,
         ${taskNameSql()} AS module_name,
-        IFNULL(p.project_name, 'Permission') AS project_name,
+        ${projectNameSql()} AS project_name,
         ${taskStatusSql()} AS module_status,
         u.name AS employee_name
       FROM timesheet ts
@@ -1032,7 +1047,7 @@ router.get("/detail/user/:id", verifyToken, (req, res) => {
     const sql = `
       SELECT ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time, ts.work_description,
              ${taskNameSql()} AS module_name,
-             IFNULL(p.project_name, 'Permission') AS project_name
+             ${projectNameSql()} AS project_name
       FROM timesheet ts
       LEFT JOIN task t ON ts.task = t.id
       ${projectJoinSql()}
@@ -1379,9 +1394,12 @@ router.get("/detail/:id", verifyToken, (req, res) => {
       ts.id, ts.date, ts.man_hrs, ts.start_time, ts.end_time, ts.work_description,
       ts.created_by, ts.created_at, ts.updated_at,
       t.id AS module_id,
-      IFNULL(t.task, CASE WHEN ts.task LIKE 'FV::%' THEN SUBSTRING(ts.task, 5) END) AS module_name,
-      CASE WHEN ts.task LIKE 'FV::%' THEN 'Completed' ELSE t.status END AS module_status,
-      p.id AS project_id, p.project_name,
+      ${taskNameSql()} AS module_name,
+      ${taskStatusSql()} AS module_status,
+      p.id AS project_id,
+      ${projectNameSql()} AS project_name,
+      ts.entry_type,
+      ts.task,
       u.name AS employee_name, u.email AS employee_email
     FROM timesheet ts
     LEFT JOIN task t ON ts.task = t.id

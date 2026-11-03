@@ -64,5 +64,14 @@ require("./utils/freezedModules").runFreezedMigrations((err) => {
 // Daily 8:00 AM email: everyone on approved leave today
 require("./utils/dailyLeaveEmail").scheduleDailyLeaveEmail();
 
+// Ensure birthday notifications trigger every year (on startup and periodically every hour)
+const notifRoute = require("./routes/notifications");
+if (typeof notifRoute.ensureBirthdayNotifications === "function") {
+  notifRoute.ensureBirthdayNotifications().catch(() => {});
+  setInterval(() => {
+    notifRoute.ensureBirthdayNotifications().catch(() => {});
+  }, 60 * 60 * 1000);
+}
+
 app.listen(5000,()=>console.log("Backend running"));
 

@@ -6,8 +6,25 @@ const VARIANTS = {
   neutral: { bg: 'var(--bg-muted)', color: 'var(--t-muted)' },
 };
 
+const STATUS_MAP = {
+  completed: 'success',
+  active: 'success',
+  approved: 'success',
+  present: 'success',
+  'in progress': 'warning',
+  'in-progress': 'warning',
+  pending: 'warning',
+  rejected: 'danger',
+  inactive: 'danger',
+  cancelled: 'danger',
+  break: 'info',
+  permission: 'info',
+  meeting: 'success',
+};
+
 export default function StatusBadge({ status, variant, dot = true, children }) {
-  const v = variant || status || 'neutral';
+  const norm = String(status || '').trim().toLowerCase();
+  const v = variant || STATUS_MAP[norm] || (VARIANTS[norm] ? norm : 'neutral');
   const style = VARIANTS[v] || VARIANTS.neutral;
 
   return (

@@ -13,6 +13,11 @@ export default function UsersPresent() {
   const [loading, setLoading]         = useState(false);
   const [showModal, setShowModal]     = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm]           = useState({ name: "", email: "", password: "", role: "", dob: "" });
+  const [createLoading, setCreateLoading]     = useState(false);
+  const [createShowPassword, setCreateShowPassword] = useState(false);
+  const [createError, setCreateError]         = useState("");
   const [saving, setSaving]           = useState(false);
   const [searchText, setSearchText]   = useState("");
   const [roleFilter, setRoleFilter]   = useState("");
@@ -72,6 +77,36 @@ export default function UsersPresent() {
     } catch (err) {
       console.error(err);
       showToast("Failed to delete user.", "error");
+    }
+  };
+
+
+  // ── Create ──
+  const handleCreateUser = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!createForm.name || !createForm.email || !createForm.password || !createForm.role) {
+      setCreateError("Please fill in all required fields.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email)) {
+      setCreateError("Please enter a valid email address.");
+      return;
+    }
+    setCreateError("");
+    setCreateLoading(true);
+    try {
+      await api.post("/auth/register", createForm);
+      showToast("User created successfully.", "success");
+      setShowCreateModal(false);
+      setCreateForm({ name: "", email: "", password: "", role: "", dob: "" });
+      await loadUsers();
+    } catch (err) {
+      console.error("Create user error:", err);
+      const msg = err.response?.data?.message || "Failed to create user.";
+      setCreateError(msg);
+      showToast(msg, "error");
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -142,9 +177,11 @@ export default function UsersPresent() {
             <span>Users</span>
           </nav>
         </div>
-        <Link className="cu-save-btn" to="/admin/users/create">
-          <i className="bi bi-person-plus" /> Add User
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="cu-save-btn" type="button" onClick={() => setShowCreateModal(true)}>
+            <i className="bi bi-person-plus" /> Add User
+          </button>
+        </div>
       </div>
 
       {/* ── TABLE CARD ── */}
@@ -290,10 +327,127 @@ export default function UsersPresent() {
         </div>
       )}
 
+
+      {/* ── CREATE USER MODAL ── */}
+      {showCreateModal && (
+        <div className="ul-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="ul-modal ul-modal-md ul-user-modal" onClick={(e) => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className="ul-modal-header">
+              <div className="ul-modal-header-left">
+                <div className="ul-modal-icon ul-modal-icon-primary"><i className="bi bi-person-plus" /></div>
+                <div>
+                  <h6 className="ul-modal-title">Create User</h6>
+                  <p className="ul-modal-sub">Fill in the information below to create a new account</p>
+                </div>
+              </div>
+              <button className="ul-modal-close" title="Close" onClick={() => setShowCreateModal(false)}>
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+
+            <div className="ul-modal-divider" />
+
+            {/* Fields */}
+            <form onSubmit={handleCreateUser} noValidate style={{ display: "contents" }}>
+              <div className="ul-modal-body">
+                {createError && (
+                  <div className="cu-field-error" style={{ marginBottom: 4 }}>
+                    <i className="bi bi-exclamation-circle" /> {createError}
+                  </div>
+                )}
+                <div className="ul-form-grid-2">
+                  <div className="ul-field">
+                    <label className="ul-label">Full Name *</label>
+                    <input
+                      className="ul-input"
+                      name="name"
+                      value={createForm.name}
+                      onChange={(e) => { setCreateForm({ ...createForm, name: e.target.value }); if (createError) setCreateError(""); }}
+                      placeholder="e.g. John Doe"
+                      required
+                    />
+                  </div>
+
+                  <div className="ul-field">
+                    <label className="ul-label">Email Address *</label>
+                    <input
+                      className="ul-input"
+                      type="email"
+                      name="email"
+                      value={createForm.email}
+                      onChange={(e) => { setCreateForm({ ...createForm, email: e.target.value }); if (createError) setCreateError(""); }}
+                      placeholder="e.g. john@company.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="ul-field">
+                    <label className="ul-label">Role *</label>
+                    <SharedSelect
+                      value={createForm.role}
+                      onChange={(val) => { setCreateForm({ ...createForm, role: val }); if (createError) setCreateError(""); }}
+                      options={roles.map((r) => ({ value: r.name, label: r.name.charAt(0).toUpperCase() + r.name.slice(1) }))}
+                      placeholder="Select a role…"
+                    />
+                  </div>
+
+                  <div className="ul-field">
+                    <label className="ul-label">Date of Birth</label>
+                    <SharedDatePicker
+                      className="ul-input"
+                      value={createForm.dob}
+                      onChange={(val) => setCreateForm({ ...createForm, dob: val })}
+                    />
+                  </div>
+
+                  <div className="ul-field ul-field-full" style={{ gridColumn: "1 / -1" }}>
+                    <label className="ul-label">Password *</label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        className="ul-input"
+                        type={createShowPassword ? "text" : "password"}
+                        name="password"
+                        value={createForm.password}
+                        onChange={(e) => { setCreateForm({ ...createForm, password: e.target.value }); if (createError) setCreateError(""); }}
+                        placeholder="Enter a secure password"
+                        style={{ paddingRight: 36 }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCreateShowPassword((v) => !v)}
+                        title="Show/hide password"
+                        style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--t-muted)", padding: 4 }}
+                      >
+                        <i className={`bi ${createShowPassword ? "bi-eye-slash" : "bi-eye"}`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="ul-modal-divider" />
+
+              {/* Modal actions */}
+              <div className="ul-modal-footer">
+                <button type="button" className="ul-btn ul-btn-ghost" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="submit" className="ul-btn ul-btn-primary" disabled={createLoading}>
+                  {createLoading
+                    ? <><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> Creating…</>
+                    : <><i className="bi bi-person-check" /> Create User</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ── EDIT MODAL ── */}
       {showModal && selectedUser && (
         <div className="ul-overlay" onClick={() => setShowModal(false)}>
-          <div className="ul-modal ul-modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="ul-modal ul-modal-md ul-user-modal" onClick={(e) => e.stopPropagation()}>
 
             {/* Modal header */}
             <div className="ul-modal-header">
@@ -313,7 +467,7 @@ export default function UsersPresent() {
 
             {/* Fields */}
             <div className="ul-modal-body">
-              <div className="ul-form-grid">
+              <div className="ul-form-grid-2">
                 <div className="ul-field">
                   <label className="ul-label">Full Name</label>
                   <input className="ul-input" name="name" value={selectedUser.name} onChange={handleChange} placeholder="Full name" />
@@ -340,13 +494,10 @@ export default function UsersPresent() {
                     className="ul-input"
                     value={selectedUser.dob}
                     onChange={(val) => handleChange({ target: { name: "dob", value: val } })}
-                    max={new Date().toISOString().slice(0, 10)}
-                  />
+                    />
                 </div>
-              </div>
 
-              <div className="ul-form-grid">
-                <div className="ul-field" style={{ gridColumn: "span 2" }}>
+                <div className="ul-field ul-field-full" style={{ gridColumn: "1 / -1" }}>
                   <label className="ul-label">New Password <span style={{ fontWeight: 400, color: "var(--t-muted)", textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
                   <div style={{ position: "relative" }}>
                     <input
@@ -574,6 +725,15 @@ const styles = `
     font-family: var(--font);
   }
   .cu-back-btn:hover { color: var(--primary); background: var(--primary-soft); }
+
+  /* ── Modal width for create and edit ── */
+  .ul-user-modal {
+    width: min(720px, calc(100vw - 32px)) !important;
+    max-width: 100%;
+  }
+  .ul-user-modal .ul-modal-body {
+    padding: 24px 28px;
+  }
 
   /* ── Overlay (size comes from the global standard in App.css) ── */
   .ul-overlay {

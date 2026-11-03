@@ -2378,10 +2378,15 @@ p { font-family: var(--font); line-height: 1.65; color: var(--t-muted); }
   animation: modal-center-in 0.2s ease; text-align: left;
 }
 /* Compact standard for confirm / warning dialogs */
-.ul-modal-sm { width: min(440px, calc(100vw - 32px)); height: auto; }
+.ul-modal-sm { width: min(480px, calc(100vw - 32px)); min-height: 220px; height: auto; }
 .ul-modal-md { width: min(720px, calc(100vw - 32px)); }
 .ul-modal-lg { width: min(900px, calc(100vw - 32px)); }
 .ul-modal-xl { width: min(1080px, calc(100vw - 32px)); }
+/* Standard modal width for create and edit page / dialog forms */
+.ul-modal-form, .ul-user-modal {
+  width: min(720px, calc(100vw - 32px));
+  max-width: 100%;
+}
 
 /* Detail modals (xl) stay immune to page-scoped .ul-modal overrides */
 .ul-modal.ul-modal-xl { padding: 0; text-align: left; }

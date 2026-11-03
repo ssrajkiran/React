@@ -35,13 +35,41 @@ const parseFreezedValue = (value) => {
 const freezedLiterals = () =>
   FREEZED_MODULES.map((n) => `'${n.replace(/'/g, "''")}'`).join(",");
 
-// Module name for a timesheet entry (handles freezed values, normal modules, permission rows)
+// Module name for a timesheet entry (handles freezed values, normal modules, permission rows, meeting rows)
 const taskNameSql = (ts = "ts", t = "t") =>
-  `IFNULL(${t}.task, CASE WHEN ${ts}.task LIKE 'FV::%' THEN SUBSTRING(${ts}.task, 5) ELSE ${ts}.work_description END)`;
+  `IFNULL(${t}.task, CASE
+    WHEN ${ts}.task LIKE 'FV::%' THEN SUBSTRING(${ts}.task, 5)
+    WHEN ${ts}.task = 'MEETING' OR ${ts}.entry_type = 'meeting' THEN IFNULL(NULLIF(${ts}.work_description, ''), 'Meeting')
+    WHEN LOWER(IFNULL(${ts}.work_description, '')) LIKE '%meeting%' THEN IFNULL(NULLIF(${ts}.work_description, ''), 'Meeting')
+    WHEN ${ts}.task = 'BREAK' OR ${ts}.entry_type IN ('break', 'permission') THEN 'Break'
+    WHEN LOWER(IFNULL(${ts}.work_description, '')) IN ('break', 'permission') THEN 'Break'
+    ELSE IFNULL(${ts}.work_description, 'Break')
+  END)`;
 
-// Module status for a timesheet entry - freezed modules are always Completed
+// Module status for a timesheet entry - freezed modules and meetings are always Completed
 const taskStatusSql = (ts = "ts", t = "t") =>
-  `CASE WHEN ${t}.task IN (${freezedLiterals()}) OR ${ts}.task LIKE 'FV::%' THEN 'Completed' ELSE IFNULL(${t}.status, 'Permission') END`;
+  `CASE
+    WHEN ${t}.task IN (${freezedLiterals()}) OR ${ts}.task LIKE 'FV::%' THEN 'Completed'
+    WHEN ${t}.status IS NOT NULL THEN ${t}.status
+    WHEN ${ts}.task = 'MEETING' OR ${ts}.entry_type = 'meeting' THEN 'Completed'
+    WHEN LOWER(IFNULL(${ts}.work_description, '')) LIKE '%meeting%' THEN 'Completed'
+    WHEN ${ts}.task = 'BREAK' OR ${ts}.entry_type IN ('break', 'permission') THEN 'Break'
+    WHEN LOWER(IFNULL(${ts}.work_description, '')) IN ('break', 'permission') THEN 'Break'
+    WHEN ${ts}.work_description IN ('Break', 'Permission') THEN 'Break'
+    ELSE 'Break'
+  END`;
+
+// Project name fallback: if no project row joined, distinguish Meeting vs Permission
+const projectNameSql = (ts = "ts", p = "p") =>
+  `CASE
+    WHEN ${p}.project_name IS NOT NULL THEN ${p}.project_name
+    WHEN ${ts}.task = 'MEETING' OR ${ts}.entry_type = 'meeting' THEN 'Meeting'
+    WHEN LOWER(IFNULL(${ts}.work_description, '')) LIKE '%meeting%' THEN 'Meeting'
+    WHEN ${ts}.task = 'BREAK' OR ${ts}.entry_type IN ('break', 'permission') THEN 'Break'
+    WHEN LOWER(IFNULL(${ts}.work_description, '')) IN ('break', 'permission') THEN 'Break'
+    WHEN ${ts}.work_description IN ('Break', 'Permission') THEN 'Break'
+    ELSE 'Break'
+  END`;
 
 // Status for a task-row based query (no timesheet alias needed) - freezed names are always Completed
 const taskRowStatusSql = (t = "t") =>
@@ -66,7 +94,37 @@ const columnExists = (tableName, columnName, cb) => {
 // 1. add timesheet.project_id (needed to report the project of freezed entries)
 // 2. remove freezed modules that were previously created as task rows -
 //    their timesheet entries are converted to virtual "FV::<name>" values first
+// 3. add timesheet.entry_type (to distinguish 'project', 'permission', 'meeting')
 function runFreezedMigrations(callback) {
+  const ensureEntryType = (done) => {
+    columnExists("timesheet", "entry_type", (errEt, existsEt) => {
+      if (errEt) return done(errEt);
+      if (existsEt) return done(null);
+      db.query(
+        "ALTER TABLE timesheet ADD COLUMN entry_type VARCHAR(20) DEFAULT 'project' AFTER project_id",
+        (errAlter) => {
+          if (errAlter) return done(errAlter);
+          console.log("Migration: added timesheet.entry_type column");
+          db.query(
+            `UPDATE timesheet
+             SET entry_type = CASE
+               WHEN work_description IN ('Break', 'Permission') THEN 'break'
+               WHEN LOWER(IFNULL(work_description, '')) LIKE '%meeting%' THEN 'meeting'
+               WHEN task IS NOT NULL OR project_id IS NOT NULL THEN 'project'
+               ELSE 'break'
+             END,
+             work_description = CASE
+               WHEN work_description = 'Permission' THEN 'Break'
+               ELSE work_description
+             END
+             WHERE entry_type IS NULL OR entry_type = '' OR entry_type = 'permission' OR work_description = 'Permission'`,
+            () => done(null)
+          );
+        }
+      );
+    });
+  };
+
   columnExists("timesheet", "project_id", (err, exists) => {
     if (err) return callback(err);
 
@@ -92,7 +150,7 @@ function runFreezedMigrations(callback) {
           if (result && result.affectedRows > 0) {
             console.log(`Freezed modules cleanup: removed ${result.affectedRows} seeded task row(s)`);
           }
-          callback(null);
+          ensureEntryType(callback);
         });
       });
     };
@@ -118,5 +176,7 @@ module.exports = {
   taskStatusSql,
   taskRowStatusSql,
   projectJoinSql,
+  projectNameSql,
+  columnExists,
   runFreezedMigrations,
 };

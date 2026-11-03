@@ -10,8 +10,8 @@ export const fmtHrs = (hrs) => {
 };
 
 // Parse any incoming date value into { y, m, d } WITHOUT timezone shifts.
-// - Date instances / ISO strings with zone (…Z or ±hh:mm) → convert to local time first
 // - "YYYY-MM-DD" and "YYYY-MM-DD HH:MM:SS" (MySQL, wall-clock) → take the date part as-is
+// - Date instances / ISO strings with zone (…Z or ±hh:mm) → convert to local time first
 const parseDateParts = (input) => {
   if (input instanceof Date) {
     if (isNaN(input)) return null;
@@ -19,13 +19,20 @@ const parseDateParts = (input) => {
   }
   const s = String(input).trim();
   if (!s) return null;
+
+  // Match YYYY-MM-DD literal first (avoids UTC timezone shift when serialized with ISO 'Z')
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
+
+  // Match DD-MM-YYYY or DD/MM/YYYY
+  const m2 = s.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
+  if (m2) return { y: Number(m2[3]), m: Number(m2[2]), d: Number(m2[1]) };
+
   if (/[Zz]$|[+-]\d{2}:?\d{2}$/.test(s)) {
     const dt = new Date(s);
     if (isNaN(dt)) return null;
     return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
   }
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
   const dt = new Date(s);
   if (isNaN(dt)) return null;
   return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
@@ -69,7 +76,13 @@ export const fmtDateTime = (d) => {
     : `${pad2(p.d)}-${pad2(p.m)}-${p.y}`;
 };
 
-export const fmtDob = (d) => fmtDate(d);
+// Date of birth: preserves exact day, month, and year (DD-MM-YYYY) without timezone shifts
+export const fmtDob = (d) => {
+  if (!d) return "—";
+  const p = parseDateParts(d);
+  if (!p) return "—";
+  return `${pad2(p.d)}-${pad2(p.m)}-${p.y}`;
+};
 
 // "2.00" / 2 / "2" → "2 days"; 1 → "1 day"; 0.5 → "0.5 days"
 export const fmtDays = (d) => {

@@ -6,7 +6,7 @@ import Tabs from "../../components/ui/Tabs";
 import StatusBadge from "../../components/ui/StatusBadge";
 import EmptyState from "../../components/ui/EmptyState";
 import { PageLoader } from "../../components/ui/Loader";
-import { fmtDate } from "../../utils";
+import { fmtDate, fmtDob } from "../../utils";
 
 const fmtHrs = (hrs) => {
   const n = Number(hrs) || 0;
@@ -80,6 +80,7 @@ export default function UserDetailPage() {
             <div className="detail-hero-meta">
               <span><i className="bi bi-envelope"></i> {user.email}</span>
               <span><i className="bi bi-shield"></i> {user.role}</span>
+              {user.dob && <span><i className="bi bi-gift"></i> {fmtDob(user.dob)}</span>}
               {user.department && <span><i className="bi bi-building"></i> {user.department}</span>}
             </div>
           </div>
@@ -121,6 +122,7 @@ export default function UserDetailPage() {
               <div className="info-item"><div className="info-label">Name</div><div className="info-value">{user.name}</div></div>
               <div className="info-item"><div className="info-label">Email</div><div className="info-value">{user.email}</div></div>
               <div className="info-item"><div className="info-label">Role</div><div className="info-value">{user.role}</div></div>
+              <div className="info-item"><div className="info-label">Date of Birth</div><div className="info-value">{fmtDob(user.dob)}</div></div>
               <div className="info-item"><div className="info-label">Department</div><div className="info-value">{user.department || "—"}</div></div>
               <div className="info-item"><div className="info-label">Total Hours</div><div className="info-value">{fmtHrs(stats?.total_hours)}</div></div>
               <div className="info-item"><div className="info-label">Active Days</div><div className="info-value">{stats?.active_days || 0}</div></div>

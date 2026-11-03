@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
-const { taskNameSql, taskStatusSql, projectJoinSql } = require("../utils/freezedModules");
+const { taskNameSql, taskStatusSql, projectJoinSql, projectNameSql } = require("../utils/freezedModules");
 
 const router = express.Router();
 
@@ -131,7 +131,7 @@ router.get("/report/timesheet", verifyToken, (req, res) => {
       ${taskStatusSql()} AS module_status,
       t.assigned_to,
       p.id AS project_id,
-      p.project_name,
+      ${projectNameSql()} AS project_name,
       u.name AS user_name
     FROM timesheet ts
     LEFT JOIN task t ON t.id = ts.task

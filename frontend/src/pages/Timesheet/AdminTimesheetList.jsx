@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../api";
@@ -115,6 +115,14 @@ function AmpmTimePicker({ value, onChange, minTime, disabled }) {
     </div>
   );
 }
+
+
+// Formats any legacy or database "permission" value as "Break" on display
+const fmtDisplayVal = (val) => {
+  if (!val) return val;
+  if (String(val).trim().toLowerCase() === "permission") return "Break";
+  return val;
+};
 
 export default function AdminTimesheetList() {
   const navigate = useNavigate();
@@ -326,7 +334,7 @@ export default function AdminTimesheetList() {
   };
 
   const handleSave = async () => {
-    const isPermission = form.entry_type === "permission";
+    const isPermission = form.entry_type === "break" || form.entry_type === "permission";
     const isMeeting = form.entry_type === "meeting";
     const isInternal = isPermission || isMeeting;
 
@@ -389,13 +397,13 @@ export default function AdminTimesheetList() {
     try {
       await api.post("/timesheet",
         {
-          task: isInternal ? null : form.task,
+          task: isMeeting ? "MEETING" : (isPermission ? "BREAK" : form.task),
           project: isInternal ? null : form.project,
           entry_type: form.entry_type,
           date: form.date,
           start_time: form.start_time,
           end_time: form.end_time,
-          work_description: isPermission ? "Permission" : (form.work_description || (isMeeting ? "Meeting" : "")),
+          work_description: isPermission ? "Break" : (form.work_description || (isMeeting ? "Meeting" : "")),
           created_by: form.user,
         },
         { headers: authHeader }
@@ -428,26 +436,97 @@ export default function AdminTimesheetList() {
   };
 
   // ================= TABLE =================
+  const isRowMeeting = (row) => {
+    if (!row) return false;
+    const et = String(row.entry_type || "").toLowerCase();
+    if (et === "meeting") return true;
+    const tid = String(row.task_id || row.task || "").toUpperCase();
+    if (tid === "MEETING") return true;
+    const pn = String(row.project_name || "").toLowerCase();
+    if (pn === "meeting") return true;
+    const tn = String(row.task_name || "").toLowerCase();
+    if (tn === "meeting") return true;
+    const wd = String(row.work_description || "").toLowerCase();
+    if (wd.includes("meeting")) return true;
+    return false;
+  };
+
+  const isRowBreak = (row) => {
+    if (!row || isRowMeeting(row)) return false;
+    const et = String(row.entry_type || "").toLowerCase();
+    if (et === "break" || et === "permission") return true;
+    const tid = String(row.task_id || row.task || "").toUpperCase();
+    if (tid === "BREAK" || tid === "PERMISSION") return true;
+    const pn = String(row.project_name || "").toLowerCase();
+    if (pn === "break" || pn === "permission") return true;
+    const tn = String(row.task_name || "").toLowerCase();
+    if (tn === "break" || tn === "permission") return true;
+    const wd = String(row.work_description || "").trim().toLowerCase();
+    if (wd === "break" || wd === "permission") return true;
+    return false;
+  };
+
+  const getRowStatus = (row) => {
+    if (isRowMeeting(row)) return "Completed";
+    if (isRowBreak(row)) return "Break";
+    return fmtDisplayVal(row.task_status || "Pending");
+  };
+
+  const getRowProject = (row) => {
+    if (isRowMeeting(row)) return "Meeting";
+    if (isRowBreak(row)) return "Break";
+    return fmtDisplayVal(row.project_name || "");
+  };
+
+  const getRowModule = (row) => {
+    if (isRowMeeting(row)) {
+      if (row.task_name && !["break", "permission"].includes(String(row.task_name).toLowerCase())) {
+        return row.task_name;
+      }
+      return row.work_description || "Meeting";
+    }
+    if (isRowBreak(row)) return "Break";
+    return fmtDisplayVal(row.task_name || row.work_description || "");
+  };
+
+  const getRowWorkDesc = (row) => {
+    if (isRowMeeting(row)) return row.work_description || "Meeting";
+    if (isRowBreak(row)) return "Break";
+    return fmtDisplayVal(row.work_description || "");
+  };
+
   const statusConfig = {
     completed:    { color: "var(--success)", bg: "var(--success-soft)", border: "color-mix(in srgb, var(--success) 35%, transparent)", label: "Completed" },
+    break:        { color: "var(--info)", bg: "var(--info-soft)", border: "color-mix(in srgb, var(--info) 35%, transparent)", label: "Break" },
+    permission:   { color: "var(--info)", bg: "var(--info-soft)", border: "color-mix(in srgb, var(--info) 35%, transparent)", label: "Break" },
+    meeting:      { color: "var(--success)", bg: "var(--success-soft)", border: "color-mix(in srgb, var(--success) 35%, transparent)", label: "Completed" },
     "in progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)", label: "In Progress" },
     "in-progress": { color: "var(--warning)", bg: "var(--warning-soft)", border: "color-mix(in srgb, var(--warning) 35%, transparent)", label: "In Progress" },
   };
 
   const statusOptions = useMemo(() => {
-    const statuses = [...new Set(data.map((r) => (r.task_status || "").trim()).filter(Boolean))].sort();
+    const statuses = [...new Set(data.map((r) => getRowStatus(r)).filter(Boolean))].sort();
     return [{ value: "all", label: "All Statuses" }, ...statuses.map((s) => ({ value: s, label: s }))];
   }, [data]);
 
   const filtered = useMemo(() => {
-    const t = searchText.toLowerCase();
+    const t = searchText.toLowerCase().trim();
     return data.filter((row) => {
-      if (statusFilter !== "all" && (row.task_status || "").toLowerCase() !== statusFilter.toLowerCase()) return false;
-      return !t ||
-      (row.task_name || "").toLowerCase().includes(t) ||
-      (row.project_name || "").toLowerCase().includes(t) ||
-      (row.created_by_name || "").toLowerCase().includes(t) ||
-      (row.task_status || "").toLowerCase().includes(t);
+      const rowStatus = getRowStatus(row);
+      if (statusFilter !== "all") {
+        if (rowStatus.toLowerCase() !== statusFilter.toLowerCase()) {
+          return false;
+        }
+      }
+      if (!t) return true;
+      const hay = [
+        getRowModule(row),
+        getRowProject(row),
+        row.created_by_name,
+        getRowWorkDesc(row),
+        rowStatus,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(t) || (t === "break" && hay.includes("permission"));
     });
   }, [data, searchText, statusFilter]);
 
@@ -455,6 +534,9 @@ export default function AdminTimesheetList() {
     return [...filtered].sort((a, b) => {
       let va = a[sortField], vb = b[sortField];
       if (sortField === "timesheet_date") { va = new Date(va); vb = new Date(vb); }
+      else if (sortField === "project_name") { va = getRowProject(a).toLowerCase(); vb = getRowProject(b).toLowerCase(); }
+      else if (sortField === "task_name") { va = getRowModule(a).toLowerCase(); vb = getRowModule(b).toLowerCase(); }
+      else if (sortField === "task_status") { va = getRowStatus(a).toLowerCase(); vb = getRowStatus(b).toLowerCase(); }
       else { va = (va || "").toString().toLowerCase(); vb = (vb || "").toString().toLowerCase(); }
       if (va < vb) return sortOrder === "asc" ? -1 : 1;
       if (va > vb) return sortOrder === "asc" ? 1 : -1;
@@ -579,10 +661,14 @@ export default function AdminTimesheetList() {
                 </td></tr>
               ) : paginated.map((row, idx) => {
                 const canDelete = role === "admin" || row.timesheet_created_by === loggedUserId;
-                const sc = statusConfig[(row.task_status || "").toLowerCase()];
+                const rowStatus = getRowStatus(row);
+                const sc = statusConfig[rowStatus.toLowerCase()];
                 const rowHours = hoursForEntry(row);
                 const startTime = row.start_time ? formatAMPM(row.start_time) : null;
                 const endTime = row.end_time ? formatAMPM(row.end_time) : null;
+                const rowProj = getRowProject(row);
+                const rowMod = getRowModule(row);
+                const rowDesc = getRowWorkDesc(row);
                 return (
                   <tr key={row.timesheet_id} className="ts-tr" style={{ cursor: "pointer" }} onClick={() => setDetailTimesheetId(row.timesheet_id)}>
                     <td className="ts-td-muted ts-center">{(page - 1) * PAGE_SIZE + idx + 1}</td>
@@ -597,25 +683,27 @@ export default function AdminTimesheetList() {
                         : <span className="ts-td-muted">—</span>}
                     </td>
                     <td>
-                      {row.project_name
-                        ? <span className="ts-project-pill">{row.project_name}</span>
+                      {rowProj
+                        ? <span className="ts-project-pill" style={isRowMeeting(row) ? { background: "rgba(14, 165, 233, 0.12)", color: "var(--info, #0284c7)" } : undefined}>{rowProj}</span>
                         : <span className="ts-td-muted">—</span>}
                     </td>
-                    <td className="ts-task-cell" title={row.task_name || row.work_description}>
-                      {row.task_name || row.work_description || "—"}
+                    <td className="ts-task-cell" title={rowMod}>
+                      {rowMod || "—"}
                     </td>
                     <td>
                       <span
                         className="ts-status-pill"
                         style={sc
                           ? { background: sc.bg, color: sc.color, borderColor: sc.border }
-                          : { background: "var(--bg-muted)", color: "var(--t-muted)", borderColor: "var(--border)" }}
+                          : isRowMeeting(row)
+                            ? { background: "rgba(34, 197, 94, 0.12)", color: "#16a34a", borderColor: "rgba(34, 197, 94, 0.25)" }
+                            : { background: "var(--bg-muted)", color: "var(--t-muted)", borderColor: "var(--border)" }}
                       >
-                        {sc ? sc.label : (row.task_status || "Pending")}
+                        {sc ? sc.label : rowStatus}
                       </span>
                     </td>
-                    <td className="ts-td-muted" title={row.work_description} style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "12px" }}>
-                      {row.work_description || "—"}
+                    <td className="ts-td-muted" title={rowDesc} style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "12px" }}>
+                      {rowDesc || "—"}
                     </td>
                     <td className="ts-td-muted ts-nowrap" style={{ fontSize: "12px" }}>
                       {startTime && endTime ? `${startTime} – ${endTime}` : "—"}
@@ -629,7 +717,7 @@ export default function AdminTimesheetList() {
                       {canDelete && (
                         <button
                           className="ts-action-btn ts-action-delete"
-                          onClick={() => setDeleteConfirm(row)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(row); }}
                           title="Delete"
                         >
                           <i className="bi bi-trash" />
@@ -777,7 +865,7 @@ export default function AdminTimesheetList() {
                         const val = e.target.value;
                         let autoStart = "";
                         let autoEnd = "";
-                        if (val === "permission") {
+                        if (val === "break" || val === "permission") {
                           const now = new Date();
                           const roundMin = Math.ceil(now.getMinutes() / 5) * 5;
                           let sh = now.getHours(), sm = roundMin;
@@ -802,7 +890,7 @@ export default function AdminTimesheetList() {
                       }}
                     >
                       <option value="project">Project</option>
-                      <option value="permission">Permission</option>
+                      <option value="break">Break</option>
                       <option value="meeting">Meeting</option>
                     </select>
                   </div>
@@ -848,7 +936,7 @@ export default function AdminTimesheetList() {
                       value={form.start_time}
                       onChange={(val) => {
                         const newForm = { ...form, start_time: val };
-                        if (form.entry_type === "permission" && val) {
+                        if ((form.entry_type === "break" || form.entry_type === "permission") && val) {
                           const [h, m] = val.split(":").map(Number);
                           let endMin = h * 60 + m + 15;
                           if (endMin >= 24 * 60) endMin = 24 * 60 - 1;
@@ -872,9 +960,9 @@ export default function AdminTimesheetList() {
                         checkOverlapLive(form.user, form.date, form.start_time, val);
                       }}
                       minTime={form.start_time}
-                      disabled={form.entry_type === "permission"}
+                      disabled={form.entry_type === "break" || form.entry_type === "permission"}
                     />
-                    {form.entry_type === "permission" && form.start_time && (
+                    {(form.entry_type === "break" || form.entry_type === "permission") && form.start_time && (
                       <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: 600 }}>
                         Auto: Start + 15 min
                       </span>
@@ -906,9 +994,9 @@ export default function AdminTimesheetList() {
                   </div>
                 )}
 
-                {!leaveBlocked && form.entry_type === "permission" && (
+                {!leaveBlocked && (form.entry_type === "break" || form.entry_type === "permission") && (
                   <div className="ts-field-hint" style={{ color: "var(--primary)", fontWeight: 600, fontSize: "12px" }}>
-                    <i className="bi bi-info-circle" /> Permission mode: 15 minutes auto-assigned
+                    <i className="bi bi-info-circle" /> Break mode: 15 minutes auto-assigned
                   </div>
                 )}
 
@@ -936,16 +1024,20 @@ export default function AdminTimesheetList() {
       {/* ── DELETE CONFIRM MODAL ── */}
       {deleteConfirm && (
         <div className="ul-overlay" onClick={() => setDeleteConfirm(null)}>
-          <div className="ul-modal ul-modal-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="ul-modal-icon ul-modal-icon-danger">
-              <i className="bi bi-trash" />
+          <div className="ul-modal ul-modal-sm ts-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ts-delete-body">
+              <div className="ul-modal-icon ul-modal-icon-danger">
+                <i className="bi bi-trash" />
+              </div>
+              <h6 className="ul-modal-title">Delete Timesheet</h6>
+              <p className="ul-modal-sub">Are you sure you want to delete this timesheet?</p>
+              <p className="ul-modal-sub" style={{ marginTop: 6 }}>
+                <strong>{getRowModule(deleteConfirm) || getRowWorkDesc(deleteConfirm) || "Timesheet Entry"}</strong>
+                {getRowProject(deleteConfirm) && getRowProject(deleteConfirm) !== (getRowModule(deleteConfirm) || getRowWorkDesc(deleteConfirm)) && (
+                  <> — {getRowProject(deleteConfirm)}</>
+                )}
+              </p>
             </div>
-            <h6 className="ul-modal-title">Delete Timesheet</h6>
-            <p className="ul-modal-sub">Are you sure you want to delete this timesheet?</p>
-            <p className="ul-modal-sub" style={{ marginTop: 4 }}>
-              <strong>{deleteConfirm.task_name}</strong>
-              {deleteConfirm.project_name && <> — {deleteConfirm.project_name}</>}
-            </p>
             <div className="ul-modal-divider" />
             <div className="ul-modal-footer">
               <button className="ul-btn ul-btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
@@ -1144,6 +1236,45 @@ const styles = `
   .ts-delete-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--danger-soft); color: var(--danger); font-size: 22px; display: flex; align-items: center; justify-content: center; }
   .ts-delete-msg { font-size: 14px; font-weight: 600; color: var(--t-base); margin: 0; }
   .ts-delete-detail { font-size: 12.5px; color: var(--t-muted); margin: 0; max-width: 280px; }
+
+  
+  /* Delete Confirmation Modal */
+  .ts-delete-modal {
+    width: min(500px, calc(100vw - 32px)) !important;
+    min-height: 240px !important;
+    padding: 0 !important;
+  }
+  .ts-delete-body {
+    padding: 32px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .ts-delete-body .ul-modal-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    font-size: 22px;
+  }
+  .ts-delete-body .ul-modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--t-base);
+  }
+  .ts-delete-body .ul-modal-sub {
+    font-size: 13px;
+    color: var(--t-muted);
+    margin: 0;
+  }
+  .ts-delete-modal .ul-modal-footer {
+    padding: 16px 28px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
 
   .ul-modal { border: none; border-radius: var(--radius-lg); box-shadow: var(--shadow-card), 0 24px 60px -30px rgba(15, 23, 42, 0.20); }
 

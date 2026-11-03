@@ -178,7 +178,15 @@ async function sendDailyLeaveEmail() {
 
 // Schedule the report for every day at 8:00 AM (IST unless CRON_TZ overrides).
 function scheduleDailyLeaveEmail() {
-  cron.schedule("0 8 * * *", () => { sendDailyLeaveEmail(); }, {
+  cron.schedule("0 8 * * *", () => {
+    sendDailyLeaveEmail();
+    try {
+      const notifs = require("../routes/notifications");
+      if (typeof notifs.ensureBirthdayNotifications === "function") {
+        notifs.ensureBirthdayNotifications().catch(() => {});
+      }
+    } catch {}
+  }, {
     timezone: process.env.CRON_TZ || "Asia/Kolkata",
   });
   console.log("[daily-leave-email] Scheduled daily at 08:00 " + (process.env.CRON_TZ || "Asia/Kolkata"));

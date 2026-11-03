@@ -78,61 +78,94 @@ export default function TimesheetDetailPage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-          {/* Timesheet Info */}
-          <div className="card">
-            <h4 style={{ margin: "0 0 16px" }}>Entry Details</h4>
-            <div className="info-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-              <div className="info-item"><div className="info-label">Date</div><div className="info-value">{fmtDate(data.date)}</div></div>
-              <div className="info-item"><div className="info-label">Hours</div><div className="info-value">{fmtHrs(data.man_hrs)}</div></div>
-              {data.start_time && <div className="info-item"><div className="info-label">Start Time</div><div className="info-value">{data.start_time?.substring(0,5)}</div></div>}
-              {data.end_time && <div className="info-item"><div className="info-label">End Time</div><div className="info-value">{data.end_time?.substring(0,5)}</div></div>}
-              <div className="info-item" style={{ gridColumn: "1 / -1" }}>
-                <div className="info-label">Description</div>
-                <div className="info-value">{data.work_description || "No description provided"}</div>
-              </div>
-            </div>
-          </div>
+        {(() => {
+          const isMeeting =
+            data.entry_type === "meeting" ||
+            String(data.task || "").toUpperCase() === "MEETING" ||
+            String(data.project_name || "").toLowerCase() === "meeting" ||
+            String(data.module_name || "").toLowerCase() === "meeting" ||
+            String(data.work_description || "").toLowerCase().includes("meeting");
 
-          {/* Related Info */}
-          <div className="card">
-            <h4 style={{ margin: "0 0 16px" }}>Related Information</h4>
-            <div className="info-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-              <div className="info-item">
-                <div className="info-label">Employee</div>
-                <div className="info-value" style={{ cursor: "pointer", color: "var(--primary)" }} onClick={() => data.created_by && navigate(`/admin/users/${data.created_by}`)}>
-                  {data.employee_name || "—"}
+          const isBreak = !isMeeting && (
+            data.entry_type === "break" ||
+            data.entry_type === "permission" ||
+            String(data.task || "").toUpperCase() === "BREAK" ||
+            String(data.project_name || "").toLowerCase() === "permission" ||
+            String(data.project_name || "").toLowerCase() === "break" ||
+            String(data.work_description || "").toLowerCase() === "permission" ||
+            String(data.work_description || "").toLowerCase() === "break"
+          );
+
+          const entryType = isMeeting ? "Meeting" : (isBreak ? "Break" : "Project");
+          const projectName = isMeeting ? "Meeting" : (isBreak ? "Break" : (data.project_name || "—"));
+          const moduleName = isMeeting ? (data.module_name || "Meeting") : (isBreak ? "Break" : (data.module_name || "—"));
+          const statusVal = isMeeting ? "Completed" : (isBreak ? "Break" : (data.module_status || "Pending"));
+
+          return (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              {/* Timesheet Info */}
+              <div className="card">
+                <h4 style={{ margin: "0 0 16px" }}>Entry Details</h4>
+                <div className="info-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                  <div className="info-item"><div className="info-label">Type</div><div className="info-value">{entryType}</div></div>
+                  <div className="info-item"><div className="info-label">Date</div><div className="info-value">{fmtDate(data.date)}</div></div>
+                  <div className="info-item"><div className="info-label">Hours</div><div className="info-value">{fmtHrs(data.man_hrs)}</div></div>
+                  {data.start_time && <div className="info-item"><div className="info-label">Start Time</div><div className="info-value">{data.start_time?.substring(0, 5)}</div></div>}
+                  {data.end_time && <div className="info-item"><div className="info-label">End Time</div><div className="info-value">{data.end_time?.substring(0, 5)}</div></div>}
+                  <div className="info-item" style={{ gridColumn: "1 / -1" }}>
+                    <div className="info-label">{isMeeting ? "Meeting Notes / Description" : "Description"}</div>
+                    <div className="info-value">{data.work_description || (isMeeting ? "Meeting" : "No description provided")}</div>
+                  </div>
                 </div>
               </div>
-              <div className="info-item">
-                <div className="info-label">Email</div>
-                <div className="info-value">{data.employee_email || "—"}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">Project</div>
-                <div className="info-value" style={{ cursor: "pointer", color: "var(--primary)" }} onClick={() => data.project_id && navigate(`/admin/projects/${data.project_id}`)}>
-                  {data.project_name || "Permission"}
+
+              {/* Related Info */}
+              <div className="card">
+                <h4 style={{ margin: "0 0 16px" }}>Related Information</h4>
+                <div className="info-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                  <div className="info-item">
+                    <div className="info-label">Employee</div>
+                    <div className="info-value" style={{ cursor: "pointer", color: "var(--primary)" }} onClick={() => data.created_by && navigate(`/admin/users/${data.created_by}`)}>
+                      {data.employee_name || "—"}
+                    </div>
+                  </div>
+                  <div className="info-item">
+                    <div className="info-label">Email</div>
+                    <div className="info-value">{data.employee_email || "—"}</div>
+                  </div>
+                  <div className="info-item">
+                    <div className="info-label">Project</div>
+                    <div
+                      className="info-value"
+                      style={{ cursor: data.project_id ? "pointer" : "default", color: data.project_id ? "var(--primary)" : "inherit" }}
+                      onClick={() => data.project_id && navigate(`/admin/projects/${data.project_id}`)}
+                    >
+                      {projectName}
+                    </div>
+                  </div>
+                  <div className="info-item">
+                    <div className="info-label">Module</div>
+                    <div
+                      className="info-value"
+                      style={{ cursor: data.module_id ? "pointer" : "default", color: data.module_id ? "var(--primary)" : "inherit" }}
+                      onClick={() => data.module_id && navigate(`/admin/modules/${data.module_id}`)}
+                    >
+                      {moduleName}
+                    </div>
+                  </div>
+                  <div className="info-item">
+                    <div className="info-label">Status</div>
+                    <div className="info-value"><StatusBadge status={statusVal} /></div>
+                  </div>
+                  <div className="info-item">
+                    <div className="info-label">Created At</div>
+                    <div className="info-value">{data.created_at ? fmtDateTime(data.created_at) : "—"}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">Module</div>
-                <div className="info-value" style={{ cursor: "pointer", color: "var(--primary)" }} onClick={() => data.module_id && navigate(`/admin/modules/${data.module_id}`)}>
-                  {data.module_name || "—"}
-                </div>
-              </div>
-              {data.module_status && (
-                <div className="info-item">
-                  <div className="info-label">Module Status</div>
-                  <div className="info-value"><StatusBadge status={data.module_status} /></div>
-                </div>
-              )}
-              <div className="info-item">
-                <div className="info-label">Created At</div>
-                <div className="info-value">{data.created_at ? fmtDateTime(data.created_at) : "—"}</div>
               </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
     </AppLayout>
   );
