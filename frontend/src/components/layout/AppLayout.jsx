@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import GlobalSearch from "./GlobalSearch";
+import ChatBot from "../chat/ChatBot";
 import { usePreferences } from "../../context/PreferencesContext";
 
 export default function AppLayout({ children }) {
@@ -91,6 +92,7 @@ export default function AppLayout({ children }) {
       </div>
 
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
+      <ChatBot />
     </div>
   );
 }

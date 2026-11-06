@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "../../api";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -106,6 +106,15 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
 }
 
 export default function Leaves() {
+  const token = localStorage.getItem("token");
+  let role = "employee";
+  if (token) {
+    try {
+      role = JSON.parse(atob(token.split(".")[1])).role || "employee";
+    } catch {
+      /* ignore */
+    }
+  }
   const [events, setEvents] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -214,14 +223,14 @@ export default function Leaves() {
   };
 
   const handleSelectEvent = (event) => {
-    const viewOnly = event.status === "approved";
+    const viewOnly = role !== "admin" && event.status === "approved";
     setFormData({
       id: event.id, leave_type: event.type || "leave", start_date: toCalendarDate(event.start), end_date: toCalendarDate(event.end),
       reason: event.remarks || "", days: event.days != null ? Number(event.days) : calculateDays(event.start, event.end), compoff_date: event.comp_off_date || "",
       half_day_type: event.half_day_type || "full", hours: event.hours || permissionRemaining, slot: event.slot || "morning",
       status: event.status, holiday_name: event.holiday_name || "",
     });
-    if (event.type === "compoff" && event.status !== "approved") fetchCompoffEligible(event.id);
+    if (event.type === "compoff" && (role === "admin" || event.status !== "approved")) fetchCompoffEligible(event.id);
     setIsViewMode(viewOnly); setShowModal(true);
   };
 
@@ -515,7 +524,7 @@ export default function Leaves() {
                           <button className="lv-action-btn lv-view-btn" title="View" onClick={() => handleSelectEvent(ev)}>
                             <i className="bi bi-eye" />
                           </button>
-                          {ev.status !== "approved" && (
+                          {(role === "admin" || ev.status !== "approved") && (
                             <button className="lv-action-btn lv-edit-btn" title="Edit" onClick={() => { handleSelectEvent(ev); setIsViewMode(false); }}>
                               <i className="bi bi-pencil" />
                             </button>
@@ -812,6 +821,11 @@ export default function Leaves() {
                 )}
                 <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
                   <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Close</button>
+                  {isViewMode && role === "admin" && (
+                    <button className="ul-btn ul-btn-primary" onClick={() => setIsViewMode(false)}>
+                      <i className="bi bi-pencil" /> Edit
+                    </button>
+                  )}
                   {!isViewMode && (
                     <button className="ul-btn ul-btn-primary" onClick={handleSubmit} disabled={loading}>
                       {loading ? <><i className="bi bi-arrow-repeat" style={{ animation: "spin 1s linear infinite" }} /> Submitting…</> : <><i className="bi bi-send" /> Submit</>}

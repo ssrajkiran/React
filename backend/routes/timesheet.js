@@ -84,6 +84,176 @@ router.get("/employee/tasks/:projectId", verifyToken, (req, res) => {
   });
 });
 
+
+/* ==============================
+   UPDATE TIMESHEET ENTRY
+================================ */
+router.put("/:id", verifyToken, (req, res) => {
+  const timesheetId = req.params.id;
+  const { task, date, start_time, end_time, man_hrs, work_description, entry_type, project } = req.body;
+  const isPermission = entry_type === "permission" || entry_type === "break";
+  const isBreak = isPermission;
+  const isMeeting = entry_type === "meeting";
+  const isInternal = isPermission || isMeeting;
+  const freezedName = parseFreezedValue(task);
+  const isVirtualFreezed = freezedName && String(task).startsWith(FREEZED_PREFIX);
+
+  db.query("SELECT * FROM timesheet WHERE id = ?", [timesheetId], (err, existingRows) => {
+    if (err) {
+      console.error("Timesheet lookup error:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    if (existingRows.length === 0) {
+      return res.status(404).json({ message: "Timesheet not found" });
+    }
+
+    const existing = existingRows[0];
+    const targetUserId = req.user.role === "admin" && req.body.created_by ? req.body.created_by : existing.created_by;
+
+    // Admin can edit any entry; employee can edit only their own
+    if (req.user.role !== "admin" && Number(existing.created_by) !== Number(req.user.id)) {
+      return res.status(403).json({ message: "You can only edit your own timesheet entries" });
+    }
+
+    // Calculate man_hrs from start_time/end_time if provided
+    let hoursToAdd;
+    let dbStartTime = null;
+    let dbEndTime = null;
+
+    if (start_time && end_time) {
+      const [sh, sm] = start_time.split(":").map(Number);
+      const [eh, em] = end_time.split(":").map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+      const diffMin = endMin - startMin;
+
+      if (isNaN(diffMin) || diffMin <= 0) {
+        return res.status(400).json({ message: "End time must be after start time." });
+      }
+
+      hoursToAdd = diffMin / 60;
+      dbStartTime = start_time.length === 5 ? start_time + ":00" : start_time;
+      dbEndTime = end_time.length === 5 ? end_time + ":00" : end_time;
+    } else if (man_hrs) {
+      hoursToAdd = Number(man_hrs);
+    } else {
+      hoursToAdd = Number(existing.man_hrs) || 0;
+      dbStartTime = existing.start_time;
+      dbEndTime = existing.end_time;
+    }
+
+    if (isNaN(hoursToAdd) || hoursToAdd <= 0 || hoursToAdd > 8) {
+      return res.status(400).json({ message: "Invalid hours. Must be between 0 and 8." });
+    }
+
+    const targetDate = date || existing.date;
+    const parts = String(targetDate).substring(0, 10).split("-");
+    const normalizedDate = parts.length === 3 ? `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}` : targetDate;
+
+    // Check for approved leave on this date (only half-day or no leave allowed)
+    getLeaveOnDate(targetUserId, normalizedDate, (leaveErr, leaveInfo) => {
+      if (leaveErr) {
+        console.error("Leave check error:", leaveErr);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      if (leaveInfo && !leaveInfo.halfDay) {
+        return res.status(400).json({
+          message: `Timesheet entry is not allowed on ${normalizedDate}. Approved leave exists on this date.`,
+        });
+      }
+
+      const dayLimit = leaveInfo && leaveInfo.halfDay ? 4 : 8;
+
+      // Check total hours on this date excluding current timesheet entry
+      const checkSql = `
+        SELECT COALESCE(SUM(man_hrs), 0) AS total_hours
+        FROM timesheet
+        WHERE DATE(date) = ? AND created_by = ? AND id != ?
+      `;
+
+      db.query(checkSql, [normalizedDate, targetUserId, timesheetId], (errCheck, results) => {
+        if (errCheck) {
+          console.error("Check hours error:", errCheck);
+          return res.status(500).json({ message: "Database error" });
+        }
+
+        const otherHours = Number(results[0]?.total_hours) || 0;
+        if (otherHours + hoursToAdd > dayLimit) {
+          const remaining = Math.max(0, dayLimit - otherHours);
+          return res.status(400).json({
+            message: `Only ${remaining.toFixed(1)} hr(s) remaining for this date. Cannot set ${hoursToAdd.toFixed(1)} hr(s).`,
+          });
+        }
+
+        // Check time overlap excluding current timesheet entry
+        if (dbStartTime && dbEndTime) {
+          const overlapSql = `
+            SELECT id, start_time, end_time
+            FROM timesheet
+            WHERE DATE(date) = ? AND created_by = ? AND id != ?
+              AND start_time IS NOT NULL AND end_time IS NOT NULL
+              AND start_time < ? AND end_time > ?
+          `;
+
+          db.query(overlapSql, [normalizedDate, targetUserId, timesheetId, dbEndTime, dbStartTime], (errOverlap, overlapResults) => {
+            if (errOverlap) {
+              console.error("Check overlap error:", errOverlap);
+              return res.status(500).json({ message: "Database error" });
+            }
+
+            if (overlapResults.length > 0) {
+              const o = overlapResults[0];
+              const oStart = formatTimeAMPM(o.start_time);
+              const oEnd = formatTimeAMPM(o.end_time);
+              return res.status(400).json({
+                message: `Time overlap detected! Another entry already exists from ${oStart} to ${oEnd}.`,
+              });
+            }
+
+            performUpdate();
+          });
+        } else {
+          performUpdate();
+        }
+
+        function performUpdate() {
+          const taskValue = isMeeting ? "MEETING" : isBreak ? "BREAK" : isVirtualFreezed ? fvValue(freezedName) : (task || existing.task);
+          const projectValue = isInternal ? null : (project !== undefined ? project : existing.project_id);
+          const finalWorkDesc = isPermission ? "Break" : (work_description !== undefined ? work_description : existing.work_description);
+          const finalEntryType = isMeeting ? "meeting" : isPermission ? "break" : "project";
+
+          columnExists("timesheet", "entry_type", (errCol, hasEntryType) => {
+            let updateSql = `
+              UPDATE timesheet
+              SET task = ?, project_id = ?, date = ?, man_hrs = ?, start_time = ?, end_time = ?, work_description = ?, updated_at = NOW()
+              WHERE id = ?
+            `;
+            let params = [taskValue, projectValue, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, finalWorkDesc, timesheetId];
+
+            if (hasEntryType) {
+              updateSql = `
+                UPDATE timesheet
+                SET task = ?, project_id = ?, entry_type = ?, date = ?, man_hrs = ?, start_time = ?, end_time = ?, work_description = ?, updated_at = NOW()
+                WHERE id = ?
+              `;
+              params = [taskValue, projectValue, finalEntryType, normalizedDate, hoursToAdd, dbStartTime, dbEndTime, finalWorkDesc, timesheetId];
+            }
+
+            db.query(updateSql, params, (errUpdate) => {
+              if (errUpdate) {
+                console.error("Update timesheet error:", errUpdate);
+                return res.status(500).json({ message: "Database error" });
+              }
+              res.json({ message: "Timesheet updated successfully", timesheet_id: timesheetId });
+            });
+          });
+        }
+      });
+    });
+  });
+});
+
 router.delete("/delete/:id", verifyToken, (req, res) => {
   const id = req.params.id;
 

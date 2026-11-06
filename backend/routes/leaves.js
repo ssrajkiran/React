@@ -480,7 +480,7 @@ router.post("/", auth, async (req, res) => {
 
       let message = "";
       if (existing.length > 0) {
-        if (existing[0].status === "pending") {
+        if (existing[0].status === "pending" || req.user.role === "admin") {
           await db.promise().query(
             `UPDATE permission SET hours=?, slot=?, remarks=? WHERE id=?`,
             [hours, slot, remarks || null, existing[0].id]
@@ -630,7 +630,7 @@ router.post("/", auth, async (req, res) => {
 
     let message = "";
     if (existing.length > 0) {
-      if ((id && existing[0].id === id && existing[0].status === "pending") || existing[0].status === "rejected") {
+      if ((id && (existing[0].status === "pending" || req.user.role === "admin")) || existing[0].status === "rejected" || req.user.role === "admin") {
         await db.promise().query(
           `UPDATE leaves SET from_date=?, to_date=?, days=?, remarks=?, half_day_type=?, comp_off_date=?, status='pending' WHERE id=?`,
           [from_date, leaveToDate, finalDays, remarks || null, (type === "leave" || type === "compoff" || type === "wfh") ? (half_day_type || "full") : null, compOffDateValue, id]
@@ -986,5 +986,57 @@ router.put("/present/:id", auth, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
+// ================= Admin: Edit leave/permission/present on behalf (even after approval) =================
+router.put("/admin/:id", auth, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).json({ error: "Admin only" });
+
+  const { id } = req.params;
+  const { type, from_date, to_date, days, half_day_type, remarks, hours, slot, comp_off_date, status } = req.body;
+
+  try {
+    if (type === "permission") {
+      await db.promise().query(
+        "UPDATE permission SET hours = COALESCE(?, hours), slot = COALESCE(?, slot), remarks = ?, status = COALESCE(?, status) WHERE id = ?",
+        [hours || null, slot || null, remarks || null, status || null, id]
+      );
+      return res.json({ message: "Permission updated successfully" });
+    }
+
+    if (type === "present") {
+      let holiday_name = req.body.holiday_name || null;
+      await db.promise().query(
+        "UPDATE present_on_holiday SET date = COALESCE(?, date), holiday_name = COALESCE(?, holiday_name), remarks = ?, status = COALESCE(?, status) WHERE id = ?",
+        [from_date || null, holiday_name, remarks || null, status || null, id]
+      );
+      return res.json({ message: "Present on holiday updated successfully" });
+    }
+
+    const leaveToDate = (type === "leave" || type === "wfh") ? to_date : from_date;
+    const finalDays = (type === "leave" || type === "wfh" || type === "compoff") && half_day_type && half_day_type !== "full" ? 0.5 : (days || 1);
+    const compOffDateValue = type === "compoff" ? comp_off_date : null;
+
+    await db.promise().query(
+      "UPDATE leaves SET from_date = COALESCE(?, from_date), to_date = COALESCE(?, to_date), days = ?, remarks = ?, half_day_type = ?, comp_off_date = ?, status = COALESCE(?, status) WHERE id = ?",
+      [
+        from_date || null,
+        leaveToDate || null,
+        finalDays,
+        remarks || null,
+        (type === "leave" || type === "compoff" || type === "wfh") ? (half_day_type || "full") : null,
+        compOffDateValue,
+        status || null,
+        id,
+      ]
+    );
+
+    return res.json({ message: "Leave request updated successfully" });
+  } catch (err) {
+    console.error("Admin update leave error:", err);
+    res.status(500).json({ error: "Failed to update leave request" });
+  }
+});
+
 
 module.exports = router;

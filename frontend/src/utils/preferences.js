@@ -229,6 +229,11 @@ export const applyAccentVars = (clean, root, doc = globalThis.document) => {
           : presetPrimary(clean.accent, clean.theme);
     }
     root.style.setProperty("--on-primary", onColorFor(primary));
+
+    const isDark = clean.theme === "dark";
+    const lum = luminance(primary);
+    const isLightAccent = !isDark && (clean.accent === "white" || lum > 0.65);
+    root.setAttribute("data-accent-light", isLightAccent ? "true" : "false");
   } catch { /* environments without style support */ }
 };
 

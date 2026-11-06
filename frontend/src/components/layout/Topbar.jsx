@@ -187,19 +187,6 @@ export default function Topbar({
 
         {/* Metrics & Status Pills Stack (matching tactical pill look) */}
         <div className="topbar-pills-stack">
-          {/* Live Pulse Status Pill */}
-          <div className="topbar-pill topbar-pill-status" title="System operational and connected">
-            <span className="topbar-pulse-dot"></span>
-            <span className="topbar-pill-label">Status:</span>
-            <strong className="topbar-pill-val">Active</strong>
-          </div>
-
-          {/* User Role Pill */}
-          <div className="topbar-pill topbar-pill-role" title={`Signed in as ${role}`}>
-            <i className={`bi ${role === "admin" ? "bi-shield-check" : "bi-person-badge"}`}></i>
-            <span className="topbar-pill-label">Role:</span>
-            <strong className="topbar-pill-val">{role.charAt(0).toUpperCase() + role.slice(1)}</strong>
-          </div>
 
           {/* Today's Man Hours Pill */}
           <div

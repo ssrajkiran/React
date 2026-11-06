@@ -143,6 +143,7 @@ export default function AdminTimesheetList() {
 
   // Modal
   const [showModal, setShowModal]   = useState(false);
+  const [editingId, setEditingId]   = useState(null);
   const [form, setForm]             = useState({ user: "", date: "", project: "", task: "", start_time: "", end_time: "" });
   const [users, setUsers]           = useState([]);
   const [projects, setProjects]     = useState([]);
@@ -285,6 +286,7 @@ export default function AdminTimesheetList() {
 
   // ================= FORM HANDLERS =================
   const openModal = (prefillTaskIdFromUrl) => {
+    setEditingId(null);
     // ids arrive as strings from the URL - keep numbers numeric so selects match options
     const uid = prefillUserId ? Number(prefillUserId) : "";
     const pid = prefillProjectId ? Number(prefillProjectId) : "";
@@ -331,6 +333,36 @@ export default function AdminTimesheetList() {
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleEditTimesheet = (row) => {
+    const uid = Number(row.timesheet_created_by);
+    const pid = row.project_id ? Number(row.project_id) : "";
+    const tid = row.task_id || row.task || "";
+    const dStr = toDateStr(row.timesheet_date);
+    const entryType = isRowMeeting(row) ? "meeting" : (isRowBreak(row) ? "break" : "project");
+    const startTime = row.start_time ? row.start_time.substring(0, 5) : "";
+    const endTime = row.end_time ? row.end_time.substring(0, 5) : "";
+
+    setEditingId(row.timesheet_id);
+    setForm({
+      user: uid,
+      date: dStr,
+      entry_type: entryType,
+      project: pid,
+      task: tid,
+      start_time: startTime,
+      end_time: endTime,
+      work_description: row.work_description || "",
+    });
+    if (uid) {
+      loadProjects(uid);
+      loadLeaveDates(uid);
+      if (pid) loadTasks(pid, uid);
+    }
+    recomputeHours(uid, dStr, data.filter(t => t.timesheet_id !== row.timesheet_id));
+    setFormError("");
+    setShowModal(true);
   };
 
   const handleSave = async () => {
@@ -395,25 +427,30 @@ export default function AdminTimesheetList() {
       }
     }
     try {
-      await api.post("/timesheet",
-        {
-          task: isMeeting ? "MEETING" : (isPermission ? "BREAK" : form.task),
-          project: isInternal ? null : form.project,
-          entry_type: form.entry_type,
-          date: form.date,
-          start_time: form.start_time,
-          end_time: form.end_time,
-          work_description: isPermission ? "Break" : (form.work_description || (isMeeting ? "Meeting" : "")),
-          created_by: form.user,
-        },
-        { headers: authHeader }
-      );
+      const payload = {
+        task: isMeeting ? "MEETING" : (isPermission ? "BREAK" : form.task),
+        project: isInternal ? null : form.project,
+        entry_type: form.entry_type,
+        date: form.date,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        work_description: isPermission ? "Break" : (form.work_description || (isMeeting ? "Meeting" : "")),
+        created_by: form.user,
+      };
+
+      if (editingId) {
+        await api.put(`/timesheet/${editingId}`, payload, { headers: authHeader });
+        showToast("Timesheet updated successfully.", "success");
+      } else {
+        await api.post("/timesheet", payload, { headers: authHeader });
+        showToast("Timesheet added successfully.", "success");
+      }
       setShowModal(false);
-      showToast("Timesheet added successfully.", "success");
+      setEditingId(null);
       loadData();
     } catch (err) {
-      console.error("Add timesheet error:", err);
-      setFormError(err.response?.data?.message || "Failed to add timesheet.");
+      console.error("Save timesheet error:", err);
+      setFormError(err.response?.data?.message || (editingId ? "Failed to update timesheet." : "Failed to add timesheet."));
     }
   };
 
@@ -715,13 +752,22 @@ export default function AdminTimesheetList() {
                     </td>
                     <td>
                       {canDelete && (
-                        <button
-                          className="ts-action-btn ts-action-delete"
-                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(row); }}
-                          title="Delete"
-                        >
-                          <i className="bi bi-trash" />
-                        </button>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          <button
+                            className="ts-action-btn ts-action-edit"
+                            onClick={(e) => { e.stopPropagation(); handleEditTimesheet(row); }}
+                            title="Edit"
+                          >
+                            <i className="bi bi-pencil" />
+                          </button>
+                          <button
+                            className="ts-action-btn ts-action-delete"
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm(row); }}
+                            title="Delete"
+                          >
+                            <i className="bi bi-trash" />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -761,7 +807,7 @@ export default function AdminTimesheetList() {
               <div className="ul-modal-header-left">
                 <div className="ul-modal-icon ul-modal-icon-success"><i className="bi bi-plus-circle" /></div>
                 <div>
-                  <h6 className="ul-modal-title">Add Timesheet</h6>
+                  <h6 className="ul-modal-title">{editingId ? "Edit Timesheet" : "Add Timesheet"}</h6>
                   <p className="ul-modal-sub">Log work hours for a user</p>
                 </div>
               </div>
@@ -1014,7 +1060,7 @@ export default function AdminTimesheetList() {
               <div className="ul-modal-footer">
                 <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                 <button className="ul-btn ul-btn-primary" onClick={handleSave} disabled={leaveBlocked}>
-                  <i className="bi bi-send" /> Save Timesheet
+                  <i className="bi bi-send" /> {editingId ? "Update Timesheet" : "Save Timesheet"}
                 </button>
               </div>
             </div>
@@ -1147,6 +1193,8 @@ const styles = `
 
   /* Actions */
   .ts-action-btn { width: 30px; height: 30px; border-radius: var(--radius); border: none; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .ts-action-edit { background: var(--primary-soft); color: var(--primary); }
+  .ts-action-edit:hover { background: var(--primary); color: #fff; }
   .ts-action-delete { background: var(--danger-soft); color: var(--danger); }
   .ts-action-delete:hover { background: var(--danger); color: #fff; }
 

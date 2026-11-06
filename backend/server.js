@@ -56,6 +56,8 @@ app.use("/api/intercom", require("./routes/intercom"));
 
 app.use("/api/notifications", require("./routes/notifications"));
 
+app.use("/api/chatbot", require("./routes/chatbot"));
+
 // Schema migration: timesheet.project_id + cleanup of legacy freezed module rows
 require("./utils/freezedModules").runFreezedMigrations((err) => {
   if (err) console.error("Freezed modules migration failed:", err.message || err);

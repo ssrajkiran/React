@@ -155,6 +155,68 @@ describe("Theme & Font Visibility / Accessibility Verification", () => {
     });
   });
 
+  describe("Sidebar Module & Submodule Contrast Across All Colors (Accent/Themed Sidebar)", () => {
+    // Preset gradient color stops used in App.css for [data-sidebar="themed"]
+    const accentSidebarGradients = {
+      teal: { top: "#042F2E", mid: "#0F766E", bottom: "#0D9488" },
+      blue: { top: "#0C1A3D", mid: "#1D4ED8", bottom: "#2563EB" },
+      indigo: { top: "#1E1B4B", mid: "#4338CA", bottom: "#4F46E5" },
+      purple: { top: "#2E1065", mid: "#6D28D9", bottom: "#7C3AED" },
+      rose: { top: "#4C0519", mid: "#BE123C", bottom: "#E11D48" },
+      emerald: { top: "#022C22", mid: "#047857", bottom: "#059669" },
+      orange: { top: "#431407", mid: "#C2410C", bottom: "#EA580C" },
+    };
+
+    Object.entries(accentSidebarGradients).forEach(([accentName, stops]) => {
+      it(`accent "${accentName}" sidebar provides accessible white text for modules & submodules`, () => {
+        // Module & Submodule text on dark accent gradients is crisp white (#FFFFFF)
+        const contrastTop = contrastRatio("#FFFFFF", stops.top);
+        const contrastMid = contrastRatio("#FFFFFF", stops.mid);
+        const contrastBottom = contrastRatio("#FFFFFF", stops.bottom);
+
+        // Top and mid stops where navigation items sit should have high contrast (>= 4.5:1)
+        expect(contrastTop).toBeGreaterThanOrEqual(4.5);
+        expect(contrastMid).toBeGreaterThanOrEqual(4.5);
+        expect(isContrastAccessible("#FFFFFF", stops.top)).toBe(true);
+        expect(isContrastAccessible("#FFFFFF", stops.mid)).toBe(true);
+        // Bottom stop bold contrast
+        expect(contrastBottom).toBeGreaterThanOrEqual(3.0);
+      });
+    });
+
+    it("white accent sidebar provides > 9:1 contrast for modules and submodules", () => {
+      const whiteSidebarBg = "#FFFFFF";
+      const moduleTextColor = "#334155";
+      const moduleOpenColor = "#0F172A";
+      const submoduleColor = "#475569";
+      const activeTextColor = "#FFFFFF";
+      const activePillBg = "#0F172A";
+
+      expect(contrastRatio(moduleTextColor, whiteSidebarBg)).toBeGreaterThan(9);
+      expect(contrastRatio(moduleOpenColor, whiteSidebarBg)).toBeGreaterThan(14);
+      expect(contrastRatio(submoduleColor, whiteSidebarBg)).toBeGreaterThan(7);
+      expect(contrastRatio(activeTextColor, activePillBg)).toBeGreaterThan(14);
+    });
+
+    it("applyPrefs correctly flags data-accent-light for light accents and false for vibrant/dark", () => {
+      // White accent
+      applyPrefs({ theme: "light", sidebar: "themed", accent: "white" }, document);
+      expect(document.documentElement.getAttribute("data-accent-light")).toBe("true");
+
+      // Teal accent
+      applyPrefs({ theme: "light", sidebar: "themed", accent: "teal" }, document);
+      expect(document.documentElement.getAttribute("data-accent-light")).toBe("false");
+
+      // Custom yellow accent (luminance > 0.65)
+      applyPrefs({ theme: "light", sidebar: "themed", accent: "custom", accentColor: "#FFFF00" }, document);
+      expect(document.documentElement.getAttribute("data-accent-light")).toBe("true");
+
+      // Custom navy accent (luminance < 0.65)
+      applyPrefs({ theme: "light", sidebar: "themed", accent: "custom", accentColor: "#0A192F" }, document);
+      expect(document.documentElement.getAttribute("data-accent-light")).toBe("false");
+    });
+  });
+
   describe("applyPrefs Dom State Across All Combinations", () => {
     THEME_OPTIONS.forEach((t) => {
       SIDEBAR_OPTIONS.forEach((s) => {
@@ -175,6 +237,80 @@ describe("Theme & Font Visibility / Accessibility Verification", () => {
           });
         });
       });
+    });
+  });
+
+  describe("Sidebar Bottom User Bar ('Santhoshkumar G' & 'Admin') Contrast & Legibility Across All Themes", () => {
+    function blend(hexBg, hexOverlay, alpha) {
+      const r1 = parseInt(hexBg.slice(1, 3), 16);
+      const g1 = parseInt(hexBg.slice(3, 5), 16);
+      const b1 = parseInt(hexBg.slice(5, 7), 16);
+
+      const r2 = parseInt(hexOverlay.slice(1, 3), 16);
+      const g2 = parseInt(hexOverlay.slice(3, 5), 16);
+      const b2 = parseInt(hexOverlay.slice(5, 7), 16);
+
+      const blendedR = Math.round((1 - alpha) * r1 + alpha * r2);
+      const blendedG = Math.round((1 - alpha) * g1 + alpha * g2);
+      const blendedB = Math.round((1 - alpha) * b1 + alpha * b2);
+
+      const toHex = (n) => n.toString(16).padStart(2, '0');
+      return '#' + toHex(blendedR) + toHex(blendedG) + toHex(blendedB);
+    }
+
+    const accentBottoms = {
+      teal: '#0D9488',
+      blue: '#2563EB',
+      indigo: '#4F46E5',
+      purple: '#7C3AED',
+      rose: '#E11D48',
+      emerald: '#059669',
+      orange: '#EA580C',
+    };
+
+    Object.entries(accentBottoms).forEach(([accentName, hexBottom]) => {
+      it(`accent "${accentName}" sidebar user card provides WCAG AA contrast for both name and role`, () => {
+        // Card uses dark-frosted glass: rgba(15, 23, 42, 0.28) over accent bottom stop
+        const cardBg = blend(hexBottom, '#0F172A', 0.28);
+        
+        // Name text is pure white #FFFFFF
+        const nameContrast = contrastRatio('#FFFFFF', cardBg);
+        expect(nameContrast).toBeGreaterThanOrEqual(4.5);
+        expect(isContrastAccessible('#FFFFFF', cardBg)).toBe(true);
+
+        // Role text is rgba(255, 255, 255, 0.90)
+        const roleColor = blend(cardBg, '#FFFFFF', 0.90);
+        const roleContrast = contrastRatio(roleColor, cardBg);
+        expect(roleContrast).toBeGreaterThanOrEqual(4.5);
+      });
+    });
+
+    it("white sidebar user card provides > 15:1 contrast for name and > 5.5:1 for role", () => {
+      const cardBg = "#FFFFFF";
+      const nameColor = "#0F172A";
+      const roleColor = "#475569";
+      const avatarBg = "#0F172A";
+      const avatarText = "#FFFFFF";
+
+      expect(contrastRatio(nameColor, cardBg)).toBeGreaterThan(15);
+      expect(isContrastAccessible(nameColor, cardBg)).toBe(true);
+
+      expect(contrastRatio(roleColor, cardBg)).toBeGreaterThan(5.5);
+      expect(isContrastAccessible(roleColor, cardBg)).toBe(true);
+
+      expect(contrastRatio(avatarText, avatarBg)).toBeGreaterThan(15);
+    });
+
+    it("dark theme / dark sidebar user card provides > 14:1 contrast for name and > 9:1 for role", () => {
+      const cardBg = "#141B2D";
+      const nameColor = "#FFFFFF";
+      const roleColor = blend(cardBg, '#FFFFFF', 0.82);
+
+      expect(contrastRatio(nameColor, cardBg)).toBeGreaterThan(14);
+      expect(isContrastAccessible(nameColor, cardBg)).toBe(true);
+
+      expect(contrastRatio(roleColor, cardBg)).toBeGreaterThan(9);
+      expect(isContrastAccessible(roleColor, cardBg)).toBe(true);
     });
   });
 });

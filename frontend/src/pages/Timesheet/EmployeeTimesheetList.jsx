@@ -144,6 +144,7 @@ export default function EmployeeTimesheetList() {
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ date: "", project: "", task: "", start_time: "", end_time: "" });
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -249,6 +250,7 @@ export default function EmployeeTimesheetList() {
   };
 
   const openModal = (prefillTaskIdFromUrl) => {
+    setEditingId(null);
     // ids arrive as strings from the URL - keep numbers numeric so selects match options
     const pid = prefillProjectId ? Number(prefillProjectId) : "";
     const tid = prefillTaskIdFromUrl && !isNaN(Number(prefillTaskIdFromUrl))
@@ -268,6 +270,31 @@ export default function EmployeeTimesheetList() {
     const [eh, em] = end.split(":").map(Number);
     const diffMin = (eh * 60 + em) - (sh * 60 + sm);
     return diffMin > 0 ? diffMin / 60 : 0;
+  };
+
+  const handleEditTimesheet = (row) => {
+    const dStr = toDateStr(row.timesheet_date);
+    const entryType = isRowMeeting(row) ? "meeting" : (isRowBreak(row) ? "break" : "project");
+    const startTime = row.start_time ? row.start_time.substring(0, 5) : "";
+    const endTime = row.end_time ? row.end_time.substring(0, 5) : "";
+    const pid = row.project_id ? Number(row.project_id) : "";
+    const tid = row.task_id || row.task || "";
+
+    setEditingId(row.timesheet_id);
+    setForm({
+      date: dStr,
+      entry_type: entryType,
+      project: pid,
+      task: tid,
+      start_time: startTime,
+      end_time: endTime,
+      work_description: row.work_description || "",
+    });
+    if (pid) {
+      loadTasks(pid);
+    }
+    setFormError("");
+    setShowModal(true);
   };
 
   const handleSave = async () => {
@@ -333,25 +360,29 @@ export default function EmployeeTimesheetList() {
     }
 
     try {
-      await api.post(
-        "/timesheet",
-        {
-          task: isMeeting ? "MEETING" : (isPermission ? "BREAK" : form.task),
-          project: isInternal ? null : form.project,
-          entry_type: form.entry_type,
-          date: form.date,
-          start_time: form.start_time,
-          end_time: form.end_time,
-          work_description: isPermission ? "Break" : (form.work_description || (isMeeting ? "Meeting" : "")),
-          created_by: loggedUserId,
-        },
-        { headers: authHeader }
-      );
+      const payload = {
+        task: isMeeting ? "MEETING" : (isPermission ? "BREAK" : form.task),
+        project: isInternal ? null : form.project,
+        entry_type: form.entry_type,
+        date: form.date,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        work_description: isPermission ? "Break" : (form.work_description || (isMeeting ? "Meeting" : "")),
+        created_by: loggedUserId,
+      };
+
+      if (editingId) {
+        await api.put(`/timesheet/${editingId}`, payload, { headers: authHeader });
+        showToast("Timesheet updated successfully.", "success");
+      } else {
+        await api.post("/timesheet", payload, { headers: authHeader });
+        showToast("Timesheet added successfully.", "success");
+      }
       setShowModal(false);
-      showToast("Timesheet added successfully.", "success");
+      setEditingId(null);
       loadData();
     } catch (err) {
-      setFormError(err.response?.data?.message || "Failed to add timesheet.");
+      setFormError(err.response?.data?.message || (editingId ? "Failed to update timesheet." : "Failed to add timesheet."));
     }
   };
 
@@ -660,13 +691,22 @@ export default function EmployeeTimesheetList() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="et-action-btn et-action-delete"
-                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(row); }}
-                        title="Delete"
-                      >
-                        <i className="bi bi-trash" />
-                      </button>
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                        <button
+                          className="et-action-btn et-action-edit"
+                          onClick={(e) => { e.stopPropagation(); handleEditTimesheet(row); }}
+                          title="Edit"
+                        >
+                          <i className="bi bi-pencil" />
+                        </button>
+                        <button
+                          className="et-action-btn et-action-delete"
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(row); }}
+                          title="Delete"
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -705,8 +745,8 @@ export default function EmployeeTimesheetList() {
               <div className="ul-modal-header-left">
                 <div className="ul-modal-icon ul-modal-icon-success"><i className="bi bi-plus-circle" /></div>
                 <div>
-                  <h6 className="ul-modal-title">Add Timesheet</h6>
-                  <p className="ul-modal-sub">Log your work hours</p>
+                  <h6 className="ul-modal-title">{editingId ? "Edit Timesheet" : "Add Timesheet"}</h6>
+                  <p className="ul-modal-sub">{editingId ? "Modify your logged hours" : "Log your work hours"}</p>
                 </div>
               </div>
               <button className="ul-modal-close" title="Close" onClick={() => setShowModal(false)}><i className="bi bi-x-lg" /></button>
@@ -927,7 +967,7 @@ export default function EmployeeTimesheetList() {
               <div className="ul-modal-footer">
                 <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                 <button className="ul-btn ul-btn-primary" onClick={handleSave} disabled={leaveBlocked}>
-                  <i className="bi bi-send" /> Save Timesheet
+                  <i className="bi bi-send" /> {editingId ? "Update Timesheet" : "Save Timesheet"}
                 </button>
               </div>
             </div>
@@ -1056,6 +1096,8 @@ const styles = `
 
   /* Actions */
   .et-action-btn { width: 30px; height: 30px; border-radius: var(--radius); border: none; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .et-action-edit { background: var(--primary-soft); color: var(--primary); }
+  .et-action-edit:hover { background: var(--primary); color: #fff; }
   .et-action-delete { background: var(--danger-soft); color: var(--danger); }
   .et-action-delete:hover { background: var(--danger); color: #fff; }
   .et-hrs-pill i { font-size: 11px; }

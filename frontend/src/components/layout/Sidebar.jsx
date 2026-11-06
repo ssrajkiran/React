@@ -208,7 +208,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       className="bi bi-chevron-right ms-auto"
                       style={{
                         fontSize: 11,
-                        opacity: 0.45,
                         transition: "transform 0.2s",
                         transform: openAttendance ? "rotate(90deg)" : "rotate(0deg)",
                       }}
@@ -262,7 +261,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       className="bi bi-chevron-right ms-auto"
                       style={{
                         fontSize: 11,
-                        opacity: 0.45,
                         transition: "transform 0.2s",
                         transform: openTask ? "rotate(90deg)" : "rotate(0deg)",
                       }}
@@ -313,7 +311,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       className="bi bi-chevron-right ms-auto"
                       style={{
                         fontSize: 11,
-                        opacity: 0.45,
                         transition: "transform 0.2s",
                         transform: openTimesheet ? "rotate(90deg)" : "rotate(0deg)",
                       }}
@@ -410,7 +407,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     className="bi bi-chevron-right ms-auto"
                     style={{
                       fontSize: 11,
-                      opacity: 0.45,
                       transition: "transform 0.2s",
                       transform: openSetup ? "rotate(90deg)" : "rotate(0deg)",
                     }}
@@ -475,10 +471,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       <div className="sidebar-footer">
         {!isCollapsed ? (
           <div className="sidebar-user">
-            <div className="ui-avatar">{userInitials}</div>
+            <div className="ui-avatar" title={`${userName} (${(role || 'employee').charAt(0).toUpperCase() + (role || 'employee').slice(1)})`}>{userInitials}</div>
             <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{userName}</div>
-              <div className="sidebar-user-role">{role.charAt(0).toUpperCase() + role.slice(1)}</div>
+              <div className="sidebar-user-name" title={userName}>{userName}</div>
+              <div className="sidebar-user-role" title={(role || 'employee').charAt(0).toUpperCase() + (role || 'employee').slice(1)}>{(role || 'employee').charAt(0).toUpperCase() + (role || 'employee').slice(1)}</div>
             </div>
             <button
               className="sidebar-pill-btn"
@@ -502,7 +498,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           </div>
         ) : (
           <div className="sidebar-user-collapsed">
-            <div className="ui-avatar sm" title={`${userName} (${role})`}>
+            <div className="ui-avatar sm" title={`${userName} (${(role || 'employee').charAt(0).toUpperCase() + (role || 'employee').slice(1)})`}>
               {userInitials}
             </div>
             <button

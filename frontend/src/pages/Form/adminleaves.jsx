@@ -368,6 +368,27 @@ export default function AdminLeaves() {
     setShowModal(true);
   };
 
+  const handleEditEvent = (event) => {
+    const sDate = event.start ? format(event.start, "yyyy-MM-dd") : (event.start_date || "");
+    const eDate = event.end ? format(event.end, "yyyy-MM-dd") : (event.end_date || sDate);
+    setApplyForm({
+      id: event.id,
+      user_id: event.user_id,
+      leave_type: event.type || "leave",
+      start_date: sDate,
+      end_date: eDate,
+      days: event.days != null ? Number(event.days) : 1,
+      hours: event.hours || 2,
+      slot: event.slot || "morning",
+      compoff_date: event.comp_off_date || event.compoff_date || "",
+      half_day_type: event.half_day_type || "full",
+      reason: event.remarks || event.reason || "",
+      status: event.status,
+      holiday_name: event.holiday_name || "",
+    });
+    setShowApplyModal(true);
+  };
+
   // ── APPROVE / REJECT ───────────────────────────────────────────────────────
   const handleUpdateStatus = async (status) => {
     if (!formData.id) return;
@@ -433,7 +454,11 @@ export default function AdminLeaves() {
         payload = { ...payload, from_date: applyForm.start_date, to_date: applyForm.end_date, type: applyForm.leave_type === "wfh" ? "wfh" : "leave", days: applyForm.days, half_day_type: applyForm.half_day_type, remarks: applyForm.reason || null };
       }
 
-      await api.post("/leaves/admin", payload);
+      if (applyForm.id) {
+        await api.put(`/leaves/admin/${applyForm.id}`, payload);
+      } else {
+        await api.post("/leaves/admin", payload);
+      }
       setApplyLoading(false); setShowApplyModal(false);
       fetchAllLeaves();
       setApplyForm({ user_id: "", leave_type: "leave", start_date: "", end_date: "", reason: "", days: 0, compoff_date: "", half_day_type: "full", hours: 2, slot: "morning" });
@@ -902,6 +927,15 @@ export default function AdminLeaves() {
               ) : <span />}
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="ul-btn ul-btn-ghost" onClick={() => setShowModal(false)}>Close</button>
+                <button
+                  className="ul-btn ul-btn-primary"
+                  onClick={() => {
+                    setShowModal(false);
+                    handleEditEvent(formData);
+                  }}
+                >
+                  <i className="bi bi-pencil" /> Edit
+                </button>
                 {formData.status === "pending" && (
                   <>
                     <button className="ul-btn ul-btn-danger" onClick={() => handleUpdateStatus("rejected")} disabled={loading}>
@@ -926,8 +960,8 @@ export default function AdminLeaves() {
               <div className="ul-modal-header-left">
                 <div className="ul-modal-icon ul-modal-icon-primary"><i className="bi bi-calendar-plus" /></div>
                 <div>
-                  <h6 className="ul-modal-title">Apply Leave on Behalf</h6>
-                  <p className="ul-modal-sub">Submit a leave request for an employee</p>
+                  <h6 className="ul-modal-title">{applyForm.id ? "Edit Leave Request" : "Apply Leave on Behalf"}</h6>
+                  <p className="ul-modal-sub">{applyForm.id ? "Modify details for this request" : "Submit a leave request for an employee"}</p>
                 </div>
               </div>
               <button className="ul-modal-close" title="Close" onClick={() => setShowApplyModal(false)}><i className="bi bi-x-lg" /></button>
