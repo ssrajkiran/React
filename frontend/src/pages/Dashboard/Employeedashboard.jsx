@@ -77,7 +77,19 @@ export default function EmployeeDashboard() {
   const compoffUsed  = history
     .filter((h) => h.type === "Comp Off" && h.status === "approved")
     .reduce((sum, h) => sum + (h.raw_days || 0), 0);
-  const presentBonus = history.filter((h) => h.type === "Present"  && h.status === "approved").length;
+
+  // Only presents on compensation-eligible dates (or weekends, which have no
+  // holidays row) earn the leave-balance bonus — mirrors the server formula.
+  // Replacement working days are normal office days and never earn the bonus.
+  const nonCompDates = new Set(
+    holidays.filter((h) => h.has_compensation === 0).map((h) => h.date)
+  );
+  holidays.forEach((h) => {
+    if (h.replacement_date) nonCompDates.add(h.replacement_date);
+  });
+  const presentBonus = history.filter(
+    (h) => h.type === "Present" && h.status === "approved" && !nonCompDates.has(h.from_date)
+  ).length;
 
   const balance = parseFloat(
     (totalLeaveDays + presentBonus - leavesUsed - compoffUsed).toFixed(1)
@@ -276,6 +288,7 @@ export default function EmployeeDashboard() {
                     <th>Name</th>
                     <th>Date</th>
                     <th>Day</th>
+                    <th>Comp</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -284,6 +297,19 @@ export default function EmployeeDashboard() {
                       <td>{h.name}</td>
                       <td className="db-mono">{formatDate(h.date)}</td>
                       <td className="db-text-muted">{getDayName(h.date)}</td>
+                      <td>
+                        <span
+                          className="db-badge"
+                          title={h.has_compensation === 0
+                            ? "Working on this holiday earns no comp-off"
+                            : "Working on this holiday earns a comp-off"}
+                          style={h.has_compensation === 0
+                            ? { background: "var(--bg-muted)", color: "var(--t-muted)" }
+                            : { background: "var(--success-soft)", color: "var(--success)" }}
+                        >
+                          {h.has_compensation === 0 ? "No comp-off" : "Comp-off"}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -137,7 +137,7 @@ router.post("/message", verifyToken, async (req, res) => {
 
       // Leave Policy and Types Overview
       return res.json({
-        reply: `📋 **Voltech Attendance & Leave Policy:**\n\n- **Casual Leave (CL):** For personal commitments and planned leaves. Apply in advance.\n- **Sick Leave (SL):** For medical illness. A doctor's certificate may be required for 3+ consecutive days.\n- **Permission:** Short absence during work hours (max **2 hours** per slot).\n- **Half Day (HD):** First half (morning) or second half (afternoon) absence (counted as 0.5 day).\n- **Work From Home (WH):** Approved remote working day.\n- **Present on Holiday (PH):** Comp-off eligible when working on official holidays.\n\n**To apply:** Go to **Attendance**, click **Apply Leave**, select leave type and date range, and click Submit.`,
+        reply: `📋 **Voltech Attendance & Leave Policy:**\n\n- **Casual Leave (CL):** For personal commitments and planned leaves. Apply in advance.\n- **Sick Leave (SL):** For medical illness. A doctor's certificate may be required for 3+ consecutive days.\n- **Permission:** Short absence during work hours (max **2 hours** per slot).\n- **Half Day (HD):** First half (morning) or second half (afternoon) absence (counted as 0.5 day).\n- **Work From Home (WH):** Approved remote working day.\n- **Present on Holiday (PH):** Comp-off eligible when working on holidays marked with compensation (weekends included).\n\n**To apply:** Go to **Attendance**, click **Apply Leave**, select leave type and date range, and click Submit.`,
         quickLinks: [
           { label: "Apply for Leave", path: role === "admin" ? "/admin/leaves" : "/employee/leaves", icon: "bi-calendar-plus" },
           { label: "Attendance Report", path: "/employee/report", icon: "bi-file-earmark-text" },
@@ -149,12 +149,17 @@ router.post("/message", verifyToken, async (req, res) => {
     // 4. UPCOMING HOLIDAYS
     if (/holiday|festival|vacation|off day|diwali|pongal|new year|christmas/i.test(text)) {
       const holidayRows = await queryDb(
-        "SELECT holiday_name, holiday_date, holiday_day FROM holidays WHERE holiday_date >= CURDATE() ORDER BY holiday_date ASC LIMIT 6"
+        "SELECT name, date, has_compensation, DATE_FORMAT(replacement_date, '%Y-%m-%d') AS replacement_date FROM holidays WHERE date >= CURDATE() ORDER BY date ASC LIMIT 6"
       );
 
       if (holidayRows && holidayRows.length > 0) {
         const holidayList = holidayRows
-          .map((h, i) => `${i + 1}. **${h.holiday_name}** — ${formatDate(h.holiday_date)} (${h.holiday_day || "Holiday"})`)
+          .map((h, i) => {
+            const dayName = new Date(h.date).toLocaleDateString("en-US", { weekday: "long" });
+            const comp = h.has_compensation ? "Comp-off" : "No comp-off";
+            const repl = h.replacement_date ? ` · work ${formatDate(h.replacement_date)}` : "";
+            return `${i + 1}. **${h.name}** — ${formatDate(h.date)} (${dayName} · ${comp}${repl})`;
+          })
           .join("\n");
 
         return res.json({

@@ -50,7 +50,13 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
 
   const holidayMap = useMemo(() => {
     const m = {};
-    holidays.forEach((h) => { m[h.date] = h.name; });
+    holidays.forEach((h) => { m[h.date] = { name: h.name, has_compensation: h.has_compensation !== 0 }; });
+    return m;
+  }, [holidays]);
+
+  const replacementMap = useMemo(() => {
+    const m = {};
+    holidays.forEach((h) => { if (h.replacement_date) m[h.replacement_date] = h.name; });
     return m;
   }, [holidays]);
 
@@ -62,13 +68,24 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
 
   const handleDayClick = (date) => {
     const ds = format(date, "yyyy-MM-dd");
-    if (!holidayMap[ds] && !isSpecialWeekend(date)) return;
+    const hol = holidayMap[ds];
+    // Replacement working days act as normal office days — never pickable.
+    // Only weekends and compensation-eligible holidays can be picked
+    if (replacementMap[ds]) return;
+    if (hol && !hol.has_compensation) return;
+    if (!hol && !isSpecialWeekend(date)) return;
     onChange(ds);
   };
 
   const selectableDays = useMemo(
-    () => days.filter((d) => holidayMap[format(d, "yyyy-MM-dd")] || isSpecialWeekend(d)),
-    [days, holidayMap]
+    () => days.filter((d) => {
+      const ds = format(d, "yyyy-MM-dd");
+      if (replacementMap[ds]) return false;
+      const hol = holidayMap[ds];
+      if (hol) return hol.has_compensation;
+      return isSpecialWeekend(d);
+    }),
+    [days, holidayMap, replacementMap]
   );
 
   return (
@@ -94,15 +111,20 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
         ))}
         {days.map((date) => {
           const ds = format(date, "yyyy-MM-dd");
-          const isHol = !!holidayMap[ds];
+          const hol = holidayMap[ds];
+          const isHol = !!hol;
+          const isHolNoComp = !!hol && !hol.has_compensation;
+          const isRepl = !!replacementMap[ds];
           const isSW = isSpecialWeekend(date);
-          const selectable = isHol || isSW;
+          const selectable = (isHol && hol.has_compensation) || (!isHol && !isRepl && isSW);
           const selected = ds === value;
           const dow = getDay(date);
           const isWknd = dow === 0 || dow === 6;
 
           let cls = "hcp-day";
-          if (isHol)            cls += " hcp-holiday";
+          if (isHolNoComp)      cls += " hcp-holiday hcp-holiday-nocomp";
+          else if (isHol)       cls += " hcp-holiday";
+          else if (isRepl)      cls += " hcp-normal hcp-repl";
           else if (isSW)        cls += " hcp-special-weekend";
           else if (isWknd)      cls += " hcp-regular-weekend";
           else                  cls += " hcp-normal";
@@ -114,12 +136,13 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
             <div
               key={ds}
               className={cls}
-              title={isHol ? holidayMap[ds] : isSW ? specialWeekendLabel(date) : ""}
+              title={isHol ? `${hol.name}${hol.has_compensation ? "" : " — no comp-off"}` : isRepl ? `Working day — covers ${replacementMap[ds]}` : isSW ? specialWeekendLabel(date) : ""}
               onClick={() => selectable && handleDayClick(date)}
             >
               <span className="hcp-day-num">{date.getDate()}</span>
               {isHol && <span className="hcp-dot hcp-dot-holiday" />}
-              {isSW && !isHol && <span className="hcp-dot hcp-dot-sw" />}
+              {isRepl && !isHol && <span className="hcp-dot hcp-dot-repl" />}
+              {isSW && !isHol && !isRepl && <span className="hcp-dot hcp-dot-sw" />}
             </div>
           );
         })}
@@ -132,7 +155,7 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
           <span>
             <strong>{format(new Date(value + "T00:00:00"), "dd-MM-yyyy")}</strong>
             {holidayMap[value]
-              ? ` — ${holidayMap[value]}`
+              ? ` — ${holidayMap[value].name}`
               : ` — ${specialWeekendLabel(new Date(value + "T00:00:00"))}`}
           </span>
           <button className="hcp-clear" title="Clear date" onClick={() => onChange("")}>
@@ -161,7 +184,7 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
                   <span className={`hcp-list-dot ${isHol ? "hcp-dot-holiday" : "hcp-dot-sw"}`} />
                   <span className="hcp-list-date">{format(d, "EEE, dd-MM")}</span>
                   <span className="hcp-list-name">
-                    {isHol ? holidayMap[ds] : specialWeekendLabel(d)}
+                    {isHol ? holidayMap[ds].name : specialWeekendLabel(d)}
                   </span>
                   {isSel && <i className="bi bi-check2 hcp-list-check" />}
                 </button>
@@ -181,7 +204,13 @@ function HolidayCalendarPicker({ holidays = [], value, onChange }) {
           <span className="hcp-dot hcp-dot-holiday" /> Public Holiday
         </div>
         <div className="hcp-legend-item">
+          <span className="hcp-dot hcp-dot-nocomp" /> No comp-off
+        </div>
+        <div className="hcp-legend-item">
           <span className="hcp-dot hcp-dot-sw" /> 2nd/4th Sat · All Sundays
+        </div>
+        <div className="hcp-legend-item">
+          <span className="hcp-dot hcp-dot-repl" /> Working (replaces a holiday)
         </div>
       </div>
     </div>
@@ -1558,6 +1587,10 @@ const styles = `
   /* holiday = red tint */
   .hcp-holiday { background:var(--danger-soft); color:var(--danger); font-weight:700; }
   .hcp-holiday.hcp-selectable:hover { background:var(--danger); color:#fff; }
+  /* holiday without compensation = muted, not selectable */
+  .hcp-holiday-nocomp { background:var(--bg-muted); color:var(--t-muted); font-weight:600; opacity:0.75; cursor:not-allowed; }
+  .hcp-holiday-nocomp .hcp-dot-holiday { background:var(--t-muted); }
+  .hcp-holiday-nocomp.hcp-selectable:hover { background:var(--bg-muted); color:var(--t-muted); }
   /* special weekend = amber tint */
   .hcp-special-weekend { background:var(--warning-soft); color:var(--warning); font-weight:700; }
   .hcp-special-weekend.hcp-selectable:hover { background:var(--warning); color:#fff; }
@@ -1570,7 +1603,9 @@ const styles = `
   /* dots */
   .hcp-dot { width:4px; height:4px; border-radius:50%; position:absolute; bottom:3px; }
   .hcp-dot-holiday { background:var(--danger); }
+  .hcp-dot-nocomp { background:var(--t-muted); }
   .hcp-dot-sw { background:var(--warning); }
+  .hcp-dot-repl { background:var(--info); }
   /* selected banner */
   .hcp-selected-info { display:flex; align-items:center; gap:8px; padding:8px 11px; background:var(--primary-soft); border-radius:var(--radius); font-size:12.5px; color:var(--t-base); font-weight:600; border: 1px solid var(--border); }
   .hcp-selected-info i { font-size:13px; flex-shrink:0; }

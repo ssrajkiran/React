@@ -143,29 +143,60 @@ export default function AttendanceReport() {
     return ["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()];
   };
 
+  // date → name of the holiday a date covers (weekend that works as a normal day)
+  const replacementByDate = useMemo(() => {
+    const m = {};
+    (holidays || []).forEach((h) => {
+      if (h?.replacement_date) m[h.replacement_date] = h.name;
+    });
+    return m;
+  }, [holidays]);
+
+  // A replacement working day is NOT a weekend, even if it falls on Sat/Sun.
   const isWeekend = useCallback((day) => {
+    if (replacementByDate[getDateStr(day)]) return false;
     const dow = new Date(year, month - 1, day).getDay();
     return dow === 0 || dow === 6;
-  }, [year, month]);
+  }, [year, month, getDateStr, replacementByDate]);
 
   const isTodayDate = (day) => {
     const now = new Date();
     return now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day;
   };
 
+  // date → { name, has_compensation } map (weekends are not in the list)
+  const holidayByDate = useMemo(() => {
+    const m = {};
+    (holidays || []).forEach((h) => {
+      if (h?.date) m[h.date] = { name: h.name, has_compensation: h.has_compensation !== 0 };
+    });
+    return m;
+  }, [holidays]);
+
+  // Compensation eligibility for a date: flagged holidays say no;
+  // weekends / dates outside the holidays list stay eligible.
+  const isCompEligible = useCallback((dateStr, cellHasComp) => {
+    if (cellHasComp !== undefined && cellHasComp !== null) return Number(cellHasComp) !== 0;
+    const hol = holidayByDate[dateStr];
+    return hol ? hol.has_compensation : true;
+  }, [holidayByDate]);
+
   const getCellInfo = useCallback((cell, day) => {
     const dateStr = getDateStr(day);
-    const isHoliday = holidays.includes(dateStr);
+    const hol = holidayByDate[dateStr];
+    const isHoliday = !!hol;
     const isWknd = isWeekend(day);
+    const holidayName = (cell && cell.holiday_name) || (hol && hol.name) || "";
+    const hasComp = isCompEligible(dateStr, cell && cell.has_compensation);
 
     if (!cell) {
-      if (isHoliday) return { display: "H", isHoliday: true, isWeekend: isWknd };
+      if (isHoliday) return { display: "H", isHoliday: true, isWeekend: isWknd, holidayName, hasCompensation: hasComp };
       if (isWknd) return { display: "WO", isHoliday: false, isWeekend: true };
       return { display: "P", isHoliday: false, isWeekend: false };
     }
 
     const status = cell.status;
-    if (status === "present_on_holiday" || status === "present") return { display: "PR", isHoliday, isWeekend: isWknd };
+    if (status === "present_on_holiday" || status === "present") return { display: "PR", isHoliday, isWeekend: isWknd, holidayName, hasCompensation: hasComp };
     if (status === "WH" || status === "wfh" || status === "work_from_home" || cell.type === "wfh" || cell.type === "work_from_home") {
       return { display: "WH", isHoliday, isWeekend: isWknd };
     }
@@ -173,11 +204,11 @@ export default function AttendanceReport() {
     if (status === "permission")         return { display: "PP", isHoliday, isWeekend: isWknd };
     if (status === "leave")              return { display: cell.half_day_type && cell.half_day_type !== "full" ? "HD" : "L", isHoliday, isWeekend: isWknd };
     if (status === "absent")             return { display: "A",  isHoliday, isWeekend: isWknd };
-    if (status === "holiday" || isHoliday) return { display: "H", isHoliday: true, isWeekend: isWknd };
+    if (status === "holiday" || isHoliday) return { display: "H", isHoliday: true, isWeekend: isWknd, holidayName, hasCompensation: hasComp };
     if (status === "weekoff" || isWknd)  return { display: "WO", isHoliday: false, isWeekend: true };
 
     return { display: status, isHoliday, isWeekend: isWknd };
-  }, [getDateStr, holidays, isWeekend]);
+  }, [getDateStr, holidayByDate, isWeekend, isCompEligible]);
 
   // ─── MODAL CONTROLS ───────────────────────────────────────────────────────
   const openModal = (user, cell, day) => {
@@ -257,7 +288,7 @@ export default function AttendanceReport() {
   const fetchHolidays = async () => {
     try {
       const res = await api.get(`/holidays/?year=${year}&month=${month}`);
-      setHolidays((res.data || []).map((d) => d.date));
+      setHolidays(res.data || []);
     } catch (err) {
       console.error("Failed to fetch holidays", err);
     }
@@ -313,9 +344,8 @@ export default function AttendanceReport() {
     let workingDaysCount = 0;
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const isHol = holidays.includes(dateStr);
-      const dow = new Date(year, month - 1, d).getDay();
-      const isWk = dow === 0 || dow === 6;
+      const isHol = !!holidayByDate[dateStr];
+      const isWk = isWeekend(d);
       if (!isHol && !isWk) workingDaysCount++;
     }
 
@@ -362,7 +392,7 @@ export default function AttendanceReport() {
       attendanceRate,
       counts,
     };
-  }, [rows, daysInMonth, holidays, year, month, getCellInfo]);
+  }, [rows, daysInMonth, holidays, holidayByDate, year, month, getCellInfo, isWeekend]);
 
   // ─── EXCEL EXPORT ─────────────────────────────────────────────────────────
   const exportToExcel = async () => {
@@ -581,9 +611,16 @@ export default function AttendanceReport() {
                   <span className="ar-legend-counter">{count}</span>
                 </div>
               ))}
+                <span
+                  className="ar-hol-dot-legend"
+                  title="Dot on holiday column headers: green = working that day earns a comp-off, grey = no compensation"
+                >
+                  <span className="ar-hol-comp-dot ar-hol-comp-yes" /> Comp-off holiday
+                  <span className="ar-hol-comp-dot ar-hol-comp-no" style={{ marginLeft: 8 }} /> No comp-off
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Table Subheader Bar */}
         <div className="ar-table-title-bar">
@@ -619,16 +656,31 @@ export default function AttendanceReport() {
                   {Array.from({ length: daysInMonth }, (_, i) => {
                     const day = i + 1;
                     const dateStr = getDateStr(day);
-                    const isHol = holidays.includes(dateStr);
+                    const hol = holidayByDate[dateStr];
+                    const isHol = !!hol;
                     const isWknd = isWeekend(day);
                     const isToday = isTodayDate(day);
+                    const replFor = replacementByDate[dateStr];
+                    const holTitle = isHol
+                      ? `${getDayOfWeek(day)}, ${day} ${monthNames[month - 1]} (Holiday · ${hol.has_compensation ? "Comp-off" : "No comp-off"}) — ${hol.name}`
+                      : `${getDayOfWeek(day)}, ${day} ${monthNames[month - 1]}${isWknd ? " (Weekend)" : ""}${replFor ? ` (Working day · covers ${replFor})` : ""}`;
                     return (
                       <th
                         key={day}
-                        className={`ar-th-day ${isWknd ? "ar-weekend" : ""} ${isHol ? "ar-holiday-col" : ""} ${isToday ? "ar-today-col" : ""}`}
-                        title={`${getDayOfWeek(day)}, ${day} ${monthNames[month - 1]} ${isHol ? "(Holiday)" : isWknd ? "(Weekend)" : ""}`}
+                        className={`ar-th-day ${isWknd ? "ar-weekend" : ""} ${isHol ? "ar-holiday-col" : ""} ${isHol && !hol.has_compensation ? "ar-holiday-nocomp-col" : ""} ${isToday ? "ar-today-col" : ""}`}
+                        title={holTitle}
                       >
-                        <div className="ar-th-day-num">{day}</div>
+                        <div className="ar-th-day-num">
+                          {day}
+                          {isHol && (
+                            <span
+                              className={`ar-hol-comp-dot ${hol.has_compensation ? "ar-hol-comp-yes" : "ar-hol-comp-no"}`}
+                              title={hol.has_compensation
+                                ? `${hol.name} — working earns a comp-off`
+                                : `${hol.name} — no comp-off`}
+                            />
+                          )}
+                        </div>
                         <div className="ar-th-day-name">{getDayOfWeek(day)}</div>
                         {isToday && <span className="ar-today-badge">TODAY</span>}
                       </th>
@@ -659,18 +711,41 @@ export default function AttendanceReport() {
                     {Array.from({ length: daysInMonth }, (_, i) => {
                       const day = i + 1;
                       const cell = row[day];
-                      const { display } = getCellInfo(cell, day);
+                      const info = getCellInfo(cell, day);
+                      const { display } = info;
                       const meta = getMetaFor(display);
-                      const clickable = !["P", "H", "WO"].includes(display) && !!cell;
                       const isWknd = isWeekend(day);
                       const isToday = isTodayDate(day);
+                      const clickable = !["P", "WO"].includes(display);
+                      // Fallback cell for holiday days not returned by the API (e.g. tests)
+                      const effectiveCell = cell || (display === "H"
+                        ? { status: "holiday", holiday_name: info.holidayName, has_compensation: info.hasCompensation ? 1 : 0 }
+                        : display === "WO" ? { status: "WO" } : { status: "P" });
+
+                      const cellTitle = (() => {
+                        const base = clickable ? `${meta.label} on Day ${day} — Click to view full details` : meta.label;
+                        if (display === "H") {
+                          const comp = info.hasCompensation ? "Comp-off" : "No comp-off";
+                          const name = info.holidayName ? ` (${info.holidayName})` : "";
+                          return `Holiday${name} · ${comp}${clickable ? ` on Day ${day} — Click to view full details` : ""}`;
+                        }
+                        if (display === "PR") {
+                          const comp = info.hasCompensation ? "Comp-off eligible" : "No comp-off";
+                          return `${meta.label} on Day ${day} — ${comp}${clickable ? " — Click to view full details" : ""}`;
+                        }
+                        if (display === "P") {
+                          const replFor = replacementByDate[getDateStr(day)];
+                          if (replFor) return `Present — normal working day (covers ${replFor})`;
+                        }
+                        return base;
+                      })();
 
                       return (
                         <td
                           key={day}
                           className={`ar-td-cell ${isWknd ? "ar-weekend-cell" : ""} ${isToday ? "ar-today-cell" : ""} ${clickable ? "ar-clickable" : ""}`}
-                          onClick={() => clickable && openModal(row.User, cell, day)}
-                          title={clickable ? `${meta.label} on Day ${day} — Click to view full details` : meta.label}
+                          onClick={() => clickable && openModal(row.User, effectiveCell, day)}
+                          title={cellTitle}
                         >
                           <span
                             className="ar-cell-chip"
@@ -795,13 +870,19 @@ export default function AttendanceReport() {
 
       {/* ─── INNOVATIVE ATTENDANCE DETAIL VIEW MODAL ───────────────────────── */}
       {modalOpen && selectedCell && (() => {
-        const { display } = getCellInfo(selectedCell, selectedCell.day);
+        const { display, holidayName, hasCompensation } = getCellInfo(selectedCell, selectedCell.day);
         const meta = getMetaFor(display);
         const isLeaveType = ["L", "CO", "HD"].includes(display);
         const isPermType  = display === "PP";
         const isPR        = display === "PR";
+        const isHol       = display === "H";
         const isHalfDay   = display === "HD";
         const isWFH       = display === "WH";
+        const modalHolidayName = holidayName || selectedCell.holiday_name || "";
+        const compLabel = hasCompensation ? "Eligible" : "Not applicable";
+        const compHint = hasCompensation
+          ? "Working on this day earns a compensatory day off"
+          : "This holiday does not grant a comp-off";
 
         const daysVal = selectedCell.days ? Number(selectedCell.days) : null;
         const durationFormatted = daysVal !== null
@@ -843,9 +924,9 @@ export default function AttendanceReport() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "auto" }}>
-                  <div className={`ar-status-tag ar-status-${selectedCell.approval_status || "approved"}`}>
+                  <div className={`ar-status-tag ar-status-${isHol ? "approved" : (selectedCell.approval_status || "approved")}`}>
                     <span className="ar-status-dot" />
-                    {(selectedCell.approval_status || "Approved").toUpperCase()}
+                    {isHol ? "HOLIDAY" : (selectedCell.approval_status || "Approved").toUpperCase()}
                   </div>
                   <button className="ul-modal-close" onClick={closeModal} title="Close (Esc)">
                     <i className="bi bi-x-lg" />
@@ -875,10 +956,17 @@ export default function AttendanceReport() {
                         ? "Allocated Permission Duration"
                         : isPR
                         ? "Holiday Assignment"
+                        : isHol
+                        ? "Official Holiday"
                         : "Total Leave Duration"}
                     </span>
                     <div className="ar-hero-duration-val">
-                      <span className="ar-hero-duration-number">{durationFormatted}</span>
+                      <span className="ar-hero-duration-number">{isHol ? (modalHolidayName || "Holiday") : durationFormatted}</span>
+                      {isHol && (
+                        <span className="ar-hero-duration-sub" style={{ color: hasCompensation ? "var(--success)" : "var(--t-muted)" }}>
+                          {hasCompensation ? "Comp-off eligible" : "No comp-off"}
+                        </span>
+                      )}
                       {isHalfDay && selectedCell.half_day_type && (
                         <span className="ar-hero-duration-sub">
                           {selectedCell.half_day_type === "first_half" ? "Morning Session" : "Afternoon Session"}
@@ -934,12 +1022,29 @@ export default function AttendanceReport() {
                     </div>
                   )}
 
-                  {isPR && selectedCell.holiday_name && (
+                  {(isPR || isHol) && modalHolidayName && (
                     <div className="ar-info-item">
                       <span className="ar-info-title">Official Holiday Name</span>
                       <strong className="ar-info-val">
                         <i className="bi bi-star-fill" style={{ color: "var(--warning)", marginRight: 5 }} />
-                        {selectedCell.holiday_name}
+                        {modalHolidayName}
+                      </strong>
+                    </div>
+                  )}
+
+                  {(isPR || isHol) && (
+                    <div className="ar-info-item">
+                      <span className="ar-info-title">Compensation</span>
+                      <strong
+                        className="ar-info-val"
+                        title={compHint}
+                        style={{ color: hasCompensation ? "var(--success)" : "var(--t-muted)" }}
+                      >
+                        <i
+                          className={`bi ${hasCompensation ? "bi-patch-check-fill" : "bi-slash-circle"}`}
+                          style={{ marginRight: 5 }}
+                        />
+                        {compLabel}
                       </strong>
                     </div>
                   )}
@@ -1052,6 +1157,8 @@ const styles = `
   .ar-legend-chip { font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid transparent; letter-spacing:0.04em; }
   .ar-legend-label { font-size:11.5px; color:var(--t-base); font-weight:600; }
   .ar-legend-counter { font-size:10.5px; font-weight:700; color:var(--t-muted); background:var(--bg-muted); padding:1px 5px; border-radius:10px; }
+  .ar-hol-dot-legend { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; color:var(--t-muted); margin-left:6px; }
+  .ar-hol-dot-legend .ar-hol-comp-dot { margin-left:0; }
 
   /* Table Subheader Bar */
   .ar-table-title-bar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; gap:10px; background:var(--bg-card); }
@@ -1075,6 +1182,10 @@ const styles = `
   .ar-weekend .ar-th-day-num, .ar-weekend .ar-th-day-name { color:var(--danger) !important; font-weight:800; }
   .ar-holiday-col { background:var(--holiday-bg) !important; }
   .ar-holiday-col .ar-th-day-num { color:var(--warning) !important; font-weight:800; }
+  .ar-holiday-nocomp-col .ar-th-day-num { color:var(--t-muted) !important; }
+  .ar-hol-comp-dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-left:4px; vertical-align:middle; }
+  .ar-hol-comp-yes { background:var(--success); box-shadow:0 0 0 2px color-mix(in srgb, var(--success) 25%, transparent); }
+  .ar-hol-comp-no  { background:var(--t-muted); box-shadow:0 0 0 2px color-mix(in srgb, var(--t-muted) 25%, transparent); }
   .ar-today-col { background:color-mix(in srgb, var(--primary) 8%, var(--bg-card)) !important; }
   .ar-today-badge { display:block; font-size:8px; font-weight:800; color:var(--primary); letter-spacing:0.04em; }
 

@@ -30,7 +30,11 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const holidayMap = {};
-  holidays.forEach((h) => { holidayMap[h.date] = h.name; });
+  const replacementMap = {};
+  holidays.forEach((h) => {
+    holidayMap[h.date] = { name: h.name, has_compensation: h.has_compensation !== 0 };
+    if (h.replacement_date) replacementMap[h.replacement_date] = h.name;
+  });
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrev = new Date(year, month, 0).getDate();
@@ -45,7 +49,10 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
   const getDayMeta = (y, m, d) => {
     const ds = toDS(y, m, d);
     const dow = new Date(y, m, d).getDay();
-    if (holidayMap[ds]) return { type: "holiday", label: holidayMap[ds], ds };
+    const hol = holidayMap[ds];
+    if (hol && !hol.has_compensation) return { type: "holiday-nocomp", label: `${hol.name} — no comp-off`, ds };
+    if (hol) return { type: "holiday", label: hol.name, ds };
+    if (replacementMap[ds]) return { type: "workday", label: `Working day — covers ${replacementMap[ds]}`, ds };
     if (dow === 0) return { type: "sunday", label: "Sunday", ds };
     if (is2ndOr4thSat(y, m, d)) return { type: "saturday-off", label: "2nd/4th Saturday", ds };
     return { type: "workday", ds };
@@ -55,13 +62,14 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
   for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: daysInPrev - i, otherMonth: true, disabled: true });
   for (let d = 1; d <= daysInMonth; d++) {
     const meta = getDayMeta(year, month, d);
-    cells.push({ day: d, ...meta, disabled: meta.type === "workday" });
+    cells.push({ day: d, ...meta, disabled: meta.type === "workday" || meta.type === "holiday-nocomp" });
   }
   const rem = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
   for (let i = 1; i <= rem; i++) cells.push({ day: i, otherMonth: true, disabled: true });
 
   const TYPE_STYLE = {
     holiday: { bg: "var(--success-soft)", color: "var(--success)", dot: "var(--success)" },
+    "holiday-nocomp": { bg: "var(--bg-muted)", color: "var(--t-muted)", dot: "var(--t-muted)" },
     sunday: { bg: "var(--danger-soft)", color: "var(--danger)", dot: "var(--danger)" },
     "saturday-off": { bg: "var(--warning-soft)", color: "var(--warning)", dot: "var(--warning)" },
     workday: { bg: "transparent", color: "var(--border)", dot: null },
@@ -98,6 +106,7 @@ function HolidayCalendar({ holidays, selected, onSelect }) {
       </div>
       <div className="hcal-legend">
         <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "var(--success)" }} /> Public Holiday</div>
+        <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "var(--t-muted)" }} /> No comp-off</div>
         <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "var(--danger)" }} /> Sunday</div>
         <div className="hcal-leg-item"><span className="hcal-leg-dot" style={{ background: "var(--warning)" }} /> 2nd / 4th Sat</div>
       </div>

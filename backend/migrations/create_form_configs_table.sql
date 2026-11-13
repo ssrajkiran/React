@@ -79,10 +79,12 @@ VALUES (
 
 SET @holidays_config_id = LAST_INSERT_ID();
 
-INSERT INTO form_fields (config_id, field_key, field_label, field_type, placeholder, is_required, is_searchable, is_sortable, show_in_table, show_in_form, table_width, sort_order)
+INSERT INTO form_fields (config_id, field_key, field_label, field_type, placeholder, default_value, is_required, is_searchable, is_sortable, show_in_table, show_in_form, help_text, table_width, sort_order)
 VALUES
-  (@holidays_config_id, 'name', 'Holiday Name', 'text', 'e.g. Christmas Day', 1, 1, 1, 1, 1, 'auto', 1),
-  (@holidays_config_id, 'date', 'Date', 'date', '', 1, 0, 1, 1, 1, 'auto', 2);
+  (@holidays_config_id, 'name', 'Holiday Name', 'text', 'e.g. Christmas Day', NULL, 1, 1, 1, 1, 1, '', 'auto', 1),
+  (@holidays_config_id, 'date', 'Date', 'date', '', NULL, 1, 0, 1, 1, 1, '', 'auto', 2),
+  (@holidays_config_id, 'has_compensation', 'Compensation (Comp-off)', 'toggle', '', '1', 0, 0, 1, 1, 1, 'Working on this holiday earns a compensatory day off', 'auto', 3),
+  (@holidays_config_id, 'replacement_date', 'Replacement Working Day', 'date', 'Optional', NULL, 0, 0, 1, 1, 1, 'Date that will act as a normal working day to cover this holiday (e.g. the Saturday worked while the holiday is off)', 'auto', 4);
 
 -- ============================================
 -- Seed: Projects module

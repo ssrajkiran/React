@@ -126,7 +126,9 @@ INSERT INTO `form_fields` (`id`, `config_id`, `field_key`, `field_label`, `field
 (21, 3, 'priority', 'Priority', 'radio', 'Select Options', NULL, '[\"[\\\"[\\\\\\\"[\\\\\\\\\\\\\\\"Low\\\\\\\\\\\\\\\"\\\\\\\"\\\"\",\"\\\"\\\\\\\"\\\\\\\\\\\\\\\"Medium\\\\\\\\\\\\\\\"\\\\\\\"\\\"\",\"\\\"\\\\\\\"\\\\\\\\\\\\\\\"High\\\\\\\\\\\\\\\"]\\\\\\\"]\\\"]\"]', 0, 1, 1, 0, 1, 1, 1, 'auto', 'left', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', 2),
 (22, 3, 'completed', 'Completed', 'toggle', '', NULL, NULL, 0, 0, 0, 0, 1, 1, 1, 'auto', 'left', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', 4),
 (23, 3, 'due_date', 'Due Date', 'date', '', NULL, NULL, 0, 0, 1, 0, 1, 1, 1, 'auto', 'left', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', 3),
-(24, 3, 'test', 'Test', 'url', '', NULL, NULL, 0, 1, 1, 0, 1, 1, 1, 'auto', 'left', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', 5);
+(24, 3, 'test', 'Test', 'url', '', NULL, NULL, 0, 1, 1, 0, 1, 1, 1, 'auto', 'left', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', 5),
+(25, 1, 'has_compensation', 'Compensation (Comp-off)', 'toggle', '', '1', NULL, 0, 0, 1, 0, 1, 1, 1, 'auto', 'left', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Working on this holiday earns a compensatory day off', 3),
+(26, 1, 'replacement_date', 'Replacement Working Day', 'date', 'Optional', NULL, NULL, 0, 0, 1, 0, 1, 1, 1, 'auto', 'left', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Date that will act as a normal working day to cover this holiday (e.g. the Saturday worked while the holiday is off)', 4);
 
 -- --------------------------------------------------------
 
@@ -137,30 +139,32 @@ INSERT INTO `form_fields` (`id`, `config_id`, `field_key`, `field_label`, `field
 CREATE TABLE `holidays` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
-  `date` date NOT NULL
+  `date` date NOT NULL,
+  `has_compensation` tinyint(1) NOT NULL DEFAULT 1,
+  `replacement_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `holidays`
 --
 
-INSERT INTO `holidays` (`id`, `name`, `date`) VALUES
-(2, 'New Year', '2026-02-01'),
-(3, 'Pongal', '2026-01-15'),
-(4, 'Thiruvlluvar Day', '2026-01-16'),
-(5, 'Uzhavar Thirunal', '2026-01-17'),
-(6, 'Republic Day', '2026-01-26'),
-(7, 'Holi', '2026-03-04'),
-(8, 'Ramzan', '2026-03-21'),
-(9, 'Tamil New year', '2026-04-14'),
-(10, 'May Day', '2026-05-01'),
-(11, 'Independence Day', '2026-08-15'),
-(12, 'Vinayagar Chaturthi', '2026-09-14'),
-(13, 'Gandhi Jayanthi', '2026-10-02'),
-(14, 'Ayutha Poojai', '2026-10-19'),
-(15, 'Deepavali', '2026-11-08'),
-(16, 'Diwali', '2026-11-09'),
-(17, 'Christmas', '2026-12-25');
+INSERT INTO `holidays` (`id`, `name`, `date`, `has_compensation`) VALUES
+(2, 'New Year', '2026-02-01', 1),
+(3, 'Pongal', '2026-01-15', 1),
+(4, 'Thiruvlluvar Day', '2026-01-16', 1),
+(5, 'Uzhavar Thirunal', '2026-01-17', 1),
+(6, 'Republic Day', '2026-01-26', 1),
+(7, 'Holi', '2026-03-04', 1),
+(8, 'Ramzan', '2026-03-21', 1),
+(9, 'Tamil New year', '2026-04-14', 1),
+(10, 'May Day', '2026-05-01', 1),
+(11, 'Independence Day', '2026-08-15', 1),
+(12, 'Vinayagar Chaturthi', '2026-09-14', 1),
+(13, 'Gandhi Jayanthi', '2026-10-02', 1),
+(14, 'Ayutha Poojai', '2026-10-19', 1),
+(15, 'Deepavali', '2026-11-08', 1),
+(16, 'Diwali', '2026-11-09', 1),
+(17, 'Christmas', '2026-12-25', 1);
 
 -- --------------------------------------------------------
 
@@ -662,7 +666,7 @@ ALTER TABLE `form_configs`
 -- AUTO_INCREMENT for table `form_fields`
 --
 ALTER TABLE `form_fields`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT for table `holidays`

@@ -30,7 +30,7 @@ export default function Holiday() {
   const [searchText, setSearchText]     = useState("");
   const [showModal, setShowModal]       = useState(false);
   const [selectedHoliday, setSelectedHoliday] = useState(null);
-  const [form, setForm]                 = useState({ name: "", date: "" });
+  const [form, setForm]                 = useState({ name: "", date: "", has_compensation: true, replacement_date: "" });
   const [error, setError]               = useState("");
   const [saving, setSaving]             = useState(false);
   const [toast, setToast]               = useState(null);
@@ -56,6 +56,8 @@ export default function Holiday() {
         name: h?.name || "",
         date: h?.date || "",
         day:  h?.date ? getDayName(h.date) : "",
+        has_compensation: h?.has_compensation !== 0,
+        replacement_date: h?.replacement_date || "",
       })));
     } catch (err) {
       console.error(err);
@@ -72,7 +74,8 @@ export default function Holiday() {
     return (
       (h.name || "").toLowerCase().includes(t) ||
       (h.date || "").toLowerCase().includes(t) ||
-      (h.day  || "").toLowerCase().includes(t)
+      (h.day  || "").toLowerCase().includes(t) ||
+      (h.replacement_date || "").toLowerCase().includes(t)
     );
   });
   const totalPages = Math.ceil(filtered.length / ROWS_PER_PAGE);
@@ -97,7 +100,9 @@ export default function Holiday() {
   // ── Modal ──
   const handleModal = (holiday = null) => {
     setSelectedHoliday(holiday || null);
-    setForm(holiday ? { name: holiday.name, date: holiday.date } : { name: "", date: "" });
+    setForm(holiday
+      ? { name: holiday.name, date: holiday.date, has_compensation: holiday.has_compensation !== false, replacement_date: holiday.replacement_date || "" }
+      : { name: "", date: "", has_compensation: true, replacement_date: "" });
     setError("");
     setShowModal(true);
   };
@@ -111,6 +116,10 @@ export default function Holiday() {
   // ── Save ──
   const handleSave = async () => {
     if (!form.name || !form.date) { setError("Please fill in all fields."); return; }
+    if (form.replacement_date && form.replacement_date === form.date) {
+      setError("Replacement working day must be a different date than the holiday.");
+      return;
+    }
     setSaving(true);
     try {
       if (selectedHoliday) {
@@ -124,7 +133,7 @@ export default function Holiday() {
       loadHolidays();
     } catch (err) {
       console.error(err);
-      setError("Failed to save holiday.");
+      setError(err.response?.data?.message || "Failed to save holiday.");
     } finally {
       setSaving(false);
     }
@@ -266,8 +275,10 @@ export default function Holiday() {
                             </span>
                           </div>
                           <div>
-                            <span style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text)" }}>{h.name}</span>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <span style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text)" }}>{h.name}</span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 12, color: "var(--t-muted)" }}>{formatDate(h.date)}</span>
                               <span
                                 className="sr-status-pill"
@@ -275,6 +286,14 @@ export default function Holiday() {
                               >
                                 {h.day || "—"}
                               </span>
+                              {h.replacement_date && (
+                                <span
+                                  className="sr-status-pill hl-repl-pill"
+                                  title={`Instead of a week off, this is a normal office day covering ${h.name}`}
+                                >
+                                  <i className="bi bi-arrow-right" /> Office day: {formatDate(h.replacement_date)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -373,6 +392,25 @@ export default function Holiday() {
                     </span>
                   )}
                 </div>
+
+                <div className="ul-field" style={{ gridColumn: "span 2" }}>
+                  <label className="ul-label">Replacement Working Day <span style={{ fontWeight: 500, color: "var(--t-muted)" }}>(optional)</span></label>
+                  <SharedDatePicker
+                    value={form.replacement_date}
+                    onChange={(val) => setForm({ ...form, replacement_date: val })}
+                    className="ul-input"
+                    placeholder="Select a working day"
+                  />
+                  {form.replacement_date && form.replacement_date !== form.date && (
+                    <span style={{ fontSize: 11.5, color: "var(--t-muted)", display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                      <i className="bi bi-info-circle" /> <strong>{getDayName(form.replacement_date)}</strong> becomes a normal office day covering this holiday
+                    </span>
+                  )}
+                  <span style={{ fontSize: 11.5, color: "var(--t-muted)", display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                    <i className="bi bi-briefcase" />
+                    E.g. pick the adjacent Saturday while Diwali is off — that Saturday works like any office day.
+                  </span>
+                </div>
               </div>
 
               {error && (
@@ -459,6 +497,9 @@ const styles = `
   .ul-name { font-size: 13px; font-weight: 600; color: var(--t-base); }
   .hl-date-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--t-muted); background: var(--bg-card); box-shadow: var(--shadow-sm); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
   .sr-status-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+
+  /* ── Replacement working day ── */
+  .hl-repl-pill { background: var(--info-soft); color: var(--info); border: 1px solid color-mix(in srgb, var(--info) 35%, transparent); display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
 
   /* ── Day preview in modal ── */
   .hl-day-preview { font-size: 11.5px; color: var(--t-muted); display: flex; align-items: center; gap: 5px; margin-top: 2px; }

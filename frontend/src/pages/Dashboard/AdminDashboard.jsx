@@ -280,7 +280,20 @@ export default function AdminDashboard() {
                     </div>
                     <div className="db-holiday-info">
                       <span className="db-holiday-name">{h.name}</span>
-                      <span className="db-holiday-weekday">{getDayName(h.date)}</span>
+                      <span className="db-holiday-weekday">
+                        {getDayName(h.date)}
+                        <span
+                          className="db-badge"
+                          style={{ marginLeft: 6, ...(h.has_compensation === 0
+                            ? { background: "var(--bg-muted)", color: "var(--t-muted)" }
+                            : { background: "var(--success-soft)", color: "var(--success)" }) }}
+                          title={h.has_compensation === 0
+                            ? "Working on this holiday earns no comp-off"
+                            : "Working on this holiday earns a comp-off"}
+                        >
+                          {h.has_compensation === 0 ? "No comp-off" : "Comp-off"}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 ))}

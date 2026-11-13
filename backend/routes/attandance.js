@@ -106,13 +106,27 @@ router.get("/", verifyToken, async (req, res) => {
 
     // 5️⃣ Public holidays from holidays table for the month
     const [publicHolidays] = await db.promise().query(
-      `SELECT date, name FROM holidays
+      `SELECT date, name, has_compensation FROM holidays
        WHERE YEAR(date) = ? AND MONTH(date) = ?`,
       [year, month]
     );
     const publicHolidayMap = {};
     publicHolidays.forEach((h) => {
-      publicHolidayMap[dayOf(h.date)] = h.name;
+      publicHolidayMap[dayOf(h.date)] = { name: h.name, has_compensation: h.has_compensation };
+    });
+
+    // 5️⃣ Replacement working days: dates that act as a normal office day
+    //    even though they fall on a weekend (they cover a holiday).
+    const [replacementRows] = await db.promise().query(
+      `SELECT DATE_FORMAT(replacement_date, '%Y-%m-%d') AS replacement_date, name
+       FROM holidays
+       WHERE replacement_date IS NOT NULL
+         AND YEAR(replacement_date) = ? AND MONTH(replacement_date) = ?`,
+      [year, month]
+    );
+    const replacementMap = {};
+    replacementRows.forEach((r) => {
+      replacementMap[dayOf(r.replacement_date)] = r.name;
     });
 
     // 6️⃣ Days in month & headers
@@ -136,6 +150,7 @@ router.get("/", verifyToken, async (req, res) => {
           row[day] = {
             status:          "present_on_holiday",
             holiday_name:    presentRecord.holiday_name || "",
+            has_compensation: publicHolidayMap[day] ? publicHolidayMap[day].has_compensation : 1,
             remarks:         presentRecord.remarks || "",
             approval_status: "approved",
           };
@@ -208,19 +223,20 @@ router.get("/", verifyToken, async (req, res) => {
         if (publicHolidayMap[day]) {
           row[day] = {
             status:       "holiday",              // → frontend shows H
-            holiday_name: publicHolidayMap[day],
+            holiday_name: publicHolidayMap[day].name,
+            has_compensation: publicHolidayMap[day].has_compensation,
           };
           continue;
         }
 
-        // ── Priority 5: Sunday = week off ──
-        if (dow === 0) {
+        // ── Priority 5: Sunday = week off (unless it is a replacement working day) ──
+        if (dow === 0 && !replacementMap[day]) {
           row[day] = { status: "WO" };
           continue;
         }
 
-        // ── Priority 6: 2nd & 4th Saturday = week off ──
-        if (is2ndOr4thSat(year, month, day)) {
+        // ── Priority 6: 2nd & 4th Saturday = week off (unless replaced) ──
+        if (is2ndOr4thSat(year, month, day) && !replacementMap[day]) {
           row[day] = { status: "WO" };
           continue;
         }

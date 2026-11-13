@@ -207,11 +207,18 @@ router.get("/employee-summary", auth, async (req, res) => {
   ROUND(m.months_elapsed * 2, 1) AS permission_allocated,
 
   -- Leave balance = accrued + approved present-on-holiday bonus - approved leave - approved comp-off
+  -- Only holidays with compensation (or weekends, which have no holidays row) earn the bonus
   ROUND(
     m.months_elapsed * 2.5
     + COALESCE((SELECT COUNT(*) FROM present_on_holiday ph
         WHERE ph.user_id = u.id AND ph.status = 'approved'
-        AND ph.date >= m.fy_start AND ph.date <= m.fy_end), 0)
+        AND ph.date >= m.fy_start AND ph.date <= m.fy_end
+        AND NOT EXISTS (
+          SELECT 1 FROM holidays h
+          WHERE DATE(h.date) = DATE(ph.date) AND h.has_compensation = 0)
+        AND NOT EXISTS (
+          SELECT 1 FROM holidays h
+          WHERE DATE(h.replacement_date) = DATE(ph.date)), 0)
     - COALESCE((SELECT SUM(l.days) FROM leaves l
         WHERE l.user_id = u.id AND l.status = 'approved'
         AND l.type = 'leave'
@@ -270,7 +277,7 @@ router.get("/admin_userspanel", auth, (req, res) => {
 router.get("/holidays", auth, async (req, res) => {
   try {
     const [result] = await db.promise().query(
-      `SELECT id, name, DATE_FORMAT(date, '%Y-%m-%d') AS date FROM holidays ORDER BY date ASC`
+      `SELECT id, name, DATE_FORMAT(date, '%Y-%m-%d') AS date, has_compensation, DATE_FORMAT(replacement_date, '%Y-%m-%d') AS replacement_date FROM holidays ORDER BY date ASC`
     );
     res.json(result);
   } catch (err) {
@@ -310,6 +317,14 @@ router.get("/compoff-eligible", auth, (req, res) => {
       ) AS second_taken
     FROM present_on_holiday p
     WHERE p.user_id = ? AND p.status = 'approved'
+      AND NOT EXISTS (
+        SELECT 1 FROM holidays h
+        WHERE DATE(h.date) = DATE(p.date) AND h.has_compensation = 0
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM holidays h
+        WHERE DATE(h.replacement_date) = DATE(p.date)
+      )
       AND NOT EXISTS (
         SELECT 1 FROM leaves l
         WHERE l.user_id = p.user_id AND l.type = 'compoff'
@@ -410,9 +425,21 @@ router.post("/admin", auth, async (req, res) => {
     if (type === "present") {
       if (!from_date) return res.status(400).json({ error: "from_date is required for present" });
       let holiday_name = req.body.holiday_name || null;
-      if (!holiday_name) {
-        const [hRows] = await db.promise().query(`SELECT name FROM holidays WHERE DATE(date) = DATE(?) LIMIT 1`, [from_date]);
-        if (hRows.length) holiday_name = hRows[0].name;
+      const [flagRows] = await db.promise().query(
+        `SELECT name, has_compensation FROM holidays WHERE DATE(date) = DATE(?) LIMIT 1`, [from_date]
+      );
+      if (flagRows.length) {
+        holiday_name = holiday_name || flagRows[0].name;
+        if (!flagRows[0].has_compensation) {
+          return res.status(400).json({ error: "This holiday does not offer a compensatory off — working on it earns no comp-off." });
+        }
+      } else {
+        const [replRows] = await db.promise().query(
+          `SELECT name FROM holidays WHERE DATE(replacement_date) = DATE(?) LIMIT 1`, [from_date]
+        );
+        if (replRows.length) {
+          return res.status(400).json({ error: `${from_date} is a normal working day (replacement for ${replRows[0].name}) — it earns no comp-off.` });
+        }
       }
       const [existing] = await db.promise().query(
         `SELECT id FROM present_on_holiday WHERE user_id = ? AND DATE(date) = DATE(?)`, [user_id, from_date]
@@ -534,11 +561,21 @@ router.post("/", auth, async (req, res) => {
       if (!from_date) return res.status(400).json({ error: "Holiday date is required" });
 
       let holiday_name = req.body.holiday_name || null;
-      if (!holiday_name) {
-        const [hRows] = await db.promise().query(
-          `SELECT name FROM holidays WHERE DATE(date) = DATE(?) LIMIT 1`, [from_date]
+      const [flagRows] = await db.promise().query(
+        `SELECT name, has_compensation FROM holidays WHERE DATE(date) = DATE(?) LIMIT 1`, [from_date]
+      );
+      if (flagRows.length) {
+        holiday_name = holiday_name || flagRows[0].name;
+        if (!flagRows[0].has_compensation) {
+          return res.status(400).json({ error: "This holiday does not offer a compensatory off — working on it earns no comp-off." });
+        }
+      } else {
+        const [replRows] = await db.promise().query(
+          `SELECT name FROM holidays WHERE DATE(replacement_date) = DATE(?) LIMIT 1`, [from_date]
         );
-        if (hRows.length) holiday_name = hRows[0].name;
+        if (replRows.length) {
+          return res.status(400).json({ error: `${from_date} is a normal working day (replacement for ${replRows[0].name}) — it earns no comp-off.` });
+        }
       }
 
       const [existing] = await db.promise().query(
@@ -949,8 +986,22 @@ router.put("/present/:id", auth, async (req, res) => {
     const [result] = await db.promise().query("UPDATE present_on_holiday SET status=? WHERE id=?", [status, req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: "Record not found" });
 
+    // Comp-off is only promised when the worked date is still compensation-eligible
+    // (weekends have no holidays row and remain eligible)
+    let compEligible = true;
+    const [flagRows] = await db.promise().query(
+      `SELECT has_compensation FROM holidays WHERE DATE(date) = DATE(?) LIMIT 1`, [record.date]
+    );
+    if (flagRows.length && !flagRows[0].has_compensation) compEligible = false;
+    if (compEligible) {
+      const [replRows] = await db.promise().query(
+        `SELECT name FROM holidays WHERE DATE(replacement_date) = DATE(?) LIMIT 1`, [record.date]
+      );
+      if (replRows.length) compEligible = false;
+    }
+
+    const isApproved = status === "approved";
     if (record.user_email) {
-      const isApproved = status === "approved";
       try {
         await createTransporter().sendMail({
           from: process.env.EMAIL_USER,
@@ -966,7 +1017,7 @@ router.put("/present/:id", auth, async (req, res) => {
               { label: "Holiday", value: record.holiday_name || "N/A" },
               { label: "Date",    value: record.date },
               { label: "Remarks", value: record.remarks || "N/A" },
-              ...(isApproved ? [{ label: "Next step", value: "You can now apply a Comp Off for this day" }] : []),
+              ...(isApproved && compEligible ? [{ label: "Next step", value: "You can now apply a Comp Off for this day" }] : []),
             ],
           }),
         });
@@ -975,7 +1026,9 @@ router.put("/present/:id", auth, async (req, res) => {
 
     await notify(record.user_id, {
       title: `Present on holiday ${status}`,
-      message: `Your request to work on ${record.holiday_name || "holiday"} (${record.date}) was ${status}.`,
+      message: isApproved && compEligible
+        ? `Your request to work on ${record.holiday_name || "holiday"} (${record.date}) was approved. You can apply a Comp Off for this day.`
+        : `Your request to work on ${record.holiday_name || "holiday"} (${record.date}) was ${status}.`,
       type: status === "approved" ? "success" : "danger",
       link: "/employee/leaves",
     });

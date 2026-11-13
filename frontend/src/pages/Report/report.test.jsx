@@ -89,8 +89,35 @@ const mockAttendanceData = {
   ],
 };
 
+// Dynamic dates so holiday assertions work regardless of when tests run
+const _now = new Date();
+const _pad = (n) => String(n).padStart(2, "0");
+const _monthPrefix = `${_now.getFullYear()}-${_pad(_now.getMonth() + 1)}-`;
+// Day used for the compensation-eligible holiday (never collides with mock cells 1–6)
+const compHolidayDay = _now.getDate() === 15 ? 16 : 15;
+const noCompHolidayDay = _now.getDate() === 15 ? 17 : 16;
+
+// A weekend day (7–28) to act as a replacement working day — proves that a
+// Sat/Sun renders as a normal office day when a holiday covers it.
+const _busyDays = new Set([1, 2, 3, 4, 5, 6, compHolidayDay, noCompHolidayDay]);
+const replacementDay = (() => {
+  for (let d = 7; d <= 28; d++) {
+    const dow = new Date(_now.getFullYear(), _now.getMonth(), d).getDay();
+    if ((dow === 0 || dow === 6) && !_busyDays.has(d)) return d;
+  }
+  return 7;
+})();
+const replacementHolidayDay = [21, 22, 23, 24, 25, 26, 27].find((d) => d !== replacementDay);
+
 const mockHolidays = [
-  { date: "2026-03-25", name: "Festival" },
+  { date: `${_monthPrefix}${_pad(compHolidayDay)}`, name: "Festival", has_compensation: 1 },
+  { date: `${_monthPrefix}${_pad(noCompHolidayDay)}`, name: "Company Day", has_compensation: 0 },
+  {
+    date: `${_monthPrefix}${_pad(replacementHolidayDay)}`,
+    name: "Bridge Holiday",
+    has_compensation: 1,
+    replacement_date: `${_monthPrefix}${_pad(replacementDay)}`,
+  },
 ];
 
 const mockPeople = [
@@ -243,6 +270,88 @@ describe("AttendanceReport Page Component", () => {
 
     const day5CompOffCell = screen.getByTitle(/Comp Off on Day 5/i);
     expect(day5CompOffCell).toBeInTheDocument();
+  });
+
+  describe("Holiday compensation flag", () => {
+    it("marks holiday columns with compensation status in the header", async () => {
+      render(
+        <MemoryRouter>
+          <AttendanceReport />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+      });
+
+      // No-comp holiday column header carries the compensation status
+      expect(screen.getAllByTitle(/Holiday · No comp-off/i).length).toBeGreaterThan(0);
+      // Comp-eligible holiday column header too
+      expect(screen.getAllByTitle(/Holiday · Comp-off/i).length).toBeGreaterThan(0);
+    });
+
+    it("shows compensation status in the holiday cell detail modal", async () => {
+      render(
+        <MemoryRouter>
+          <AttendanceReport />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+      });
+
+      const holidayCells = screen.getAllByTitle(new RegExp(`No comp-off on Day ${noCompHolidayDay} — Click to view full details`, "i"));
+      expect(holidayCells.length).toBeGreaterThan(0);
+      fireEvent.click(holidayCells[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getAllByText("Company Day").length).toBeGreaterThan(0);
+      expect(within(dialog).getByText("Not applicable")).toBeInTheDocument();
+      expect(within(dialog).getByText(/No comp-off/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("Replacement working day", () => {
+    it("shows the replacement date as a working day (not a weekend) in the column header", async () => {
+      render(
+        <MemoryRouter>
+          <AttendanceReport />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+      });
+
+      const th = screen.getByTitle(new RegExp(`Working day · covers Bridge Holiday`, "i"));
+      expect(th).toBeInTheDocument();
+      expect(th).not.toHaveClass("ar-weekend");
+      expect(th.title).not.toMatch(/Weekend/i);
+    });
+
+    it("renders replacement-day cells as Present without weekend styling", async () => {
+      render(
+        <MemoryRouter>
+          <AttendanceReport />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+      });
+
+      const cells = screen.getAllByTitle(/normal working day \(covers Bridge Holiday\)/i);
+      expect(cells.length).toBeGreaterThan(0);
+      cells.forEach((cell) => {
+        expect(cell).not.toHaveClass("ar-weekend-cell");
+        expect(cell).toHaveTextContent("P");
+      });
+    });
   });
 
   describe("Attendance Detail View Modal & '2 Days' Visibility", () => {
