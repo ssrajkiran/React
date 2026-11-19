@@ -21,11 +21,11 @@ const verifyToken = (req, res, next) => {
 
 /* ─── Helper: is this date a 2nd or 4th Saturday? ─── */
 function is2ndOr4thSat(year, month, day) {
-  const dow = new Date(year, month - 1, day).getDay();
+  const dow = new Date(year, month - 1, day, 12).getDay();
   if (dow !== 6) return false;
   let satCount = 0;
   for (let d = 1; d <= day; d++) {
-    if (new Date(year, month - 1, d).getDay() === 6) satCount++;
+    if (new Date(year, month - 1, d, 12).getDay() === 6) satCount++;
   }
   return satCount === 2 || satCount === 4;
 }
@@ -139,7 +139,7 @@ router.get("/", verifyToken, async (req, res) => {
       const row = { User: user.name, user_id: user.id };
 
       for (let day = 1; day <= daysInMonth; day++) {
-        const dow     = new Date(year, month - 1, day).getDay(); // 0=Sun,6=Sat
+        const dow     = new Date(year, month - 1, day, 12).getDay(); // 0=Sun,6=Sat
         const dateStr = toDateStr(year, month, day);
 
         // ── Priority 1: present_on_holiday (approved) ──

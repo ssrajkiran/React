@@ -139,7 +139,7 @@ export default function AttendanceReport() {
     `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`, [year, month]);
 
   const getDayOfWeek = (day) => {
-    const d = new Date(year, month - 1, day);
+    const d = new Date(year, month - 1, day, 12);
     return ["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()];
   };
 
@@ -152,12 +152,26 @@ export default function AttendanceReport() {
     return m;
   }, [holidays]);
 
+  // Helper: is this date a 2nd or 4th Saturday?
+  const is2ndOr4thSat = useCallback((day) => {
+    const dow = new Date(year, month - 1, day, 12).getDay();
+    if (dow !== 6) return false;
+    let satCount = 0;
+    for (let d = 1; d <= day; d++) {
+      if (new Date(year, month - 1, d, 12).getDay() === 6) satCount++;
+    }
+    return satCount === 2 || satCount === 4;
+  }, [year, month]);
+
   // A replacement working day is NOT a weekend, even if it falls on Sat/Sun.
+  // Weekend / week off is Sunday and 2nd & 4th Saturday only. 1st, 3rd, 5th Saturday are normal working days.
   const isWeekend = useCallback((day) => {
     if (replacementByDate[getDateStr(day)]) return false;
-    const dow = new Date(year, month - 1, day).getDay();
-    return dow === 0 || dow === 6;
-  }, [year, month, getDateStr, replacementByDate]);
+    const dow = new Date(year, month - 1, day, 12).getDay();
+    if (dow === 0) return true;
+    if (dow === 6) return is2ndOr4thSat(day);
+    return false;
+  }, [year, month, getDateStr, replacementByDate, is2ndOr4thSat]);
 
   const isTodayDate = (day) => {
     const now = new Date();
@@ -205,7 +219,8 @@ export default function AttendanceReport() {
     if (status === "leave")              return { display: cell.half_day_type && cell.half_day_type !== "full" ? "HD" : "L", isHoliday, isWeekend: isWknd };
     if (status === "absent")             return { display: "A",  isHoliday, isWeekend: isWknd };
     if (status === "holiday" || isHoliday) return { display: "H", isHoliday: true, isWeekend: isWknd, holidayName, hasCompensation: hasComp };
-    if (status === "weekoff" || isWknd)  return { display: "WO", isHoliday: false, isWeekend: true };
+    if (status === "P")                  return { display: "P", isHoliday: false, isWeekend: isWknd };
+    if (status === "WO" || status === "weekoff" || isWknd)  return { display: "WO", isHoliday: false, isWeekend: true };
 
     return { display: status, isHoliday, isWeekend: isWknd };
   }, [getDateStr, holidayByDate, isWeekend, isCompEligible]);

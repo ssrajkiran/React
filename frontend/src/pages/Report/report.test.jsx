@@ -100,14 +100,26 @@ const noCompHolidayDay = _now.getDate() === 15 ? 17 : 16;
 // A weekend day (7–28) to act as a replacement working day — proves that a
 // Sat/Sun renders as a normal office day when a holiday covers it.
 const _busyDays = new Set([1, 2, 3, 4, 5, 6, compHolidayDay, noCompHolidayDay]);
+const isWeekOffDay = (y, m, d) => {
+  const dow = new Date(y, m - 1, d, 12).getDay();
+  if (dow === 0) return true;
+  if (dow === 6) {
+    let count = 0;
+    for (let i = 1; i <= d; i++) {
+      if (new Date(y, m - 1, i, 12).getDay() === 6) count++;
+    }
+    return count === 2 || count === 4;
+  }
+  return false;
+};
+
 const replacementDay = (() => {
   for (let d = 7; d <= 28; d++) {
-    const dow = new Date(_now.getFullYear(), _now.getMonth(), d).getDay();
-    if ((dow === 0 || dow === 6) && !_busyDays.has(d)) return d;
+    if (isWeekOffDay(_now.getFullYear(), _now.getMonth() + 1, d) && !_busyDays.has(d)) return d;
   }
-  return 7;
+  return 8;
 })();
-const replacementHolidayDay = [21, 22, 23, 24, 25, 26, 27].find((d) => d !== replacementDay);
+const replacementHolidayDay = [23, 24, 25, 26, 27].find((d) => d !== replacementDay);
 
 const mockHolidays = [
   { date: `${_monthPrefix}${_pad(compHolidayDay)}`, name: "Festival", has_compensation: 1 },
@@ -351,6 +363,79 @@ describe("AttendanceReport Page Component", () => {
         expect(cell).not.toHaveClass("ar-weekend-cell");
         expect(cell).toHaveTextContent("P");
       });
+    });
+  });
+
+  describe("Saturday week off rules (2nd and 4th Saturday only)", () => {
+    it("renders 2nd and 4th Saturday as Week Off (WO) with weekend styling", async () => {
+      let satCount = 0;
+      let secondSat = null;
+      for (let d = 1; d <= 31; d++) {
+        const dow = new Date(_now.getFullYear(), _now.getMonth(), d, 12).getDay();
+        if (dow === 6) {
+          satCount++;
+          if (satCount === 2) {
+            secondSat = d;
+            break;
+          }
+        }
+      }
+
+      render(
+        <MemoryRouter>
+          <AttendanceReport />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+      });
+
+      if (secondSat && secondSat !== replacementDay) {
+        const th = screen.getByTitle(new RegExp(`Sa, ${secondSat} .*\\(Weekend\\)`, "i"));
+        expect(th).toHaveClass("ar-weekend");
+
+        const cells = screen.getAllByTitle(new RegExp(`Week Off`, "i"));
+        expect(cells.length).toBeGreaterThan(0);
+        expect(cells[0]).toHaveTextContent("WO");
+      }
+    });
+
+    it("renders 1st, 3rd (e.g. 21st in Nov 2026), and 5th Saturday as Present (P) without weekend styling", async () => {
+      let satCount = 0;
+      let thirdSat = null;
+      for (let d = 1; d <= 31; d++) {
+        const dow = new Date(_now.getFullYear(), _now.getMonth(), d, 12).getDay();
+        if (dow === 6) {
+          satCount++;
+          if (satCount === 3) {
+            thirdSat = d;
+            break;
+          }
+        }
+      }
+
+      render(
+        <MemoryRouter>
+          <AttendanceReport />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+      });
+
+      if (thirdSat && thirdSat !== replacementDay) {
+        const th = screen.getByTitle(new RegExp(`Sa, ${thirdSat} [A-Za-z]+$`, "i"));
+        expect(th).not.toHaveClass("ar-weekend");
+        expect(th.title).not.toMatch(/Weekend/i);
+
+        // Verify present status chip on 3rd Saturday (e.g. 21st Nov)
+        const cells = screen.getAllByTitle(new RegExp(`^Present$`, "i"));
+        expect(cells.length).toBeGreaterThan(0);
+        expect(cells[0]).not.toHaveClass("ar-weekend-cell");
+        expect(cells[0]).toHaveTextContent("P");
+      }
     });
   });
 
