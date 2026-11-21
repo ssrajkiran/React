@@ -251,7 +251,7 @@ router.delete("/:id", verifyToken, (req, res) => {
    browser the previous account's session is destroyed everywhere.
 =============================== */
 router.post("/login", (req, res) => {
-  <!-- const { email, password, prevToken } = req.body; -->
+  const { email, password, prevToken } = req.body;
 
   db.query("SELECT * FROM users WHERE email=?", [email], (err, result) => {
     if (err) return res.sendStatus(500);
